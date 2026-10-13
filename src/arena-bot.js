@@ -1,7 +1,7 @@
 // Arena bot: alpha-beta negamax over the arena engine, including follow-up phases
 // (beast move, ice placement) and Plantae reactions. Pure; no DOM.
 import {
-  applyAction, listActions, livingUnits, moveOptions, toMove, HEROES, chebyshev, unitAt,
+  applyAction, listActions, livingUnits, moveOptions, toMove, HEROES, chebyshev, unitAt, TEAM_SIZE,
 } from './arena.js';
 
 export const BOT_LEVELS = {
@@ -26,8 +26,9 @@ function teamScore(s, team) {
     if (u.kind === 'creep') { v += 8 * (team === 'p1' ? 6 - u.pos.r : u.pos.r - 1); continue; }
     v += 5 * (3.5 - Math.max(Math.abs(u.pos.r - 3.5), Math.abs(u.pos.c - 3.5)));
   }
-  const hasActive = livingUnits(s, team).some((u) => u.kind === 'hero' && HEROES[u.hero].skill.type === 'active');
-  if (hasActive) v += 18 * s.energy[team];
+  // Every hero spends tokens now; banked tokens are worth a little (diminishing past 2).
+  const e = s.energy[team];
+  v += 16 * Math.min(e, 2) + 8 * Math.max(0, e - 2);
   return v;
 }
 
@@ -76,7 +77,7 @@ function orderActions(s, acts) {
 }
 function isBackstab(s, a) {
   const u = s.units[a.unitId];
-  return u && u.hero === 'hasim' && Math.abs(a.to.r - u.pos.r) === 2;
+  return u && u.hero === 'hasim' && moveOptions(s, u).some((o) => o.backstab && o.to.r === a.to.r && o.to.c === a.to.c);
 }
 
 function lethal(s) {
@@ -172,7 +173,7 @@ export function pickTeam(seed = 0) {
   const pool = Object.keys(HEROES);
   const out = [];
   let h = (seed * 2654435761 + 12345) >>> 0;
-  while (out.length < 3) {
+  while (out.length < TEAM_SIZE) {
     h = (Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
     const pick = pool.splice(h % pool.length, 1)[0];
     out.push(pick);

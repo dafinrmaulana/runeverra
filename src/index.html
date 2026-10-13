@@ -1,5 +1,5 @@
 <title>Hero Gambit</title>
-<meta name="description" content="Pick three heroes, choose a map and fight on an 8×8 board. Deterministic tactics, no dice.">
+<meta name="description" content="Pick four heroes, choose a map and fight on an 8×8 board. Deterministic tactics, no dice.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=Alegreya+Sans:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -181,6 +181,7 @@
     border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; font-size: .88rem;
   }
 
+  .phasebar .row { display: flex; gap: 8px; flex: none; }
   .arena { position: relative; border-radius: 10px; padding: 14px; overflow: hidden; background: #111; }
   .arena .backdrop {
     position: absolute; inset: -8px; background-size: cover; background-position: center 30%;
@@ -403,7 +404,7 @@
 
 <div class="app">
   <header class="top">
-    <h1>Hero Gambit<small>pick three · outthink one</small></h1>
+    <h1>Hero Gambit<small>pick four · outthink one</small></h1>
     <div class="controls" id="game-controls" hidden>
       <label class="toggle"><input type="checkbox" id="threats" checked> Show threats</label>
       <button class="btn" id="undo" type="button" disabled>Undo</button>
@@ -418,7 +419,7 @@
       <div class="maps" id="maps"></div>
     </div>
     <div>
-      <p class="eyebrow">2 · Teams · pick 3 heroes each</p>
+      <p class="eyebrow">2 · Teams · pick 4 heroes each</p>
       <div class="teambar" id="teambar"></div>
     </div>
     <div class="cards" id="cards"></div>
@@ -449,7 +450,7 @@
       <div class="reactbar" id="react" role="alertdialog" aria-label="Aggressive Root" hidden></div>
       <div class="phasebar" id="phasebar" hidden>
         <span id="phasetext"></span>
-        <button class="btn" id="skip" type="button">Skip</button>
+        <span class="row"><button class="btn primary" id="slam" type="button" hidden>Slam</button><button class="btn" id="skip" type="button">Skip</button></span>
       </div>
       <div class="arena" id="arena">
         <div class="backdrop" id="backdrop"></div>
@@ -490,17 +491,18 @@
       <details class="rules">
         <summary>Rules</summary>
         <ul>
-          <li><b>Goal.</b> Eliminate all three enemy heroes. Beasts don't count.</li>
-          <li><b>One action per turn:</b> move one hero, or use an active skill. Moving onto an enemy eliminates it.</li>
+          <li><b>Goal.</b> Eliminate all four enemy heroes. Beasts and creeps don't count.</li>
+          <li><b>One action per turn:</b> move one unit, or use an active skill. Moving onto an enemy eliminates it.</li>
+          <li><b>Roles.</b> Roam (Ge'nga, Aqna, Hexor) and Assassin (Hasim) move up to 2 squares straight; Hexor's L jump counts as his 2 steps. Support (Plantae) steps 1 but reaches 3 with its skill. Magumba slides up to 2 diagonally.</li>
           <li><b>Terrain</b> (pillars, trees, ruins, rocks, ice) blocks movement. Only Hasim's Backstab and Hexor's jump go over it; nobody lands on it.</li>
-          <li><b>Energy</b> pays for active skills: +1 at the start of each of your turns, up to 6. Both sides start with 1.</li>
-          <li><b>Hasim · Backstab.</b> Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps.</li>
-          <li><b>Ge'nga · Wild Company.</b> His beast acts right after him each time he acts (or you skip). It flees if he falls.</li>
-          <li><b>Magumba · Empty Grave</b> (3 energy, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn. Clears Root.</li>
-          <li><b>Plantae · Aggressive Root</b> (3 energy, range 3, cooldown 3): on your turn, roots an enemy for its next turn. Once per match, on the enemy's turn, when one of their units within 3 acts, you're asked whether to interrupt: the action is negated and their turn ends. Either use puts it on cooldown for 3 of your turns, so no prompts appear while it recharges or after the interrupt is spent.</li>
-          <li><b>Hexor · Storm Hammer.</b> When he captures, every unit around the target (allies too) is pushed 1 square away, chaining. An enemy pushed into terrain or off the board is eliminated; an ally that would be pushed there stays put instead.</li>
-          <li><b>Aqna · Icy Step.</b> After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
-          <li><b>Creeps.</b> Each side starts with 4 pawns on the flank lanes (files a, b, g, h), facing the enemy's creeps. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. Map terrain sits only in the four centre files, so it never blocks a lane. Eliminating an enemy creep gives +1 energy; a creep that reaches the far rank breaks through for +2 energy. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
+          <li><b>Skill tokens</b> pay for every skill: +1 at the start of each of your turns, up to 4. Both sides start with 1. Costs follow impact: Backstab 1 per jump, beast follow-up 1, ice 1, Empty Grave 2, Storm Hammer 2, Aggressive Root 2 (interrupt 3).</li>
+          <li><b>Hasim · Backstab</b> (1 token per jump). Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps you can afford.</li>
+          <li><b>Ge'nga · Wild Company</b> (1 token). Right after he acts you may pay to move his beast too, or skip. It flees if he falls.</li>
+          <li><b>Magumba · Empty Grave</b> (2 tokens, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn. Clears Root.</li>
+          <li><b>Plantae · Aggressive Root</b> (2 tokens, range 3, cooldown 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you may interrupt for 3 tokens: the action is negated and their turn ends. The catch (the hole): Plantae roots itself and can't act on your next turn. Either use puts it on cooldown for 3 of your turns.</li>
+          <li><b>Hexor · Storm Hammer</b> (2 tokens). After he captures, you may pay to slam: every unit around him (allies too) is pushed 1 square away, chaining. An enemy pushed into terrain or off the board is eliminated; an ally that would be pushed there stays put instead.</li>
+          <li><b>Aqna · Icy Step</b> (1 token). After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
+          <li><b>Creeps.</b> Each side starts with 4 pawns on the flank lanes (files a, b, g, h), facing the enemy's creeps. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. Map terrain sits only in the four centre files, so it never blocks a lane. Eliminating an enemy creep gives +1 token; a creep that reaches the far rank breaks through for +2 tokens. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
           <li><b>Distances</b> count diagonals as 1, like a chess king's steps: "within 3" means the 7×7 square around the hero. Select Plantae to see its reach tinted green. Each hero's movement is shown on its card.</li>
           <li><b>Controls.</b> Click a hero, then a marked square. Q or the skill button arms an active skill. Esc cancels.</li>
         </ul>
@@ -513,11 +515,19 @@
 import {
   createMatch, applyAction, validateAction, listActions, moveOptions, skillTargets, getThreats,
   livingHeroes, unitAt, blockAt, squareName, samePos, toMove, heroDef, label,
-  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, SLOTS, skillCooldown, chebyshev,
+  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, SLOTS, TEAM_SIZE, ROLES, skillCooldown, chebyshev,
 } from './arena.js';
 import { chooseAction, pickTeam, BOT_LEVELS } from './arena-bot.js';
 
 const $ = (id) => document.getElementById(id);
+const tk = (n) => `${n} token${n === 1 ? '' : 's'}`;
+/** Short cost label for a skill, e.g. "Active · 2 tokens". */
+function costLabel(sk) {
+  if (sk.type === 'active') return `Active · ${tk(sk.cost)}${sk.reactionCost ? ` · interrupt ${sk.reactionCost}` : ''}`;
+  if (sk.type === 'move') return `Passive · ${tk(sk.cost)} per jump`;
+  return `Follow-up · ${tk(sk.cost)}`;
+}
+const roleOf = (id) => (HEROES[id].role ? ROLES[HEROES[id].role] : '');
 const BOT_TEAM = 'p2';
 const BOT_DELAY_MS = 520;
 const ICON = (h) => `assets/icons/${h}.png`;
@@ -545,7 +555,7 @@ const TERRAIN_SVG = {
 
 // ---------- app state ----------
 let screen = 'setup';
-const setup = { map: 'oasis', creeps: true, opponent: 'normal', picks: { p1: ['hasim', 'hexor', 'magumba'], p2: [] }, editing: 'p1', botSeed: 1 + (Date.now() % 997) };
+const setup = { map: 'oasis', creeps: true, opponent: 'normal', picks: { p1: ['hasim', 'hexor', 'magumba', 'plantae'], p2: [] }, editing: 'p1', botSeed: 1 + (Date.now() % 997) };
 setup.picks.p2 = pickTeam(setup.botSeed);
 let game = null;
 let history = [];
@@ -587,11 +597,11 @@ function renderSetup() {
   const tab = (team) => {
     const picks = setup.picks[team];
     const who = team === 'p1' ? (vsBot() ? 'You' : 'Player 1') : (vsBot() ? 'Bot' : 'Player 2');
-    const slots = [0, 1, 2].map((i) => (picks[i]
+    const slots = SLOTS[team].map((_, i) => (picks[i]
       ? `<span class="slot filled"><img src="${ICON(picks[i])}" alt="${HEROES[picks[i]].name}"><span class="n">${i + 1}</span></span>`
       : `<span class="slot">${SLOTS[team][i]}</span>`)).join('');
     return `<button type="button" class="teamtab ${team}" data-team="${team}" aria-pressed="${setup.editing === team}">
-      <span class="th"><span class="swatch ${team}"></span>${TEAM_NAMES[team]} · ${who}<small>${picks.length}/3 picked</small></span>
+      <span class="th"><span class="swatch ${team}"></span>${TEAM_NAMES[team]} · ${who}<small>${picks.length}/${TEAM_SIZE} picked</small></span>
       <span class="slots">${slots}</span>
       ${team === 'p2' && vsBot() ? '<span class="btn shuffle" data-shuffle="1">Shuffle bot team</span>' : ''}
     </button>`;
@@ -611,11 +621,11 @@ function renderSetup() {
       ${idx >= 0 ? `<span class="pick">${idx + 1}</span>` : ''}
       <span class="clsbadge" title="${h.cls}">${CLASS_SVG[h.cls]}</span>
       <span class="art"><img src="${ART(id)}" alt=""></span>
-      <span class="plate"><b>${h.name}</b><span>${h.title}</span></span>
+      <span class="plate"><b>${h.name}</b><span>${h.title}${h.role ? ` · ${roleOf(id)}` : ''}</span></span>
       <span class="body">
-        <span class="sk">${sk.name} <em>${sk.type === 'active' ? `Active · ${sk.cost} energy` : 'Passive'}</em></span>
+        <span class="sk">${sk.name} <em>${costLabel(sk)}</em></span>
         <span class="txt">${sk.text}</span>
-        <span class="mv">${moveDiagram(id)}<span>${h.moveText}${id === 'hasim' ? ' Red squares: Backstab jumps.' : ''}</span></span>
+        <span class="mv">${moveDiagram(id)}<span>${h.moveText}${id === 'hasim' ? ' Red squares: Backstab jumps (any direction, over a unit or terrain).' : ''}</span></span>
       </span>
     </button>`;
   }).join('') + LOCKED.map((l) => `<div class="card locked" aria-disabled="true">
@@ -627,16 +637,16 @@ function renderSetup() {
     const list = setup.picks[ed];
     const i = list.indexOf(b.dataset.hero);
     if (i >= 0) list.splice(i, 1);
-    else if (list.length < 3) list.push(b.dataset.hero);
+    else if (list.length < TEAM_SIZE) list.push(b.dataset.hero);
     else { list.shift(); list.push(b.dataset.hero); }
-    if (ed === 'p1' && list.length === 3 && !vsBot() && setup.picks.p2.length < 3) setup.editing = 'p2';
+    if (ed === 'p1' && list.length === TEAM_SIZE && !vsBot() && setup.picks.p2.length < TEAM_SIZE) setup.editing = 'p2';
     renderSetup();
   }));
 
-  const need = setup.picks.p1.length < 3 ? 'p1' : setup.picks.p2.length < 3 ? 'p2' : null;
+  const need = setup.picks.p1.length < TEAM_SIZE ? 'p1' : setup.picks.p2.length < TEAM_SIZE ? 'p2' : null;
   $('start').disabled = !!need;
   $('starthint').textContent = need
-    ? `Pick ${3 - setup.picks[need].length} more for ${TEAM_NAMES[need]}.`
+    ? `Pick ${TEAM_SIZE - setup.picks[need].length} more for ${TEAM_NAMES[need]}.`
     : `${MAPS[setup.map].name} · ${setup.picks.p1.map((h) => HEROES[h].name).join(', ')} vs ${setup.picks.p2.map((h) => HEROES[h].name).join(', ')}`;
 }
 
@@ -651,14 +661,14 @@ function moveDiagram(hero) {
   let out = '';
   for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) {
     const k = `${r},${c}`;
-    out += `<i class="${r === 3 && c === 3 ? 'me' : jump.has(k) ? 'jump' : go.has(k) ? 'go' : ''}"></i>`;
+    out += `<i class="${r === 3 && c === 3 ? 'me' : go.has(k) ? 'go' : jump.has(k) ? 'jump' : ''}"></i>`;
   }
   return `<span class="diag" aria-hidden="true">${out}</span>`;
 }
 
 $('opponent').addEventListener('change', (e) => {
   setup.opponent = e.target.value;
-  if (vsBot()) { setup.editing = 'p1'; if (setup.picks.p2.length < 3) setup.picks.p2 = pickTeam(setup.botSeed); }
+  if (vsBot()) { setup.editing = 'p1'; if (setup.picks.p2.length < TEAM_SIZE) setup.picks.p2 = pickTeam(setup.botSeed); }
   if (screen === 'game') { cancelBot(); say(vsBot() ? `Opponent: ${BOT_LEVELS[setup.opponent].label} bot.` : 'Opponent: human on this screen.'); render(); }
   renderSetup();
 });
@@ -815,7 +825,7 @@ function armSkill() {
   if (sk.type !== 'active') { say(`${sk.name} is passive: it triggers on its own.`); return render(); }
   if (ui.armed) { ui.armed = false; say('Skill cancelled.'); return render(); }
   if (u.rooted) { say(`${label(u)} is held by roots this turn.`, 'err'); return render(); }
-  if (game.energy[u.team] < sk.cost) { say(`${sk.name} needs ${sk.cost} energy; you have ${game.energy[u.team]}.`, 'err'); return render(); }
+  if (game.energy[u.team] < sk.cost) { say(`${sk.name} needs ${tk(sk.cost)}; you have ${game.energy[u.team]}.`, 'err'); return render(); }
   if (!skillTargets(game, u).length) { say(`${sk.name} has no valid target in range.`, 'err'); return render(); }
   ui.armed = true;
   say(`${sk.name}: click a highlighted ${sk.key === 'grave' ? 'ally' : 'enemy'}.`);
@@ -887,11 +897,15 @@ function render() {
   $('undo').disabled = !history.length || deciderIsBot();
 
   const pb = $('phasebar');
-  pb.hidden = !(deciderIsHuman() && (game.phase === 'beast' || game.phase === 'ice'));
+  pb.hidden = !(deciderIsHuman() && ['beast', 'ice', 'storm'].includes(game.phase));
+  $('slam').hidden = game.phase !== 'storm';
   if (!pb.hidden) {
+    const have = `you have ${game.energy[game.current]}`;
     $('phasetext').textContent = game.phase === 'beast'
-      ? 'Wild Company: the beast acts now. Move it or skip.'
-      : 'Icy Step: raise an ice block on a dashed square, or skip.';
+      ? `Wild Company: move the beast for ${tk(HEROES.genga.skill.cost)} (${have}), or skip.`
+      : game.phase === 'ice'
+        ? `Icy Step: raise an ice block on a dashed square for ${tk(HEROES.aqna.skill.cost)} (${have}), or skip.`
+        : `Storm Hammer: slam for ${tk(HEROES.hexor.skill.cost)} (${have}) and push everything around Hexor, or skip.`;
   }
   renderReact();
 
@@ -986,7 +1000,7 @@ function renderReact() {
   const cost = HEROES.plantae.skill.reactionCost ?? HEROES.plantae.skill.cost;
   box.innerHTML = `<img src="${ICON('plantae')}" alt="">
     <span class="rt"><b>Aggressive Root?</b> ${label(actor)} is about to ${describe(game, pend)}.
-      <span>Cancel it for ${cost} energy (you have ${game.energy[plant.team]}); their turn ends. Only one interrupt per match.</span></span>
+      <span>Cancel it for ${tk(cost)} (you have ${game.energy[plant.team]}); their turn ends. The catch: Plantae is rooted on your next turn.</span></span>
     <span class="row"><button class="btn vine" id="react-yes" type="button">Root it</button><button class="btn" id="react-no" type="button">Let it happen</button></span>`;
   $('react-yes').addEventListener('click', () => commit({ type: 'react', use: true }));
   $('react-no').addEventListener('click', () => commit({ type: 'react', use: false }));
@@ -1000,15 +1014,14 @@ function renderRoster(threats) {
     const creeps = all.filter((u) => u.kind === 'creep');
     const creepLine = creeps.length ? `<div class="creeps"><span class="bk">${CREEP_SVG.replace('<svg', '<svg width="16" height="16"')}</span>Creeps ${creeps.filter((c) => c.alive).length}/${creeps.length}</div>` : '';
     const pips = Array.from({ length: ENERGY.max }, (_, i) => `<i class="${i < game.energy[team] ? 'on' : ''}"></i>`).join('');
-    return `<div><div class="team"><span class="swatch ${team}"></span>${TEAM_NAMES[team]}<span class="count">${heroes.filter((u) => u.alive).length}/3</span></div>
-      <div class="energy" title="${game.energy[team]} of ${ENERGY.max} energy">${pips}</div>
+    return `<div><div class="team"><span class="swatch ${team}"></span>${TEAM_NAMES[team]}<span class="count">${heroes.filter((u) => u.alive).length}/${heroes.length}</span></div>
+      <div class="energy" title="${game.energy[team]} of ${ENERGY.max} skill tokens">${pips}</div>
       <ul>${units.map((u) => `<li class="${u.alive ? '' : 'dead'}"><button type="button" data-id="${u.id}" ${u.alive ? '' : 'disabled'}>
         ${u.kind === 'beast' ? `<span class="bk">${BEAST_SVG.replace('<svg', '<svg width="16" height="16"')}</span>` : `<img src="${ICON(u.hero)}" alt="">`}
         <span>${u.kind === 'beast' ? 'Beast' : HEROES[u.hero].name}</span>
         ${u.warded ? '<span class="chip wd">grave</span>' : ''}
         ${u.rooted ? '<span class="chip rt">rooted</span>' : ''}
         ${skillCooldown(u) ? `<span class="chip cdn" title="Skill recharging">cd ${skillCooldown(u)}</span>` : ''}
-        ${u.kind === 'hero' && HEROES[u.hero].skill.maxReactions != null && (u.reacts || 0) >= HEROES[u.hero].skill.maxReactions ? '<span class="chip" style="color:var(--muted);border-color:var(--line)" title="Interrupt used">no interrupt</span>' : ''}
         ${threats.has(u.id) ? '<span class="chip th">threat</span>' : ''}
       </button></li>`).join('')}</ul>${creepLine}</div>`;
   }).join('');
@@ -1034,12 +1047,11 @@ function renderHero(u, threats) {
       const labelTxt = ui.armed ? 'Cancel' : cd ? `Ready in ${cd} turn${cd > 1 ? 's' : ''}` : `Use ${sk.name}`;
       btn = `<button class="btn use ${ui.armed ? 'primary' : ''}" id="useskill" type="button" ${can || ui.armed ? '' : 'disabled'}>${labelTxt}${cd && !ui.armed ? '' : ' (Q)'}</button>`;
     }
-    const meta = sk.type === 'active' ? `active · ${sk.cost} energy · range ${sk.range}${sk.cooldown ? ` · cooldown ${sk.cooldown}` : ''}` : 'passive';
-    const cdNote = (sk.type === 'active' && skillCooldown(u) ? `<span style="color:var(--brass)">Recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.</span>` : '')
-      + (sk.maxReactions != null ? `<span style="color:var(--muted)">Interrupts left this match: ${Math.max(0, sk.maxReactions - (u.reacts || 0))}.</span>` : '');
+    const meta = costLabel(sk).toLowerCase() + (sk.range ? ` · range ${sk.range}` : '') + (sk.cooldown ? ` · cooldown ${sk.cooldown}` : '');
+    const cdNote = sk.type === 'active' && skillCooldown(u) ? `<span style="color:var(--brass)">Recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.</span>` : '';
     skillHtml = `<div class="skill"><b>${sk.name}<em>${meta}</em></b><span>${sk.text}</span>${cdNote}${btn}</div>`;
   } else if (u.kind === 'creep') {
-    skillHtml = `<div class="skill"><b>Minion<em>no skill</em></b><span>Moving a creep uses your turn. Killing an enemy creep gives +${CREEPS.lastHit} energy; a creep that reaches the far rank breaks through for +${CREEPS.breach}.</span></div>`;
+    skillHtml = `<div class="skill"><b>Minion<em>no skill</em></b><span>Moving a creep uses your turn. Killing an enemy creep gives +${tk(CREEPS.lastHit)}; a creep that reaches the far rank breaks through for +${CREEPS.breach}.</span></div>`;
   } else {
     skillHtml = '<div class="skill"><b>Companion<em>no skill</em></b><span>Acts only in the follow-up after Ge\'nga. It can capture like any unit.</span></div>';
   }
@@ -1047,7 +1059,7 @@ function renderHero(u, threats) {
   el.innerHTML = `<div class="hart" style="background-image:url(${art})"></div>
     <div class="hbody">
       <div class="head"><span class="swatch ${u.team}"></span><span class="name">${d.name}</span>
-        <span class="sub">${d.title} · ${squareName(u.pos)}</span> ${chips}</div>
+        <span class="sub">${d.title}${u.kind === 'hero' && d.role ? ` · ${ROLES[d.role]}` : ''} · ${squareName(u.pos)}</span> ${chips}</div>
       <div class="sub">${d.moveText}</div>
       ${skillHtml}
     </div>`;
@@ -1273,7 +1285,7 @@ const FX = (() => {
     if (la.kind === 'capture') p.deathDelay = 240;
     if (la.kind === 'backstab') { p.deathDelay = 200; p.hop = actor.id; }
     if (actor && actor.hero === 'hexor' && (la.kind === 'move' || la.kind === 'capture')) p.hop = actor.id;
-    if (la.storm) p.deathDelay = 420;
+    if (la.kind === 'storm') p.deathDelay = 420;
     if (la.breach) p.deathDelay = 520;
     return p;
   }
@@ -1288,6 +1300,21 @@ const FX = (() => {
     const killAll = (ms, big) => at(ms, () => deaths.forEach((u) => kill(before.units[u.id], big)));
     const tgt = la.hits?.[0];
 
+    if (la.kind === 'storm') {
+      const at2 = la.to;
+      lightning(at2);
+      flash(at2, COL.bolt, 1.6, 360);
+      ring(at2, COL.steel, { to: 1.7, w: 5, life: 520 });
+      ring(at2, COL.bolt, { to: 2.2, w: 2, life: 620 });
+      shake(1.6);
+      for (const pu of la.storm || []) {
+        const dir = Math.atan2(pu.to.r - pu.from.r, pu.to.c - pu.from.c);
+        burst(pu.from, COL.dust, 8, { shape: 'smoke', dir, spread: 0.6, min: 0.6, max: 1.8, life: [300, 520], size: [4, 7] });
+        if (pu.blocked) text(pu.from, 'HELD', COL.spirit);
+      }
+      killAll(420, true);
+      return;
+    }
     if (la.kind === 'interrupt') {
       flash(la.from, COL.vine, 0.9, 300);
       line(la.from, tgt, COL.vine, { wave: 0.18, life: 640, w: 3.5, grow: 2.5 });
@@ -1333,18 +1360,7 @@ const FX = (() => {
       if (actor && actor.kind === 'beast') {
         at(160, () => { slashes(at2, '#ffd6a0', 3, 1.2); burst(at2, COL.dust, 10, { shape: 'smoke', min: 0.4, max: 1.2, life: [300, 500], size: [5, 8] }); });
       } else if (actor && actor.hero === 'hexor') {
-        at(200, () => {
-          lightning(at2);
-          flash(at2, COL.bolt, 1.6, 360);
-          ring(at2, COL.steel, { to: 1.7, w: 5, life: 520 });
-          ring(at2, COL.bolt, { to: 2.2, w: 2, life: 620 });
-          shake(1.6);
-          for (const pu of la.storm || []) {
-            const dir = Math.atan2(pu.to.r - pu.from.r, pu.to.c - pu.from.c);
-            burst(pu.from, COL.dust, 8, { shape: 'smoke', dir, spread: 0.6, min: 0.6, max: 1.8, life: [300, 520], size: [4, 7] });
-            if (pu.blocked) text(pu.from, 'HELD', COL.spirit);
-          }
-        });
+        at(200, () => { ring(at2, COL.steel, { to: 1, w: 4, life: 380 }); burst(at2, COL.dust, 10, { shape: 'smoke', min: 0.4, max: 1.4, life: [300, 520], size: [4, 7] }); shake(0.6); });
       } else if (actor && actor.hero === 'aqna') {
         line(la.from, la.to, COL.frost, { life: 320, w: 2.5 });
         at(220, () => burst(at2, COL.frost, 14, { shape: 'crystal', min: 1.5, max: 3.5, life: [400, 700], size: [2, 4] }));
@@ -1355,7 +1371,7 @@ const FX = (() => {
       } else {
         line(la.from, la.to, actor ? COL[actor.team] : COL.white, { life: 280, w: 2.5 });
       }
-      killAll(la.storm ? 420 : 240, !!la.storm);
+      killAll(240);
       return;
     }
     if (la.breach) {
@@ -1363,7 +1379,7 @@ const FX = (() => {
         flash(la.to, COL.brass, 1.2, 420);
         ring(la.to, COL.brass, { to: 1.3, w: 4, life: 560 });
         burst(la.to, [COL.brass, COL.white], 16, { shape: 'spark', dir: -Math.PI / 2, spread: 1.2, min: 2, max: 4.5, life: [300, 600] });
-        text(la.to, `+${CREEPS.breach} ENERGY`, COL.brass);
+        text(la.to, `+${CREEPS.breach} TOKENS`, COL.brass);
       });
     }
     if (la.kind === 'move') {
@@ -1397,6 +1413,7 @@ const FX = (() => {
 
 // ---------- controls ----------
 $('skip').addEventListener('click', () => { if (deciderIsHuman()) commit({ type: 'skip' }); });
+$('slam').addEventListener('click', () => { if (deciderIsHuman() && game.phase === 'storm') commit({ type: 'storm' }); });
 $('undo').addEventListener('click', () => {
   if (!history.length || deciderIsBot()) return;
   cancelBot(); FX.clear();

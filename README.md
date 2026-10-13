@@ -1,6 +1,6 @@
 # Hero Gambit
 
-A playable prototype of a deterministic hero tactics game on an 8×8 board. Pick three heroes, choose a battlefield, and play against a bot (Easy / Normal / Hard) or a friend on the same screen. No dice, no HP: positions, movement and skills decide everything.
+A playable prototype of a deterministic hero tactics game on an 8×8 board. Pick four heroes, choose a battlefield, and play against a bot (Easy / Normal / Hard) or a friend on the same screen. No dice, no HP: positions, movement and skills decide everything.
 
 ## Run
 
@@ -25,38 +25,50 @@ build.mjs, serve.mjs
 
 ## Heroes
 
-Heroes are data in `HEROES` (src/arena.js): name, class, movement rules, skill. Movement rules are `slide` (directions + range, stops at the first unit or terrain, may capture the first enemy), `leap` (fixed jumps) or `backstab`.
+Heroes are data in `HEROES` (src/arena.js): name, class, role, movement rules, skill. Movement rules are `slide` (directions + range, stops at the first unit or terrain, may capture the first enemy), `leap` (fixed jumps) or `backstab`.
 
-| Hero | Class | Moves | Skill |
-|---|---|---|---|
-| Hasim, Desert Assassin | Claw | 1 square any direction | **Backstab** (passive): jumps in any of the 8 directions over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
-| Ge'nga, Beast Master | Claw | up to 2 straight | **Wild Company** (passive): starts with a beast; the beast acts right after him (or skip); it flees if he falls |
-| Magumba, Shadow Shaman | Leaf | up to 2 diagonal | **Empty Grave** (active, 3 energy, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
-| Plantae, Jungle Keeper | Leaf | 1 straight | **Aggressive Root** (active, 3 energy, range 3, cooldown 3): roots an enemy for its next turn; once per match it can instead interrupt an enemy action within range during their turn (the action is negated, their turn ends) |
-| Hexor, Iron Knight | Shield | chess-knight jump | **Storm Hammer** (passive): on a capture, every unit around the target is pushed 1 square away, chaining; enemies pushed into terrain or off the board are eliminated; allies are pushed too but never die from it (blocked allies stay put) |
-| Aqna, Winter Hunter | Shield | slides any distance straight | **Icy Step** (passive): after a kill she may raise an ice block within 3; max 10, then her oldest block moves |
-| Beast | — | 1 square any direction | Companion; doesn't count toward victory |
+### Roles
 
-Three more portraits are in the roster as "Coming soon"; they need skill descriptions.
+| Role | Heroes | Movement |
+|---|---|---|
+| Roam | Ge'nga, Aqna, Hexor | up to 2 squares straight; Hexor's L jump counts as his 2 steps |
+| Assassin | Hasim | up to 2 squares straight, plus the Backstab jump |
+| Support | Plantae | 1 square straight; skill reaches 3, with a weakness (below) |
+| (none yet) | Magumba | up to 2 squares diagonally |
+
+### Skill tokens
+
+Each team has 4 heroes and at most 4 tokens. Both sides start with 1, gain +1 at the start of each own turn, +1 for killing an enemy creep, +2 when a creep breaks through. Every skill costs tokens according to its impact:
+
+| Hero | Skill | Type | Cost | What it does |
+|---|---|---|---|---|
+| Hasim | Backstab | per jump | 1 | jumps in any of the 8 directions over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
+| Ge'nga | Wild Company | follow-up | 1 | after Ge'nga acts, the beast also moves (or skip, free); it flees if he falls |
+| Aqna | Icy Step | follow-up | 1 | after a kill, raise an ice block within 3; max 10, then her oldest block moves |
+| Magumba | Empty Grave | active, range 3 | 2 | an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
+| Hexor | Storm Hammer | follow-up | 2 | after Hexor captures, slam: every unit around him is pushed 1 square away, chaining; enemies pushed into terrain or off the board die, allies there stay put |
+| Plantae | Aggressive Root | active, range 3, cooldown 3 | 2 | roots an enemy for its next turn |
+| Plantae | Root interrupt | reaction | 3 | on the enemy's turn, negates an action by a unit within 3; their turn ends. **The hole:** Plantae roots itself and can't act on your next turn |
+
+Follow-ups are offered only when you can afford them, and skipping is free. Three more portraits are in the roster as "Coming soon"; they need skill descriptions.
 
 ### Interpretations (cards didn't specify)
 
-- Movement for every hero was chosen by me (cards only describe skills). Change `move` in `HEROES` to adjust.
-- Moving onto an enemy eliminates it (capture), for every hero and the beast.
-- Hasim's Backstab works in all 8 directions. Board edges and terrain count as "terrain" for Storm Hammer.
-- Empty Grave lasts until the caster's next turn. Aggressive Root's reaction negates the action; the unit isn't also rooted on its next turn.
-- Energy: both start with 1, +1 at the start of each own turn, max 6.
+- Moving onto an enemy eliminates it (capture), for every hero, the beast and creeps.
+- Board edges and terrain count as "terrain" for Storm Hammer.
+- Empty Grave lasts until the caster's next turn. An interrupted unit isn't also rooted.
+- Magumba has no role yet; he keeps his diagonal move.
 
 ## Creeps
 
-Each side starts with 4 pawn-like creeps on its second rank in the flank lanes (files a, b, g, h), facing the enemy's creeps. Map terrain only sits in the four centre files (c–f), so obstacles never block a lane; heroes start on c, d, f (Ivory) and f, e, c (Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
+Each side starts with 4 pawn-like creeps on its second rank in the flank lanes (files a, b, g, h), facing the enemy's creeps. Map terrain only sits in the four centre files (c–f), so obstacles never block a lane; heroes start on c1–f1 (Ivory) and c8–f8 (Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
 
 - You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
-- Eliminating an enemy creep gives the killer's side +1 energy (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +2 energy.
+- Eliminating an enemy creep gives the killer's side +1 token (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +2 tokens.
 - Creeps don't count for victory, but a creep capture can eliminate a hero and win the match.
 - They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root or interrupt them, Magumba can ward them.
 
-Bot Normal vs Normal, 24 games each, current rules:
+Bot Normal vs Normal, 24 games each, 3-hero rules (before the token redesign):
 
 | | Ivory–Ember | Unfinished at 300 actions | Median length | First hero kill (median turn) |
 |---|---|---|---|---|
@@ -67,7 +79,7 @@ Manual creeps keep sides even but make matches longer. About half of bot games s
 
 ### Limiting Aggressive Root
 
-Plantae's team vs a team without Plantae, bot Normal vs Normal, 20–24 games each:
+Plantae's team vs a team without Plantae, bot Normal vs Normal, 20–24 games each (3-hero rules):
 
 | Limit | Plantae team | Other team | Unfinished |
 |---|---|---|---|
@@ -75,9 +87,10 @@ Plantae's team vs a team without Plantae, bot Normal vs Normal, 20–24 games ea
 | cooldown 3 | 19 | 1 | 4 |
 | cooldown 3, interrupt costs 5 | 17 | 1 | 2 |
 | cooldown 3, max 2 interrupts | 14 | 3 | 3 |
-| **cooldown 3, max 1 interrupt (default)** | **7** | **5** | 8 |
+| cooldown 3, max 1 interrupt | 7 | 5 | 8 |
+| cooldown 3, interrupt also skips your next turn | 2 | 13–14 | 5 |
 
-Plantae without the skill loses 0–5, so its strength was the interrupt itself: each one cancels a whole enemy turn.
+Plantae without the skill loses 0–5, so its strength was the interrupt itself: each one cancels a whole enemy turn. Skipping your whole next turn overcorrected, so the current rule (4-hero teams) is: interrupt costs 3 tokens, no per-match cap, and only Plantae itself is rooted on your next turn. Results below.
 
 ## Maps
 
@@ -95,22 +108,25 @@ Plantae without the skill loses 0–5, so its strength was the interrupt itself:
 
 `createMatch({ p1, p2, map })`, `listActions(state)` (the single source of legality), `applyAction(state, action)` → `{ ok, state, reason }` (never mutates), `validateAction`, `moveOptions`, `skillTargets`, `getThreats`, `toMove(state)` (who decides now).
 
-Phases: `main` → optional `beast` (after Ge'nga) or `ice` (after Aqna kills) → next turn. `react` pauses a unit action when the opponent's Plantae can interrupt it; `toMove` is then the opponent.
+Phases: `main` → optional `storm` (after a Hexor capture), `beast` (after Ge'nga) or `ice` (after Aqna kills) → next turn. Each follow-up is offered only if the side can pay for it. `react` pauses a unit action when the opponent's Plantae can interrupt it; `toMove` is then the opponent.
 
 ## Bot
 
 `chooseAction(state, level)` uses iterative deepening alpha-beta under a time limit (Easy 0.15 s, Normal 0.6 s, Hard 1.4 s), extends capture sequences, and spends no depth on in-turn follow-ups. It decides reactions too.
 
-## Balance notes (bot vs bot, random teams and maps)
+## Balance notes (bot vs bot, 4-hero teams, token costs)
 
-- Normal vs Easy: 9–2, 5 unfinished (16 games). Normal vs Normal: 16 decided, 8 unfinished at 300 actions.
-- Plantae's team won 15 of 21 decided games; Hasim's team 7 of 16. Aggressive Root's reaction is probably too strong at 3 energy.
-- About a third of bot games stall. There is no draw rule yet.
+Small samples (16 games each, bot Normal, random maps, run 8 at a time on 2 cores, so the bots search shallower than in the browser):
+
+- Random teams: Ivory 5, Ember 6, unfinished at 300 actions 5. Median length of decided games about 120 actions.
+- Plantae's team vs a team without Plantae: 8–3, 5 unfinished, about 3 interrupts per game. Better than the uncapped original (24–0), but Plantae is still the strongest pick; if it stays ahead, the next lever is the interrupt cost (3 → 4, i.e. a full bank).
+- Skill use per game (average): Empty Grave 13, Ge'nga's beast 9, Aggressive Root 8, Backstab 4, interrupt 3, Storm Hammer 1, Icy Step 1. Storm Hammer and Icy Step are rarely bought, so they may be priced too high or just rarely triggered.
+- Stalls remain: about a third of games end without a winner. There is no draw rule yet.
 
 ## Tests
 
-- `npm test`: 44 tests (classic engine/bot 28, arena engine 12, arena bot 4): every hero's movement and skill, reactions, Storm Hammer chains and edge kills, ice limit, energy, win condition, random-play invariants, bot legality.
-- Browser click-through: setup (map, picks, start), beast follow-up, reaction prompt and interrupt, Storm Hammer, ice placement, Backstab double kill, undo, back to setup, phone width without horizontal scroll.
+- `npm test`: 53 tests (classic 28, arena engine 21, arena bot 4): roles and movement, every skill's token cost, follow-up phases offered only when affordable, the Plantae hole, Storm Hammer chains and edge kills, ice limit, token cap, win condition, random-play invariants, bot legality.
+- Browser click-through: 4-pick setup with role and cost labels, Storm Hammer slam prompt, interrupt then Plantae rooted, no Backstab without tokens, phone width without horizontal scroll.
 
 ## Known limitations
 

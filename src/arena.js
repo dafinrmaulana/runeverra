@@ -5,18 +5,24 @@
 export const BOARD_SIZE = 8;
 export const TEAMS = ['p1', 'p2'];
 export const TEAM_NAMES = { p1: 'Ivory', p2: 'Ember' };
-export const ENERGY = { start: 1, perTurn: 1, max: 6 };
+// Skill tokens ("energy" in code): every skill costs tokens according to its impact.
+export const ENERGY = { start: 1, perTurn: 1, max: 4 };
+export const TEAM_SIZE = 4;
 export const ICE_LIMIT = 10;
 // Creeps: pawn-like minions moved by their player (moving one uses the turn's action).
 //   files: the flank lanes; both sides' creeps start on these files (second rank) and face each other.
 //   Map terrain never sits on these files, so creeps are only ever blocked by units.
-//   lastHit: energy for eliminating an enemy creep; breach: energy when a creep reaches the far rank
+//   lastHit: tokens for eliminating an enemy creep; breach: tokens when a creep reaches the far rank
 export const CREEPS = { files: ['a', 'b', 'g', 'h'], lastHit: 1, breach: 2 };
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 const KING = [...ORTHO, ...DIAG];
 const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+
+// Roles describe how a hero moves: Roam and Assassin move 2 (Hexor's L counts as 2 steps),
+// Support moves 1 but reaches 3 with its skill.
+export const ROLES = { roam: 'Roam', assassin: 'Assassin', support: 'Support' };
 
 export const CLASSES = {
   claw: { name: 'Claw' },
@@ -28,21 +34,21 @@ export const CLASSES = {
 // may capture the first enemy), leap (fixed jumps over anything), backstab (Hasim).
 export const HEROES = {
   hasim: {
-    name: 'Hasim', title: 'Desert Assassin', cls: 'claw',
-    move: [{ kind: 'slide', dirs: KING, range: 1 }, { kind: 'backstab' }],
-    moveText: 'Steps 1 square in any direction.',
+    name: 'Hasim', title: 'Desert Assassin', cls: 'claw', role: 'assassin',
+    move: [{ kind: 'slide', dirs: ORTHO, range: 2 }, { kind: 'backstab' }],
+    moveText: 'Moves up to 2 squares straight.',
     skill: {
-      key: 'backstab', name: 'Backstab', type: 'passive',
+      key: 'backstab', name: 'Backstab', type: 'move', cost: 1,
       text: 'Jumps in any direction over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',
     },
   },
   genga: {
-    name: "Ge'nga", title: 'Beast Master', cls: 'claw',
+    name: "Ge'nga", title: 'Beast Master', cls: 'claw', role: 'roam',
     move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
     moveText: 'Moves up to 2 squares straight.',
     skill: {
-      key: 'wild', name: 'Wild Company', type: 'passive',
-      text: 'Starts the match with a beast at his side. The beast moves on its own, always right after Ge\'nga acts. If Ge\'nga falls, the beast flees.',
+      key: 'wild', name: 'Wild Company', type: 'follow', cost: 1,
+      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, you may spend a token to also move the beast. If Ge\'nga falls, the beast flees.',
     },
   },
   magumba: {
@@ -50,35 +56,35 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: DIAG, range: 2 }],
     moveText: 'Moves up to 2 squares diagonally.',
     skill: {
-      key: 'grave', name: 'Empty Grave', type: 'active', cost: 3, range: 3,
+      key: 'grave', name: 'Empty Grave', type: 'active', cost: 2, range: 3,
       text: 'Targets one ally (or himself) up to 3 squares away. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
     },
   },
   plantae: {
-    name: 'Plantae', title: 'Jungle Keeper', cls: 'leaf',
+    name: 'Plantae', title: 'Jungle Keeper', cls: 'leaf', role: 'support',
     move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
     moveText: 'Steps 1 square straight.',
     skill: {
-      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reaction: true, cooldown: 3, maxReactions: 1,
-      text: 'Roots an enemy up to 3 squares away in any direction, diagonals included: it can\'t act on its next turn. Once per match it can instead be cast during the opponent\'s turn, when an enemy within 3 squares acts: that action is negated. After either use, it recharges for 3 of your turns.',
+      key: 'root', name: 'Aggressive Root', type: 'active', cost: 2, range: 3, reaction: true, reactionCost: 3, cooldown: 3,
+      text: 'Roots an enemy up to 3 squares away in any direction, diagonals included: it can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy within 3 squares acts: that action is negated, but Plantae is rooted itself on your next turn. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {
-    name: 'Hexor', title: 'Iron Knight', cls: 'shield',
+    name: 'Hexor', title: 'Iron Knight', cls: 'shield', role: 'roam',
     move: [{ kind: 'leap', deltas: KNIGHT }],
     moveText: 'Jumps in an L, like a chess knight.',
     skill: {
-      key: 'storm', name: 'Storm Hammer', type: 'passive',
-      text: 'When Hexor hits an enemy, every unit around the target is pushed 1 square away, pushing any unit behind it too. An enemy pushed into terrain or off the board is eliminated; an ally there just stays put.',
+      key: 'storm', name: 'Storm Hammer', type: 'follow', cost: 2,
+      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: every unit around him is pushed 1 square away, pushing any unit behind it too. An enemy pushed into terrain or off the board is eliminated; an ally there just stays put.',
     },
   },
   aqna: {
-    name: 'Aqna', title: 'Winter Hunter', cls: 'shield',
-    move: [{ kind: 'slide', dirs: ORTHO, range: 7 }],
-    moveText: 'Slides any distance straight.',
+    name: 'Aqna', title: 'Winter Hunter', cls: 'shield', role: 'roam',
+    move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
+    moveText: 'Moves up to 2 squares straight.',
     skill: {
-      key: 'icy', name: 'Icy Step', type: 'passive',
-      text: `When she eliminates an enemy she may raise an ice block up to 3 squares away. Nobody can enter ice, including her. Up to ${ICE_LIMIT} blocks; after that her oldest block moves to the new spot.`,
+      key: 'icy', name: 'Icy Step', type: 'follow', cost: 1,
+      text: `When she eliminates an enemy she may spend a token to raise an ice block up to 3 squares away. Nobody can enter ice, including her. Up to ${ICE_LIMIT} blocks; after that her oldest block moves to the new spot.`,
     },
   },
 };
@@ -116,15 +122,15 @@ const other = (t) => (t === 'p1' ? 'p2' : 'p1');
 const forward = (team) => (team === 'p1' ? -1 : 1);
 
 // ---------- setup ----------
-export const SLOTS = { p1: ['c1', 'd1', 'f1'], p2: ['f8', 'e8', 'c8'] };
+export const SLOTS = { p1: ['c1', 'd1', 'e1', 'f1'], p2: ['f8', 'e8', 'd8', 'c8'] };
 
 export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } = {}) {
-  const teams = { p1: p1 || ['hasim', 'hexor', 'magumba'], p2: p2 || ['genga', 'aqna', 'plantae'] };
+  const teams = { p1: p1 || ['hasim', 'hexor', 'magumba', 'plantae'], p2: p2 || ['genga', 'aqna', 'plantae', 'hasim'] };
   const units = {};
   for (const team of TEAMS) {
     const list = teams[team];
-    if (!Array.isArray(list) || list.length !== 3) throw new Error('Each team needs exactly 3 heroes.');
-    if (new Set(list).size !== 3) throw new Error('A team cannot pick the same hero twice.');
+    if (!Array.isArray(list) || list.length !== TEAM_SIZE) throw new Error(`Each team needs exactly ${TEAM_SIZE} heroes.`);
+    if (new Set(list).size !== TEAM_SIZE) throw new Error('A team cannot pick the same hero twice.');
     list.forEach((hero, i) => {
       if (!HEROES[hero]) throw new Error(`Unknown hero: ${hero}`);
       const pos = parseSquare(SLOTS[team][i]);
@@ -227,7 +233,7 @@ export function moveOptions(s, u) {
         const kills = [];
         if (over && canBeHit(u, over)) kills.push(over.id);
         if (o) kills.push(o.id);
-        push({ to: land, kills, over: over ? over.id : null, backstab: true });
+        push({ to: land, kills, over: over ? over.id : null, backstab: true, cost: HEROES.hasim.skill.cost });
       }
     }
   }
@@ -257,6 +263,7 @@ const mainActors = (s) => livingUnits(s, s.current).filter((u) => u.kind !== 'be
 export function listActions(s) {
   if (s.status !== 'playing') return [];
   if (s.phase === 'react') return [{ type: 'react', use: true }, { type: 'react', use: false }];
+  if (s.phase === 'storm') return [{ type: 'storm' }, { type: 'skip' }];
   if (s.phase === 'ice') {
     const aqna = s.units[s.pending.unitId];
     const out = [];
@@ -269,14 +276,14 @@ export function listActions(s) {
   }
   if (s.phase === 'beast') {
     const b = s.units[s.pending.unitId];
-    const out = b.alive && !b.rooted ? moveOptions(s, b).map((o) => ({ type: 'move', unitId: b.id, to: o.to })) : [];
+    const out = b.alive && !b.rooted ? moveOptions(s, b).filter((o) => !o.backstab).map((o) => ({ type: 'move', unitId: b.id, to: o.to })) : [];
     out.push({ type: 'skip' });
     return out;
   }
   const out = [];
   for (const u of mainActors(s)) {
     if (u.rooted) continue;
-    for (const o of moveOptions(s, u)) out.push({ type: 'move', unitId: u.id, to: o.to });
+    for (const o of moveOptions(s, u)) if ((o.cost || 0) <= s.energy[u.team]) out.push({ type: 'move', unitId: u.id, to: o.to });
     if (u.kind !== 'hero') continue;
     const sk = HEROES[u.hero].skill;
     if (sk.type === 'active' && s.energy[u.team] >= sk.cost) {
@@ -298,6 +305,7 @@ export function validateAction(s, action) {
 
 function explain(s, a) {
   if (s.phase === 'react') return 'Answer the Aggressive Root prompt first.';
+  if (s.phase === 'storm') return 'Choose whether Hexor slams with Storm Hammer, or skip.';
   if (s.phase === 'ice') return a.type === 'ice' ? 'Ice must go on an empty square within 3 of Aqna.' : 'Place Aqna\'s ice block or skip.';
   const u = s.units[a.unitId];
   if (!u) return 'Choose one of your heroes.';
@@ -310,6 +318,8 @@ function explain(s, a) {
   if (a.type === 'move') {
     if (!a.to || !inBounds(a.to)) return 'That square is off the board.';
     if (blockAt(s, a.to)) return 'Nobody can enter terrain.';
+    const opt = moveOptions(s, u).find((x) => samePos(x.to, a.to));
+    if (opt && opt.cost > s.energy[u.team]) return `Backstab costs ${opt.cost} token; you have ${s.energy[u.team]}.`;
     const o = unitAt(s, a.to);
     if (o && o.team === u.team) return `${squareName(a.to)} is occupied by your own unit.`;
     if (o && o.warded) return `${label(o)} is protected by Empty Grave.`;
@@ -319,7 +329,7 @@ function explain(s, a) {
     const sk = HEROES[u.hero].skill;
     if (sk.type !== 'active') return `${sk.name} is passive; it triggers on its own.`;
     if (skillCooldown(u) > 0) return `${sk.name} is recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.`;
-    if (s.energy[u.team] < sk.cost) return `${sk.name} needs ${sk.cost} energy; you have ${s.energy[u.team]}.`;
+    if (s.energy[u.team] < sk.cost) return `${sk.name} needs ${sk.cost} tokens; you have ${s.energy[u.team]}.`;
     const t = s.units[a.targetId];
     if (!t || !t.alive) return 'Choose a living target.';
     if (chebyshev(t.pos, u.pos) > sk.range) return `Target is out of range (${sk.range} squares).`;
@@ -338,7 +348,7 @@ function eliminate(s, u, lines, by = null) {
   lines.push(`${label(u)} is eliminated on ${squareName(u.pos)}.`);
   if (u.kind === 'creep' && by && by !== u.team) {
     s.energy[by] = Math.min(ENERGY.max, s.energy[by] + CREEPS.lastHit);
-    lines.push(`${TEAM_NAMES[by]} gains ${CREEPS.lastHit} energy for the kill.`);
+    lines.push(`${TEAM_NAMES[by]} gains ${CREEPS.lastHit} token for the kill.`);
   }
   if (u.kind === 'hero' && u.hero === 'genga') {
     const b = beastOf(s, u);
@@ -391,6 +401,7 @@ function resolveMove(s, action, lines, last) {
   last.kind = opt.backstab ? 'backstab' : victims.length ? 'capture' : 'move';
   last.from = from; last.to = { ...opt.to };
   if (opt.backstab) {
+    s.energy[u.team] -= opt.cost || 0;
     lines.push(`${label(u)} backstabs over ${overUnit ? label(overUnit) : 'the terrain'} (${squareName(from)} → ${squareName(opt.to)}).`);
   } else if (victims.length) {
     lines.push(`${label(u)} strikes ${label(victims[0])} on ${squareName(opt.to)}.`);
@@ -403,12 +414,7 @@ function resolveMove(s, action, lines, last) {
     u.alive = false;
     s.energy[u.team] = Math.min(ENERGY.max, s.energy[u.team] + CREEPS.breach);
     last.breach = true;
-    lines.push(`${label(u)} breaks through on ${squareName(u.pos)}: +${CREEPS.breach} energy.`);
-  }
-  if (u.hero === 'hexor' && u.kind === 'hero' && victims.length) {
-    lines.push(`${label(u)}'s Storm Hammer shakes the ground.`);
-    last.storm = [];
-    stormHammer(s, u, u.pos, lines, last.storm);
+    lines.push(`${label(u)} breaks through on ${squareName(u.pos)}: +${CREEPS.breach} tokens.`);
   }
   return { killed: victims.length };
 }
@@ -457,8 +463,10 @@ export function applyAction(state, action, { trusted = false } = {}) {
       s.energy[plant.team] -= sk.reactionCost ?? sk.cost;
       plant.cd = sk.cooldown || 0;
       plant.reacts = (plant.reacts || 0) + 1;
+      // The hole: Plantae roots itself and can't act on its side's next turn.
+      plant.rooted = 1;
       last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, phase: 'react' };
-      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated.`);
+      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated; Plantae is rooted in place.`);
       pushLog(s, lines, plant.team);
       s.lastAction = last;
       endTurn(s);
@@ -474,6 +482,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
     const aqna = s.units[s.pending.unitId];
     s.phase = 'main'; s.pending = null;
     if (action.type === 'ice') {
+      s.energy[aqna.team] -= HEROES.aqna.skill.cost;
       const mine = s.iceBy[aqna.id] || (s.iceBy[aqna.id] = []);
       let moved = null;
       if (mine.length >= ICE_LIMIT) { moved = mine.shift(); delete s.blocks[moved]; }
@@ -486,6 +495,27 @@ export function applyAction(state, action, { trusted = false } = {}) {
     }
     pushLog(s, lines, actingTeam);
     s.lastAction = last;
+    endTurn(s);
+    return { ok: true, state: s, reason: null };
+  }
+
+  if (s.phase === 'storm') {
+    const hexor = s.units[s.pending.unitId];
+    const after = s.pending.then;
+    s.phase = 'main'; s.pending = null;
+    if (action.type === 'storm') {
+      s.energy[hexor.team] -= HEROES.hexor.skill.cost;
+      last = { team: hexor.team, unitId: hexor.id, from: { ...hexor.pos }, to: { ...hexor.pos }, hits: [], kind: 'storm', phase: 'storm', storm: [] };
+      lines.push(`${label(hexor)}'s Storm Hammer shakes the ground.`);
+      stormHammer(s, hexor, hexor.pos, lines, last.storm);
+      pushLog(s, lines, hexor.team);
+      s.lastAction = last;
+      checkWinner(s);
+      if (s.status !== 'playing') return { ok: true, state: s, reason: null };
+    } else {
+      s.lastAction = { ...state.lastAction, kind: 'skip-storm' };
+    }
+    if (after) return continueTurn(s, after);
     endTurn(s);
     return { ok: true, state: s, reason: null };
   }
@@ -510,6 +540,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
 function finishUnitAction(s, action, last, lines) {
   const actor = s.units[action.unitId];
   const wasBeast = s.phase === 'beast';
+  if (wasBeast) s.energy[actor.team] -= HEROES.genga.skill.cost;
   let killed = 0;
   if (action.type === 'move') killed = resolveMove(s, action, lines, last).killed;
   else resolveSkill(s, action, lines, last);
@@ -519,13 +550,26 @@ function finishUnitAction(s, action, last, lines) {
   if (s.status !== 'playing') return { ok: true, state: s, reason: null };
 
   s.phase = 'main'; s.pending = null;
-  if (!wasBeast && actor.alive && actor.hero === 'aqna' && killed > 0 && hasIceSpot(s, actor)) {
+  if (!wasBeast && actor.alive && actor.kind === 'hero' && actor.hero === 'hexor' && killed > 0
+      && s.energy[actor.team] >= HEROES.hexor.skill.cost) {
+    s.phase = 'storm'; s.pending = { type: 'storm', unitId: actor.id, then: null };
+    return { ok: true, state: s, reason: null };
+  }
+  return continueTurn(s, { actorId: actor.id, wasBeast, killed });
+}
+
+/** Follow-ups that can come after a unit action: Aqna's ice, Ge'nga's beast. Each costs tokens. */
+function continueTurn(s, { actorId, wasBeast, killed }) {
+  const actor = s.units[actorId];
+  if (!wasBeast && actor.alive && actor.hero === 'aqna' && killed > 0 && hasIceSpot(s, actor)
+      && s.energy[actor.team] >= HEROES.aqna.skill.cost) {
     s.phase = 'ice'; s.pending = { type: 'ice', unitId: actor.id };
     return { ok: true, state: s, reason: null };
   }
-  if (!wasBeast && actor.alive && actor.hero === 'genga' && actor.kind === 'hero') {
+  if (!wasBeast && actor.alive && actor.hero === 'genga' && actor.kind === 'hero'
+      && s.energy[actor.team] >= HEROES.genga.skill.cost) {
     const b = beastOf(s, actor);
-    if (b && !b.rooted) {
+    if (b && !b.rooted && moveOptions(s, b).length) {
       s.phase = 'beast'; s.pending = { type: 'beast', unitId: b.id };
       return { ok: true, state: s, reason: null };
     }
@@ -589,7 +633,7 @@ function endTurn(s) {
 function hasAnyAction(s) {
   for (const u of mainActors(s)) {
     if (u.rooted) continue;
-    if (moveOptions(s, u).length) return true;
+    if (moveOptions(s, u).some((o) => (o.cost || 0) <= s.energy[u.team])) return true;
     if (u.kind !== 'hero') continue;
     const sk = HEROES[u.hero].skill;
     if (sk.type === 'active' && s.energy[u.team] >= sk.cost && skillTargets(s, u).length) return true;
@@ -603,7 +647,8 @@ export function getThreats(s, team) {
   const opp = other(team);
   for (const e of livingUnits(s, opp)) {
     if (e.rooted) continue;
-    for (const o of moveOptions(s, e)) for (const id of o.kills) out.add(id);
+    const budget = Math.min(ENERGY.max, s.energy[opp] + ENERGY.perTurn);
+    for (const o of moveOptions(s, e)) if ((o.cost || 0) <= budget) for (const id of o.kills) out.add(id);
   }
   return out;
 }
