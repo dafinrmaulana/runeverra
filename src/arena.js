@@ -7,6 +7,11 @@ export const TEAMS = ['p1', 'p2'];
 export const TEAM_NAMES = { p1: 'Ivory', p2: 'Ember' };
 export const ENERGY = { start: 1, perTurn: 1, max: 6 };
 export const ICE_LIMIT = 10;
+// Creeps: pawn-like minions that march on their own.
+//   files: starting files on each side's second rank (mirrored for Ember)
+//   every: they march at the end of every Nth turn of their owner
+//   lastHit: energy for eliminating an enemy creep; breach: energy when a creep reaches the far rank
+export const CREEPS = { files: ['a', 'c', 'e', 'g'], every: 2, lastHit: 1, breach: 2 };
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -82,7 +87,12 @@ export const BEAST = {
   move: [{ kind: 'slide', dirs: KING, range: 1 }],
   moveText: 'Steps 1 square in any direction, right after Ge\'nga acts.',
 };
-export const heroDef = (u) => (u.kind === 'beast' ? BEAST : HEROES[u.hero]);
+export const CREEP = {
+  name: 'Creep', title: 'Minion', cls: 'claw',
+  move: [{ kind: 'creep' }],
+  moveText: `Marches 1 square forward on its own every ${CREEPS.every} turns. Strikes an enemy diagonally in front instead of moving.`,
+};
+export const heroDef = (u) => (u.kind === 'beast' ? BEAST : u.kind === 'creep' ? CREEP : HEROES[u.hero]);
 
 // Maps: obstacles are listed for Ivory's half; the other half is the 180° mirror.
 export const MAPS = {
@@ -107,7 +117,7 @@ const forward = (team) => (team === 'p1' ? -1 : 1);
 // ---------- setup ----------
 const SLOTS = { p1: ['b1', 'd1', 'f1'], p2: ['g8', 'e8', 'c8'] };
 
-export function createMatch({ p1, p2, map = 'oasis', seed = 0 } = {}) {
+export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } = {}) {
   const teams = { p1: p1 || ['hasim', 'hexor', 'magumba'], p2: p2 || ['genga', 'aqna', 'plantae'] };
   const units = {};
   for (const team of TEAMS) {
@@ -124,6 +134,15 @@ export function createMatch({ p1, p2, map = 'oasis', seed = 0 } = {}) {
       }
     });
   }
+  if (creeps) {
+    for (const f of CREEPS.files) {
+      const p = parseSquare(`${f}2`);
+      units[`p1-creep-${f}`] = makeUnit(`p1-creep-${f}`, 'p1', 'creep', 'creep', p);
+      const q = { r: 7 - p.r, c: 7 - p.c };
+      const qf = FILES[q.c];
+      units[`p2-creep-${qf}`] = makeUnit(`p2-creep-${qf}`, 'p2', 'creep', 'creep', q);
+    }
+  }
   const blocks = {};
   const m = MAPS[map] || MAPS.oasis;
   for (const [kind, squares] of Object.entries(m.blocks)) {
@@ -138,6 +157,8 @@ export function createMatch({ p1, p2, map = 'oasis', seed = 0 } = {}) {
     map, teams, seed,
     energy: { p1: ENERGY.start, p2: ENERGY.start },
     units, blocks, iceBy: {},
+    // Ember's creeps get a one-turn head start to offset Ivory moving first.
+    creepClock: { p1: 0, p2: CREEPS.every - 1 }, lastMarch: null,
     log: [{ turn: 0, team: null, text: `Match begins on ${m.name}. Ivory moves first.` }],
     lastAction: null,
   };
@@ -153,7 +174,7 @@ export const livingUnits = (s, team) => Object.values(s.units).filter((u) => u.a
 export const livingHeroes = (s, team) => livingUnits(s, team).filter((u) => u.kind === 'hero');
 export const unitAt = (s, p) => Object.values(s.units).find((u) => u.alive && samePos(u.pos, p)) || null;
 export const blockAt = (s, p) => s.blocks[key(p)] || null;
-export const label = (u) => `${TEAM_NAMES[u.team]} ${u.kind === 'beast' ? 'Beast' : HEROES[u.hero].name}`;
+export const label = (u) => `${TEAM_NAMES[u.team]} ${heroDef(u).name}`;
 export const toMove = (s) => (s.phase === 'react' ? other(s.current) : s.current);
 export const beastOf = (s, u) => Object.values(s.units).find((b) => b.kind === 'beast' && b.ownerId === u.id && b.alive) || null;
 export const plantaeOf = (s, team) => livingHeroes(s, team).find((u) => u.hero === 'plantae') || null;
@@ -184,6 +205,15 @@ export function moveOptions(s, u) {
         if (!o) push({ to: p, kills: [] });
         else if (canBeHit(u, o)) push({ to: p, kills: [o.id] });
       }
+    } else if (rule.kind === 'creep') {
+      const f = forward(u.team);
+      for (const dc of [-1, 1]) {
+        const p = { r: u.pos.r + f, c: u.pos.c + dc };
+        const o = inBounds(p) && unitAt(s, p);
+        if (o && canBeHit(u, o)) push({ to: p, kills: [o.id] });
+      }
+      const ahead = { r: u.pos.r + f, c: u.pos.c };
+      if (inBounds(ahead) && !blockAt(s, ahead) && !unitAt(s, ahead)) push({ to: ahead, kills: [] });
     } else if (rule.kind === 'backstab') {
       // Any of the 8 directions: straight or diagonal.
       for (const [dr, dc] of KING) {
@@ -295,10 +325,14 @@ function explain(s, a) {
 }
 
 // ---------- resolution ----------
-function eliminate(s, u, lines) {
+function eliminate(s, u, lines, by = null) {
   if (!u.alive) return;
   u.alive = false; u.rooted = 0; u.warded = false;
   lines.push(`${label(u)} is eliminated on ${squareName(u.pos)}.`);
+  if (u.kind === 'creep' && by && by !== u.team) {
+    s.energy[by] = Math.min(ENERGY.max, s.energy[by] + CREEPS.lastHit);
+    lines.push(`${TEAM_NAMES[by]} gains ${CREEPS.lastHit} energy for the kill.`);
+  }
   if (u.kind === 'hero' && u.hero === 'genga') {
     const b = beastOf(s, u);
     if (b) { b.alive = false; lines.push(`${label(b)} flees the battlefield.`); }
@@ -316,7 +350,7 @@ function stormHammer(s, hexor, center, lines, fx) {
     if (!inBounds(dest) || blockAt(s, dest)) {
       fx.push({ id: u.id, from: { ...u.pos }, to: dest, stuck: true });
       lines.push(`${label(u)} is slammed into ${inBounds(dest) ? 'terrain' : 'the board edge'}.`);
-      eliminate(s, u, lines);
+      eliminate(s, u, lines, hexor.team);
       return true;
     }
     const behind = unitAt(s, dest);
@@ -351,7 +385,7 @@ function resolveMove(s, action, lines, last) {
   } else {
     lines.push(`${label(u)} moves ${squareName(from)} → ${squareName(opt.to)}.`);
   }
-  for (const v of victims) { last.hits.push({ ...v.pos }); eliminate(s, v, lines); }
+  for (const v of victims) { last.hits.push({ ...v.pos }); eliminate(s, v, lines, u.team); }
   u.pos = { ...opt.to };
   if (u.hero === 'hexor' && u.kind === 'hero' && victims.length) {
     lines.push(`${label(u)}'s Storm Hammer shakes the ground.`);
@@ -512,8 +546,67 @@ function checkWinner(s) {
   }
 }
 
+const VALUE_ORDER = { hero: 3, beast: 2, creep: 1 };
+
+/** The current team's creeps march (every CREEPS.every of its turns). Returns moves for FX. */
+function march(s) {
+  const team = s.current;
+  const creeps = livingUnits(s, team).filter((u) => u.kind === 'creep');
+  s.creepClock[team] = (s.creepClock[team] || 0) + 1;
+  if (!creeps.length || s.creepClock[team] % CREEPS.every !== 0) return null;
+  const f = forward(team);
+  const lines = [];
+  const moves = [];
+  // Front creeps first so a column advances together.
+  creeps.sort((a, b) => (b.pos.r - a.pos.r) * f || a.pos.c - b.pos.c);
+  for (const c of creeps) {
+    if (!c.alive || c.rooted) continue;
+    const targets = [-1, 1]
+      .map((dc) => ({ r: c.pos.r + f, c: c.pos.c + dc }))
+      .filter(inBounds)
+      .map((p) => unitAt(s, p))
+      .filter((o) => o && canBeHit(c, o))
+      .sort((a, b) => VALUE_ORDER[b.kind] - VALUE_ORDER[a.kind] || a.pos.c - b.pos.c);
+    const from = { ...c.pos };
+    let to = null, kill = null;
+    if (targets.length) {
+      kill = targets[0];
+      to = { ...kill.pos };
+      lines.push(`${label(c)} strikes ${label(kill)} on ${squareName(to)}.`);
+      eliminate(s, kill, lines, team);
+    } else {
+      const ahead = { r: c.pos.r + f, c: c.pos.c };
+      if (inBounds(ahead) && !blockAt(s, ahead) && !unitAt(s, ahead)) to = ahead;
+    }
+    if (!to) continue;
+    c.pos = to;
+    const move = { id: c.id, from, to: { ...to }, kill: kill ? kill.id : null, breach: false };
+    if (to.r === (team === 'p1' ? 0 : BOARD_SIZE - 1)) {
+      move.breach = true;
+      c.alive = false;
+      s.energy[team] = Math.min(ENERGY.max, s.energy[team] + CREEPS.breach);
+      lines.push(`${label(c)} breaks through on ${squareName(to)}: +${CREEPS.breach} energy.`);
+    }
+    moves.push(move);
+  }
+  if (!moves.length) return null;
+  if (!lines.length) lines.push(`${TEAM_NAMES[team]} creeps march.`);
+  pushLog(s, lines, team);
+  return { team, moves };
+}
+
+/** Does `team`'s creep wave march at the end of its next turn? */
+export function creepsMarchNext(s, team) {
+  return ((s.creepClock?.[team] || 0) + 1) % CREEPS.every === 0;
+}
+
 function endTurn(s) {
+  s.lastMarch = null;
   for (let guard = 0; guard < 4; guard++) {
+    const m = march(s);
+    if (m) s.lastMarch = m;
+    checkWinner(s);
+    if (s.status !== 'playing') return;
     for (const u of livingUnits(s, s.current)) if (u.rooted > 0) u.rooted -= 1;
     s.current = other(s.current);
     s.turn += 1;
@@ -538,8 +631,10 @@ function hasAnyAction(s) {
 /** Enemy units that `team`'s opponent could eliminate with one basic move next turn (board as is). */
 export function getThreats(s, team) {
   const out = new Set();
-  for (const e of livingUnits(s, other(team))) {
+  const opp = other(team);
+  for (const e of livingUnits(s, opp)) {
     if (e.rooted) continue;
+    if (e.kind === 'creep' && !creepsMarchNext(s, opp)) continue;
     for (const o of moveOptions(s, e)) for (const id of o.kills) out.add(id);
   }
   return out;

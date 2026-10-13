@@ -12,10 +12,10 @@ export const BOT_LEVELS = {
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const apply = (s, a) => applyAction(s, a, { trusted: true }).state;
 
-const VALUE = { hasim: 330, genga: 300, magumba: 280, plantae: 270, hexor: 350, aqna: 340, beast: 150 };
+const VALUE = { hasim: 330, genga: 300, magumba: 280, plantae: 270, hexor: 350, aqna: 340, beast: 150, creep: 80 };
 const WIN = 1e6;
 const other = (t) => (t === 'p1' ? 'p2' : 'p1');
-const val = (u) => VALUE[u.kind === 'beast' ? 'beast' : u.hero];
+const val = (u) => VALUE[u.kind === 'hero' ? u.hero : u.kind];
 
 function teamScore(s, team) {
   let v = 0;
@@ -23,6 +23,7 @@ function teamScore(s, team) {
     v += val(u);
     if (u.warded) v += 70;
     if (u.rooted) v -= 50;
+    if (u.kind === 'creep') { v += 8 * (team === 'p1' ? 6 - u.pos.r : u.pos.r - 1); continue; }
     v += 5 * (3.5 - Math.max(Math.abs(u.pos.r - 3.5), Math.abs(u.pos.c - 3.5)));
   }
   const hasActive = livingUnits(s, team).some((u) => u.kind === 'hero' && HEROES[u.hero].skill.type === 'active');
@@ -33,7 +34,7 @@ function teamScore(s, team) {
 function killsBy(s, team) {
   const out = new Map();
   for (const u of livingUnits(s, team)) {
-    if (u.rooted || u.kind === 'beast') continue;
+    if (u.rooted || u.kind !== 'hero') continue; // beasts and creeps don't act at will
     for (const o of moveOptions(s, u)) {
       let sum = 0;
       for (const id of o.kills) sum += val(s.units[id]);

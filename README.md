@@ -47,6 +47,27 @@ Three more portraits are in the roster as "Coming soon"; they need skill descrip
 - Empty Grave lasts until the caster's next turn. Aggressive Root's reaction negates the action; the unit isn't also rooted on its next turn.
 - Energy: both start with 1, +1 at the start of each own turn, max 6.
 
+## Creeps
+
+Each side starts with 4 pawn-like creeps on its second rank (files a, c, e, g for Ivory; mirrored for Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
+
+- They can't be ordered. At the end of every 2nd turn of their owner, each creep marches (Ember's wave starts one turn earlier, to offset Ivory moving first) 1 square forward, or strikes an enemy diagonally in front instead (eliminating it, like a pawn capture). Front creeps move first; blocked creeps wait.
+- Eliminating an enemy creep gives the killer's side +1 energy (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +2 energy.
+- Creeps don't count for victory, but a creep strike can eliminate a hero and win the match.
+- They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root them (a rooted creep skips its march), Magumba can ward them.
+
+### Creep simulation (bot Normal vs Normal, random teams and maps)
+
+| Variant | Games | Ivory–Ember | Unfinished | First hero kill (median turn) |
+|---|---|---|---|---|
+| No creeps | 24 | 12–8 | 4 | 26 |
+| Creeps, same start | 48 | 26–12 | 10 | 19–21 |
+| **Creeps, Ember head start (default)** | 24 | 13–9 | 2 | 16 |
+| Creeps march every turn | 24 | 13–5 | 6 | 19 |
+| Creeps march every 3 turns | 24 | 11–6 | 7 | 15 |
+
+Creeps bring fights forward. Without the head start they widened Ivory's first-move edge. Skill use stayed around 5% of actions in every variant: only Magumba and Plantae spend energy, so the extra energy from creeps has little to buy yet.
+
 ## Maps
 
 `MAPS` in src/arena.js; obstacles are listed for one half and mirrored 180°.

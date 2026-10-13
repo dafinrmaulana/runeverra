@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CREEPS, creepsMarchNext,
   createMatch, applyAction, listActions, moveOptions, livingHeroes, unitAt, blockAt, parseSquare as sq,
   getThreats, toMove, HEROES, MAPS, key,
 } from '../src/arena.js';
@@ -28,8 +29,10 @@ test('setup: 3 heroes each, beast beside Ge\'nga, symmetric map blocks, no first
       const [r, c] = k.split(',').map(Number);
       assert.ok(s.blocks[`${7 - r},${7 - c}`], `${map} not symmetric at ${k}`);
     }
-    assert.equal(getThreats(s, 'p1').size, 0);
-    assert.equal(getThreats(s, 'p2').size, 0);
+    const heroThreats = (t) => [...getThreats(s, t)].filter((id) => s.units[id].kind === 'hero');
+    assert.deepEqual(heroThreats('p1'), [], `${map}: a hero can be hit on move 1`);
+    assert.deepEqual(heroThreats('p2'), [], `${map}: a hero can be hit on move 1`);
+    assert.equal(Object.values(s.units).filter((u) => u.kind === 'creep').length, 8);
   }
   assert.throws(() => createMatch({ p1: ['hasim', 'hasim', 'hexor'] }));
 });
@@ -210,4 +213,58 @@ test('random play: every listed action is accepted, no shared squares, matches e
     if (s.status !== 'playing') finished++;
   }
   assert.ok(finished > 40, `only ${finished}/60 random matches finished`);
+});
+
+test('creeps: start on a/c/e/g, march every 2 owner turns, strike diagonally, never player-controlled', () => {
+  let s = createMatch({ p1: ['hasim', 'hexor', 'magumba'], p2: ['genga', 'aqna', 'plantae'], map: 'field' });
+  assert.deepEqual(s.units['p1-creep-a'].pos, sq('a2'));
+  assert.deepEqual(s.units['p2-creep-h'].pos, sq('h7'));
+  assert.ok(!listActions(s).some((a) => a.unitId && a.unitId.includes('creep')));
+  assert.match(reject(s, mv('p1-creep-a', 'a3')), /can't reach|not available|Choose/);
+  s = act(s, mv('p1-hasim', 'b2'));            // Ivory turn 1: no march
+  assert.deepEqual(s.units['p1-creep-a'].pos, sq('a2'));
+  s = act(s, mv('p2-plantae', 'b8'));
+  assert.equal(creepsMarchNext(s, 'p1'), true);
+  s = act(s, mv('p1-hasim', 'b1'));            // Ivory turn 2: march
+  assert.deepEqual(s.units['p1-creep-a'].pos, sq('a3'));
+  assert.deepEqual(s.units['p1-creep-g'].pos, sq('g3'));
+  assert.ok(s.lastMarch && s.lastMarch.team === 'p1' && s.lastMarch.moves.length === 4);
+});
+
+test('creeps: diagonal strike eliminates heroes; blocked creeps wait; breach gives energy', () => {
+  // Ivory creep c4 strikes Ember Aqna on d5 instead of stepping
+  let s = setup({ 'p1-creep-c': 'c4', 'p1-hasim': 'a1', 'p2-aqna': 'd5', 'p2-genga': 'h8', 'p2-creep-h': 'h6' });
+  s.creepClock = { p1: CREEPS.every - 1, p2: 0 };
+  s = act(s, mv('p1-hasim', 'a2'));
+  assert.equal(s.units['p2-aqna'].alive, false);
+  assert.deepEqual(s.units['p1-creep-c'].pos, sq('d5'));
+  // blocked straight ahead: stays
+  let b = setup({ 'p1-creep-c': 'c4', 'p1-hasim': 'a1', 'p2-genga': 'c5', 'p2-plantae': 'h8' });
+  b.units['p2-genga'].warded = true;
+  b.creepClock = { p1: CREEPS.every - 1, p2: 0 };
+  b = act(b, mv('p1-hasim', 'a2'));
+  assert.deepEqual(b.units['p1-creep-c'].pos, sq('c4'));
+  // breach
+  let r = setup({ 'p1-creep-e': 'e7', 'p1-hasim': 'a1', 'p2-genga': 'h8' });
+  r.creepClock = { p1: CREEPS.every - 1, p2: 0 }; r.energy = { p1: 1, p2: 0 };
+  r = act(r, mv('p1-hasim', 'a2'));
+  assert.equal(r.units['p1-creep-e'].alive, false);
+  assert.equal(r.energy.p1, 1 + CREEPS.breach);
+  assert.ok(r.lastMarch.moves[0].breach);
+});
+
+test('creeps: last hit gives energy; a creep march can win the game', () => {
+  let s = setup({ 'p1-hexor': 'd4', 'p1-hasim': 'a1', 'p2-creep-d': 'e6', 'p2-genga': 'h8' });
+  s.energy = { p1: 1, p2: 0 };
+  s = act(s, mv('p1-hexor', 'e6'));
+  assert.equal(s.energy.p1, 1 + CREEPS.lastHit);
+  let w = setup({ 'p1-creep-c': 'c4', 'p1-hasim': 'a1', 'p2-aqna': 'd5' });
+  w.creepClock = { p1: CREEPS.every - 1, p2: 0 };
+  w = act(w, mv('p1-hasim', 'a2'));
+  assert.equal(w.status, 'p1');
+});
+
+test('creeps can be turned off', () => {
+  const s = createMatch({ map: 'field', creeps: false });
+  assert.equal(Object.values(s.units).filter((u) => u.kind === 'creep').length, 0);
 });

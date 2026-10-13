@@ -79,6 +79,9 @@
   .maptile .mini i.b::after { content: ""; position: absolute; inset: 14%; border-radius: 3px; background: var(--obst); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
   .maptile .mini i.u1::after, .maptile .mini i.u2::after { content: ""; position: absolute; inset: 24%; border-radius: 30%; }
   .maptile .mini i.u1::after { background: var(--ivory); }
+  .maptile .mini i.c1::after, .maptile .mini i.c2::after { content: ""; position: absolute; inset: 34%; border-radius: 50%; }
+  .maptile .mini i.c1::after { background: var(--ivory); opacity: .75; }
+  .maptile .mini i.c2::after { background: var(--ember); opacity: .75; }
   .maptile .mini i.u2::after { background: var(--ember); }
   .maptile b { font-family: var(--f-display); font-weight: 400; letter-spacing: .04em; font-size: 1rem; }
   .maptile span { color: var(--muted); font-size: .8rem; line-height: 1.3; }
@@ -261,6 +264,15 @@
   .piece.p1 .token { box-shadow: 0 0 0 3px var(--ivory), 0 0 0 4.5px rgba(20,18,14,.55), 0 6px 6px -1px rgba(0,0,0,.45); }
   .piece.p2 .token { box-shadow: 0 0 0 3px var(--ember), 0 0 0 4.5px rgba(20,18,14,.55), 0 6px 6px -1px rgba(0,0,0,.45); }
   .piece.beast .token { width: 60%; height: 60%; border-radius: 50%; background: #6b4423; }
+  .piece.creep .token { width: 46%; height: 46%; border-radius: 50%; background: #e9dcc0; color: #4a3a26; }
+  .piece.p2.creep .token { background: #8f3a22; color: #f6dcc8; }
+  .piece.creep .token svg { width: 74%; height: 74%; }
+  .piece.creep .tag { display: none; }
+  .piece.creep.p1 .token { box-shadow: 0 0 0 2px var(--ivory), 0 0 0 3.5px rgba(20,18,14,.55), 0 4px 4px -1px rgba(0,0,0,.45); }
+  .piece.creep.p2 .token { box-shadow: 0 0 0 2px var(--ember), 0 0 0 3.5px rgba(20,18,14,.55), 0 4px 4px -1px rgba(0,0,0,.45); }
+  .march-chip { font-family: var(--f-mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; color: var(--brass); border: 1px solid var(--brass); border-radius: 3px; padding: 0 5px; }
+  .roster .creeps { display: flex; align-items: center; gap: 6px; font-size: .86rem; color: var(--bone); padding: 2px 0; }
+  .roster .creeps .bk { color: var(--muted); }
   .piece.beast .token svg { width: 76%; height: 76%; }
   .piece.p1.beast .token { background: #e9dcc0; }
   .piece .tag {
@@ -402,6 +414,7 @@
     </div>
     <div class="cards" id="cards"></div>
     <div class="startbar">
+      <label class="toggle" for="creeps"><input type="checkbox" id="creeps" checked> Creeps</label>
       <label class="sel" for="opponent">Opponent
         <select id="opponent">
           <option value="easy">Bot · Easy</option>
@@ -478,6 +491,7 @@
           <li><b>Plantae · Aggressive Root</b> (3 energy, range 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you're asked whether to interrupt: the action is negated and their turn ends.</li>
           <li><b>Hexor · Storm Hammer.</b> When he captures, every unit around the target (allies too) is pushed 1 square away, chaining. Pushed into terrain or off the board: eliminated.</li>
           <li><b>Aqna · Icy Step.</b> After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
+          <li><b>Creeps.</b> Each side starts with 4 pawns on its second rank. They march 1 square forward on their own at the end of every 2nd turn of their owner (Ember's wave starts one turn earlier), and strike an enemy diagonally in front instead of moving. Eliminating an enemy creep gives +1 energy; a creep that reaches the far rank breaks through for +2 energy. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
           <li><b>Distances</b> count diagonals as 1. Each hero's movement is shown on its card.</li>
           <li><b>Controls.</b> Click a hero, then a marked square. Q or the skill button arms an active skill. Esc cancels.</li>
         </ul>
@@ -490,7 +504,7 @@
 import {
   createMatch, applyAction, validateAction, listActions, moveOptions, skillTargets, getThreats,
   livingHeroes, unitAt, blockAt, squareName, samePos, toMove, heroDef, label,
-  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY,
+  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, creepsMarchNext,
 } from './arena.js';
 import { chooseAction, pickTeam, BOT_LEVELS } from './arena-bot.js';
 
@@ -510,6 +524,7 @@ const CLASS_SVG = {
   leaf: '<svg viewBox="0 0 24 24"><path d="M12 2 C19 7 19 17 12 22 C5 17 5 7 12 2 Z" fill="#333"/><path d="M12 5 V20" stroke="#ccc" stroke-width="1"/></svg>',
   shield: '<svg viewBox="0 0 24 24"><path d="M12 2 L20 5 V12 C20 17 16 20 12 22 C8 20 4 17 4 12 V5 Z" fill="#444"/><path d="M12 6 V18 M9 9 H15" stroke="#ddd" stroke-width="1.6"/></svg>',
 };
+const CREEP_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="6.5" r="3.4"/><path d="M8.6 11.2 h6.8 l1.6 6.3 h-10 z"/><rect x="5.2" y="18" width="13.6" height="3.4" rx="1.2"/></g></svg>';
 const BEAST_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellipse cx="12" cy="15.5" rx="5" ry="4.2"/><circle cx="6.2" cy="10" r="2.1"/><circle cx="9.6" cy="6.6" r="2.1"/><circle cx="14.4" cy="6.6" r="2.1"/><circle cx="17.8" cy="10" r="2.1"/></g></svg>';
 const TERRAIN_SVG = {
   pillar: '<svg viewBox="0 0 40 40"><ellipse cx="20" cy="35" rx="13" ry="3.5" fill="rgba(0,0,0,.25)"/><rect x="11" y="7" width="18" height="27" rx="2" fill="#c99a62"/><rect x="11" y="7" width="6" height="27" fill="#e2b980"/><rect x="8" y="4" width="24" height="5" rx="1.5" fill="#b0824e"/><rect x="8" y="31" width="24" height="5" rx="1.5" fill="#b0824e"/><path d="M14 14 V28 M20 14 V28 M26 14 V28" stroke="#a87a45" stroke-width="1.2"/></svg>',
@@ -521,7 +536,7 @@ const TERRAIN_SVG = {
 
 // ---------- app state ----------
 let screen = 'setup';
-const setup = { map: 'oasis', opponent: 'normal', picks: { p1: ['hasim', 'hexor', 'magumba'], p2: [] }, editing: 'p1', botSeed: 1 + (Date.now() % 997) };
+const setup = { map: 'oasis', creeps: true, opponent: 'normal', picks: { p1: ['hasim', 'hexor', 'magumba'], p2: [] }, editing: 'p1', botSeed: 1 + (Date.now() % 997) };
 setup.picks.p2 = pickTeam(setup.botSeed);
 let game = null;
 let history = [];
@@ -549,6 +564,8 @@ function renderSetup() {
       if (blocks[`${r},${c}`]) cls.push('b');
       if (r === 7 && [1, 3, 5].includes(c)) cls.push('u1');
       if (r === 0 && [6, 4, 2].includes(c)) cls.push('u2');
+      if (setup.creeps && r === 6 && [0, 2, 4, 6].includes(c)) cls.push('c1');
+      if (setup.creeps && r === 1 && [1, 3, 5, 7].includes(c)) cls.push('c2');
       cellsHtml += `<i class="${cls.join(' ')}"></i>`;
     }
     return `<button type="button" class="maptile" data-map="${id}" aria-pressed="${setup.map === id}">
@@ -636,10 +653,11 @@ $('opponent').addEventListener('change', (e) => {
   renderSetup();
 });
 $('start').addEventListener('click', startMatch);
+$('creeps').addEventListener('change', (e) => { setup.creeps = e.target.checked; renderSetup(); });
 
 function startMatch() {
   cancelBot(); FX.clear();
-  game = createMatch({ p1: [...setup.picks.p1], p2: [...setup.picks.p2], map: setup.map, seed: Date.now() % 100000 });
+  game = createMatch({ p1: [...setup.picks.p1], p2: [...setup.picks.p2], map: setup.map, creeps: setup.creeps, seed: Date.now() % 100000 });
   history = [];
   screen = 'game';
   for (const el of pieceEls.values()) el.remove();
@@ -700,10 +718,12 @@ function commit(action, byBot = false) {
   else if (game.phase === 'react') say(`${label(game.units[game.pending.plantId])} can interrupt this action.`);
   const plan = FX.plan(before, game);
   ui.deathDelay = plan.deathDelay;
+  ui.deathDelays = plan.deathDelays;
+  ui.marchIds = plan.marchIds;
   ui.hits = game.lastAction && game.lastAction !== before.lastAction ? (game.lastAction.hits || []) : [];
   if (game.phase === 'beast' && deciderIsHuman()) ui.selectedId = game.pending.unitId;
   render();
-  ui.deathDelay = 0;
+  ui.deathDelay = 0; ui.deathDelays = null; ui.marchIds = null;
   if (plan.hop) { const el = pieceEls.get(plan.hop); if (el) { el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); } }
   FX.run(plan);
   if (before.current !== game.current && game.status === 'playing') pulseTurn();
@@ -773,6 +793,7 @@ function select(id) {
   const u = game.units[id];
   if (u.team !== game.current) say('Enemy unit. Red rings show where it can go.');
   else if (u.kind === 'beast') say('The beast only acts right after Ge\'nga.', 'err');
+  else if (u.kind === 'creep') say('Creeps march on their own; you can\'t order them.');
   else if (u.rooted) say(`${label(u)} is held by roots this turn.`, 'err');
   else say('');
   render();
@@ -841,6 +862,10 @@ function render() {
   else if (vsBot()) who.textContent = `Your turn · ${TEAM_NAMES[toMove(game)]}`;
   else who.textContent = `${TEAM_NAMES[toMove(game)]} to act`;
   $('turn-num').textContent = `turn ${game.turn}`;
+  const marching = game.status === 'playing' && Object.values(game.units).some((u) => u.alive && u.kind === 'creep' && u.team === game.current) && creepsMarchNext(game, game.current);
+  let chip = $('march-chip');
+  if (marching && !chip) { chip = document.createElement('span'); chip.id = 'march-chip'; chip.className = 'march-chip'; chip.textContent = 'creeps march after this turn'; $('turn-num').after(chip); }
+  if (!marching && chip) chip.remove();
   $('msg').textContent = ui.msg;
   $('msg').className = `msg ${ui.msgKind}`;
   $('undo').disabled = !history.length || deciderIsBot();
@@ -897,19 +922,23 @@ function renderPieces(live, threats) {
         setTimeout(() => {
           el.classList.add('dying');
           setTimeout(() => { el.remove(); if (pieceEls.get(u.id) === el) pieceEls.delete(u.id); }, 220);
-        }, ui.deathDelay || 0);
+        }, ui.deathDelays?.[u.id] ?? ui.deathDelay ?? 0);
       }
       continue;
     }
     if (!el) {
       el = document.createElement('div');
       el.className = `piece ${u.team} ${u.kind}`;
-      const name = u.kind === 'beast' ? 'Beast' : HEROES[u.hero].name;
-      el.innerHTML = u.kind === 'beast'
-        ? `<div class="token" style="color:${u.team === 'p1' ? '#5a3a1a' : '#f3d9a8'}">${BEAST_SVG}</div><span class="tag">${name}</span>`
-        : `<div class="token"><img src="${ICON(u.hero)}" alt=""></div><span class="tag">${name}</span>`;
+      const name = heroDef(u).name;
+      if (u.kind === 'beast') el.innerHTML = `<div class="token" style="color:${u.team === 'p1' ? '#5a3a1a' : '#f3d9a8'}">${BEAST_SVG}</div><span class="tag">${name}</span>`;
+      else if (u.kind === 'creep') el.innerHTML = `<div class="token">${CREEP_SVG}</div>`;
+      else el.innerHTML = `<div class="token"><img src="${ICON(u.hero)}" alt=""></div><span class="tag">${name}</span>`;
       $('pieces').appendChild(el);
       pieceEls.set(u.id, el);
+    }
+    if (ui.marchIds?.has(u.id)) {
+      el.style.transitionDelay = '340ms';
+      setTimeout(() => { el.style.transitionDelay = ''; }, 900);
     }
     el.style.transform = `translate(${u.pos.c * 100}%, ${u.pos.r * 100}%)`;
     el.classList.toggle('warded', u.warded);
@@ -955,8 +984,11 @@ function renderReact() {
 
 function renderRoster(threats) {
   $('roster').innerHTML = ['p1', 'p2'].map((team) => {
-    const units = Object.values(game.units).filter((u) => u.team === team);
+    const all = Object.values(game.units).filter((u) => u.team === team);
+    const units = all.filter((u) => u.kind !== 'creep');
     const heroes = units.filter((u) => u.kind === 'hero');
+    const creeps = all.filter((u) => u.kind === 'creep');
+    const creepLine = creeps.length ? `<div class="creeps"><span class="bk">${CREEP_SVG.replace('<svg', '<svg width="16" height="16"')}</span>Creeps ${creeps.filter((c) => c.alive).length}/${creeps.length}</div>` : '';
     const pips = Array.from({ length: ENERGY.max }, (_, i) => `<i class="${i < game.energy[team] ? 'on' : ''}"></i>`).join('');
     return `<div><div class="team"><span class="swatch ${team}"></span>${TEAM_NAMES[team]}<span class="count">${heroes.filter((u) => u.alive).length}/3</span></div>
       <div class="energy" title="${game.energy[team]} of ${ENERGY.max} energy">${pips}</div>
@@ -966,7 +998,7 @@ function renderRoster(threats) {
         ${u.warded ? '<span class="chip wd">grave</span>' : ''}
         ${u.rooted ? '<span class="chip rt">rooted</span>' : ''}
         ${threats.has(u.id) ? '<span class="chip th">threat</span>' : ''}
-      </button></li>`).join('')}</ul></div>`;
+      </button></li>`).join('')}</ul>${creepLine}</div>`;
   }).join('');
   $('roster').querySelectorAll('button[data-id]').forEach((b) => b.addEventListener('click', () => { if (game.status === 'playing') select(b.dataset.id); }));
 }
@@ -989,13 +1021,16 @@ function renderHero(u, threats) {
       btn = `<button class="btn use ${ui.armed ? 'primary' : ''}" id="useskill" type="button" ${can || ui.armed ? '' : 'disabled'}>${ui.armed ? 'Cancel' : `Use ${sk.name}`} (Q)</button>`;
     }
     skillHtml = `<div class="skill"><b>${sk.name}<em>${sk.type === 'active' ? `active · ${sk.cost} energy · range ${sk.range}` : 'passive'}</em></b><span>${sk.text}</span>${btn}</div>`;
+  } else if (u.kind === 'creep') {
+    const next = creepsMarchNext(game, u.team);
+    skillHtml = `<div class="skill"><b>Minion<em>no skill</em></b><span>Can't be ordered. ${next ? 'Marches at the end of this side\'s next turn.' : 'Waits one more turn before marching.'} Killing it gives the killer +${CREEPS.lastHit} energy; reaching the far rank gives its side +${CREEPS.breach}.</span></div>`;
   } else {
     skillHtml = '<div class="skill"><b>Companion<em>no skill</em></b><span>Acts only in the follow-up after Ge\'nga. It can capture like any unit.</span></div>';
   }
-  const art = u.kind === 'beast' ? ART('genga') : ART(u.hero);
+  const art = u.kind === 'beast' ? ART('genga') : u.kind === 'creep' ? ART(MAP_ART[MAPS[game.map].theme] || 'hexor') : ART(u.hero);
   el.innerHTML = `<div class="hart" style="background-image:url(${art})"></div>
     <div class="hbody">
-      <div class="head"><span class="swatch ${u.team}"></span><span class="name">${u.kind === 'beast' ? 'Beast' : d.name}</span>
+      <div class="head"><span class="swatch ${u.team}"></span><span class="name">${d.name}</span>
         <span class="sub">${d.title} · ${squareName(u.pos)}</span> ${chips}</div>
       <div class="sub">${d.moveText}</div>
       ${skillHtml}
@@ -1216,7 +1251,17 @@ const FX = (() => {
   /** Timing decisions that must be known before render. */
   function plan(before, after) {
     const la = after.lastAction;
-    const p = { before, after, la, deathDelay: 0, hop: null };
+    const p = { before, after, la, deathDelay: 0, hop: null, deathDelays: null, marchIds: null, march: null };
+    const m = after.lastMarch && after.lastMarch !== before.lastMarch ? after.lastMarch : null;
+    if (m && !reduce) {
+      p.march = m;
+      p.marchIds = new Set(m.moves.map((x) => x.id));
+      p.deathDelays = {};
+      for (const x of m.moves) {
+        if (x.kill) p.deathDelays[x.kill] = 640;
+        if (x.breach) p.deathDelays[x.id] = 720;
+      }
+    }
     if (reduce || !la || la === before.lastAction) return p;
     const actor = after.units[la.unitId];
     if (la.kind === 'capture') p.deathDelay = 240;
@@ -1227,11 +1272,16 @@ const FX = (() => {
   }
 
   function run(p) {
-    if (reduce || !p.la || p.la === p.before.lastAction) return;
+    if (reduce) return;
+    if (p.march) at(320, () => marchFx(p.march, p.before));
+    if (!p.la || p.la === p.before.lastAction) return;
     resize();
     const { la, before, after } = p;
     const actor = after.units[la.unitId] || before.units[la.unitId];
-    const deaths = Object.values(before.units).filter((u) => u.alive && !after.units[u.id].alive);
+    const marchDead = new Set();
+    for (const x of p.march?.moves || []) { if (x.kill) marchDead.add(x.kill); if (x.breach) marchDead.add(x.id); }
+    const deaths = Object.values(before.units).filter((u) => u.alive && !after.units[u.id].alive && !marchDead.has(u.id));
+    for (const u of deaths) if (u.kind === 'creep' && actor && actor.team !== u.team) at(420, () => text(u.pos, `+${CREEPS.lastHit}`, COL.brass));
     const killAll = (ms, big) => at(ms, () => deaths.forEach((u) => kill(before.units[u.id], big)));
     const tgt = la.hits?.[0];
 
@@ -1313,6 +1363,27 @@ const FX = (() => {
     }
   }
 
+  function marchFx(m, before) {
+    resize();
+    for (const x of m.moves) {
+      if (x.kill) {
+        line(x.from, x.to, COL.steel, { life: 260, w: 3, grow: 6 });
+        const v = before.units[x.kill];
+        at(300, () => { kill({ ...v, pos: x.to }, false); if (v.kind === 'creep') text(x.to, `+${CREEPS.lastHit}`, COL.brass); });
+      } else {
+        at(260, () => burst(x.to, COL.dust, 5, { shape: 'smoke', min: 0.2, max: 0.6, life: [250, 420], size: [3, 5] }));
+      }
+      if (x.breach) {
+        at(380, () => {
+          flash(x.to, COL.brass, 1.2, 420);
+          ring(x.to, COL.brass, { to: 1.3, w: 4, life: 560 });
+          burst(x.to, [COL.brass, COL.white], 16, { shape: 'spark', dir: -Math.PI / 2, spread: 1.2, min: 2, max: 4.5, life: [300, 600] });
+          text(x.to, `+${CREEPS.breach} ENERGY`, COL.brass);
+        });
+      }
+    }
+  }
+
   function intro() {
     if (reduce || !game) return;
     resize();
@@ -1370,6 +1441,7 @@ document.addEventListener('keydown', (e) => {
 function boot(data) {
   if (data?.setup) Object.assign(setup, data.setup);
   $('opponent').value = setup.opponent;
+  $('creeps').checked = setup.creeps !== false;
   if (data?.screen === 'game' && data.game?.units && data.game.phase) {
     game = data.game; screen = 'game'; history = [];
     renderSetup(); applyTheme(); render(); Ambient.start(MAPS[game.map].theme);
