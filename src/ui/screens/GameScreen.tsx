@@ -58,11 +58,12 @@ function describe(s: any, a: any) {
  * Decision prompts (interrupt, beast/ice/storm follow-ups) as a toast floating over the
  * board, so the board itself never moves. Face to face, it sits at the deciding player's edge.
  */
-function Toast({ c, local }: { c: GameController; local: boolean }) {
+function Toast({ c, only }: { c: GameController; only?: Team }) {
   const g = c.game;
   if (g.status !== 'playing' || !c.deciderIsHuman()) return null;
   const side: Team = c.decider()!;
-  const pos = local && side === 'p2' ? 'top mirrored' : local ? 'bottom' : 'top';
+  if (only && side !== only) return null;
+  const pos = 'docked';
   let body = null;
   if (g.phase === 'react') {
     const pend = g.pending.action; const actor = g.units[pend.unitId]; const plant = g.units[g.pending.plantId];
@@ -99,6 +100,17 @@ function Pips({ n }: { n: number }) {
   return <span className="energy" title={`${n} of ${ENERGY.max} skill tokens`}>{Array.from({ length: ENERGY.max }, (_, i) => <i key={i} className={i < n ? 'on' : ''} />)}</span>;
 }
 
+/** A side's skill tokens, labelled. */
+function Tokens({ c, team, who }: { c: GameController; team: Team; who: string }) {
+  const n = c.game.energy[team];
+  return (
+    <span className={`tokens ${team}`}>
+      <span className={`team-dot ${team}`} /><span className="who">{who}</span>
+      <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span>
+    </span>
+  );
+}
+
 function TeamRoster({ c, team, threats }: { c: GameController; team: Team; threats: Set<string> }) {
   const g = c.game;
   const all = Object.values(g.units).filter((u: any) => u.team === team) as any[];
@@ -129,7 +141,7 @@ function TeamHead({ c, team }: { c: GameController; team: Team }) {
   const g = c.game;
   const heroes = Object.values(g.units).filter((u: any) => u.team === team && u.kind === 'hero') as any[];
   return (
-    <span className="team-head"><span className={`swatch ${team}`} />{TEAM_NAMES[team]}<Pips n={g.energy[team]} />
+    <span className="team-head"><span className={`team-dot ${team}`} />{TEAM_NAMES[team]}<Pips n={g.energy[team]} />
       <span className="count">{heroes.filter((u) => u.alive).length}/{heroes.length}</span></span>
   );
 }
@@ -141,78 +153,133 @@ function shortLine(u: any) {
   return SHORT[u.hero]?.skill || '';
 }
 
-/** The selected unit, right under the board: a short line, expandable to full details. */
-function SelectedAccordion({ c, compact }: { c: GameController; compact?: boolean }) {
+/** Active effects on a unit, in plain words. */
+function effectsOf(c: GameController, u: any, threats: Set<string>) {
   const g = c.game;
-  const u = c.selectedId ? g.units[c.selectedId] : null;
-  if (!u || !u.alive) {
-    return compact ? null : <div className="sel-empty">Tap a unit to see what it does. Tap an enemy to see its reach.</div>;
-  }
+  const out: { k: string; label: string; text: string }[] = [];
+  if (u.warded) out.push({ k: 'wd', label: 'Shielded', text: `Empty Grave: can't be captured, rooted or pushed until ${TEAM_NAMES[u.team]}'s next turn.` });
+  if (u.rooted > 0) out.push({ k: 'rt', label: 'Rooted', text: u.team === g.current ? 'Held by roots: can\'t act this turn.' : 'Held by roots: can\'t act on its next turn.' });
+  const cd = u.kind === 'hero' ? skillCooldown(u) : 0;
+  if (cd > 0) out.push({ k: 'cdn', label: `Recharging ${cd}`, text: `Skill ready in ${cd} turn${cd > 1 ? 's' : ''}.` });
+  if (threats.has(u.id)) out.push({ k: 'th', label: 'In danger', text: 'An enemy can capture it on their next turn.' });
+  return out;
+}
+
+function SelTrigger({ c, u, threats }: { c: GameController; u: any; threats: Set<string> }) {
+  const d = heroDef(u);
+  const hero = u.kind === 'hero';
+  const sk = hero ? d.skill : null;
+  const fx = effectsOf(c, u, threats);
+  return (
+    <span className="sel-trigger">
+      {hero ? <img src={ICON(u.hero)} alt="" className={fx.length ? 'has-fx' : ''} /> : <span className="bk" dangerouslySetInnerHTML={{ __html: u.kind === 'beast' ? BEAST_SVG : CREEP_SVG }} />}
+      <span className="sel-text">
+        <span className="sel-name"><span className={`team-dot ${u.team}`} />{d.name}
+          <span className="sub">{hero && d.role ? (ROLES as any)[d.role] : d.title} · {squareName(u.pos)}</span>
+          {sk && <span className="cost">{costChip(sk)}</span>}
+          {fx.map((f) => <span key={f.k} className={`fx-pill ${f.k}`} title={f.text}>{f.label}</span>)}</span>
+        <span className="sel-short">{hero ? <><b>{sk.name}:</b> {shortLine(u)}</> : shortLine(u)}</span>
+        {fx.length > 0 && <span className="sel-fx">{fx.map((f) => f.text).join(' ')}</span>}
+      </span>
+    </span>
+  );
+}
+
+function SelDetail({ c, u }: { c: GameController; u: any }) {
+  const g = c.game;
   const d = heroDef(u);
   const hero = u.kind === 'hero';
   const sk = hero ? d.skill : null;
   const cd = hero ? skillCooldown(u) : 0;
   const art = u.kind === 'beast' ? ART('genga') : u.kind === 'creep' ? ART(MAP_ART[(MAPS as any)[g.map].theme] || 'hexor') : ART(u.hero);
-  const trigger = (
-    <span className="sel-trigger">
-      {u.kind === 'hero' ? <img src={ICON(u.hero)} alt="" /> : <span className="bk" dangerouslySetInnerHTML={{ __html: u.kind === 'beast' ? BEAST_SVG : CREEP_SVG }} />}
-      <span className="sel-text">
-        <span className="sel-name"><span className={`swatch ${u.team}`} />{d.name}
-          <span className="sub">{hero && d.role ? (ROLES as any)[d.role] : d.title} · {squareName(u.pos)}</span>
-          {sk && <span className="cost">{costChip(sk)}</span>}
-          {u.warded && <span className="chip wd">grave</span>}{u.rooted > 0 && <span className="chip rt">rooted</span>}
-          {cd > 0 && <span className="chip cdn">cd {cd}</span>}</span>
-        <span className="sel-short">{hero ? <><b>{sk.name}:</b> {shortLine(u)}</> : shortLine(u)}</span>
-      </span>
-    </span>
-  );
   return (
-    <Accordion key={u.id} className={`sel-acc ${u.team}`} trigger={trigger}>
-      <div className="sel-detail" style={{ ['--art' as any]: `url(${art})` }}>
-        <div className="sel-move">{hero ? <MoveDiagram hero={u.hero} size={8} /> : null}<span>{d.moveText}</span></div>
-        {hero && (
-          <div className="sel-skill">
-            <b>{sk.name}</b> <span className="meta">{costLabel(sk)}{sk.range ? ` · range ${sk.range}` : ''}{sk.cooldown ? ` · cooldown ${sk.cooldown}` : ''}</span>
-            <p>{sk.text}</p>
-            {cd > 0 && <p className="cdn-note">Recharging: ready in {cd} turn{cd > 1 ? 's' : ''}.</p>}
-          </div>
-        )}
-        {u.kind === 'creep' && <p>Moving a creep uses your turn. Killing an enemy creep gives +{tk(CREEPS.lastHit)}; reaching the far side gives +{tk(CREEPS.breach)}.</p>}
-      </div>
+    <div className="sel-detail" style={{ ['--art' as any]: `url(${art})` }}>
+      <div className="sel-move">{hero ? <MoveDiagram hero={u.hero} size={8} /> : null}<span>{d.moveText}</span></div>
+      {hero && (
+        <div className="sel-skill">
+          <b>{sk.name}</b> <span className="meta">{costLabel(sk)}{sk.range ? ` · range ${sk.range}` : ''}{sk.cooldown ? ` · cooldown ${sk.cooldown}` : ''}</span>
+          <p>{sk.text}</p>
+          {cd > 0 && <p className="cdn-note">Recharging: ready in {cd} turn{cd > 1 ? 's' : ''}.</p>}
+        </div>
+      )}
+      {u.kind === 'creep' && <p>Moving a creep uses your turn. Killing an enemy creep gives +{tk(CREEPS.lastHit)}; reaching the far side gives +{tk(CREEPS.breach)}.</p>}
+    </div>
+  );
+}
+
+/** The selected unit, right under the board: a short line, expandable to full details. */
+function SelectedAccordion({ c, threats }: { c: GameController; threats: Set<string> }) {
+  const u = c.selectedId ? c.game.units[c.selectedId] : null;
+  if (!u || !u.alive) return <div className="sel-empty">Tap a unit to see what it does. Tap an enemy to see its reach.</div>;
+  return (
+    <Accordion key={u.id} className={`sel-acc ${u.team}`} trigger={<SelTrigger c={c} u={u} threats={threats} />}>
+      <SelDetail c={c} u={u} />
     </Accordion>
   );
 }
 
-/** Use-skill button for the selected unit, when it is this human's call. */
-function SkillButton({ c }: { c: GameController }) {
+/**
+ * Square skill button for the selected unit. Its cost and effect show in an animated
+ * card under it (on hover, focus, or while the skill is armed).
+ */
+function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
   const g = c.game;
   const u = c.selectedId ? g.units[c.selectedId] : null;
-  const own = !!u && u.alive && u.kind === 'hero' && u.team === g.current && g.status === 'playing' && c.deciderIsHuman() && g.phase === 'main';
-  const sk = u && u.kind === 'hero' ? (HEROES as any)[u.hero].skill : null;
-  if (!own || !sk || sk.type !== 'active') {
-    return <button className="btn skill-btn" type="button" disabled>{sk && own ? `${sk.name} is passive` : 'Select your hero to use its skill'}</button>;
-  }
-  const cd = skillCooldown(u);
-  const can = skillActions(g, u).length > 0;
+  const hero = !!u && u.alive && u.kind === 'hero';
+  const own = hero && u.team === g.current && g.status === 'playing' && c.deciderIsHuman() && g.phase === 'main';
+  const sk = hero ? (HEROES as any)[u.hero].skill : null;
+  const active = own && sk && sk.type === 'active';
+  const cd = active ? skillCooldown(u) : 0;
+  const can = active && skillActions(g, u).length > 0;
+  const tokens = hero ? g.energy[u.team] : 0;
+  let state = '';
+  if (!hero) state = 'Select one of your heroes to see its skill.';
+  else if (!own) state = 'Not your hero, or not your turn.';
+  else if (sk.type !== 'active') state = sk.type === 'move' ? 'Passive: it is part of his moves.' : 'Passive: it triggers on its own after he acts.';
+  else if (c.armed) state = 'Tap a highlighted target. Tap the button again to cancel.';
+  else if (cd) state = `Recharging: ready in ${cd} turn${cd > 1 ? 's' : ''}.`;
+  else if (tokens < sk.cost) state = `Needs ${tk(sk.cost)}; you have ${tokens}.`;
+  else if (!can) state = 'No valid target in range.';
+  else state = `Ready. Press to choose a target (or Q).`;
   return (
-    <button className={`btn skill-btn${c.armed ? ' armed' : ' primary'}`} type="button" disabled={!can && !c.armed} onClick={() => c.armSkill()}>
-      {c.armed ? 'Cancel skill' : cd ? `${sk.name} · ready in ${cd}` : `Use ${sk.name} · ${tk(sk.cost)}`}<kbd>Q</kbd>
-    </button>
+    <div className={`skill-wrap${c.armed ? ' armed' : ''}${inline ? ' inline' : ''}`}>
+      <button className={`skill-sq${c.armed ? ' armed' : ''}${can ? ' ready' : ''}`} type="button" disabled={!can && !c.armed}
+        onClick={() => c.armSkill()} aria-label={sk ? `${sk.name}${active ? `, ${tk(sk.cost)}` : ''}` : 'Skill'}>
+        {hero ? <img src={ICON(u.hero)} alt="" /> : <span className="glyph">✦</span>}
+        {sk && <span className="sq-cost">{costChip(sk)}</span>}
+        {cd > 0 && <span className="sq-cd">{cd}</span>}
+      </button>
+      <div className="skill-pop" role="note">
+        {sk ? (
+          <>
+            <b>{sk.name}</b>
+            <span className="meta">{costLabel(sk)}{sk.range ? ` · range ${sk.range}` : ''}{sk.cooldown ? ` · cooldown ${sk.cooldown}` : ''}</span>
+            <span className="impact">{SHORT[u.hero]?.skill}</span>
+          </>
+        ) : <b>Skill</b>}
+        <span className={`state${can && !c.armed ? ' ok' : ''}`}>{state}</span>
+      </div>
+    </div>
   );
 }
 
-function Controls({ c }: { c: GameController }) {
+function Controls({ c, onMenu, roomCode, local }: { c: GameController; onMenu: () => void; roomCode?: string | null; local?: boolean }) {
   return (
-    <div className="controls-row">
-      <SkillButton c={c} />
-      <span className="grow" />
-      {c.mode.kind !== 'online' && (
-        <span className="undo-redo">
-          <button className="btn icon" type="button" disabled={!c.canUndo()} onClick={() => c.undo()} aria-label="Undo" title="Undo">↶ Undo</button>
-          <button className="btn icon" type="button" disabled={!c.canRedo()} onClick={() => c.redo()} aria-label="Redo" title="Redo">Redo ↷</button>
-        </span>
-      )}
-      <Switch checked={c.showThreats} onChange={(v) => c.setThreats(v)} label="Threats" />
+    <div className="controls">
+      <div className="controls-row">
+        {!local && <SkillButton c={c} />}
+        {local && <button className="btn icon-btn" type="button" onClick={onMenu}>☰ Menu</button>}
+        <span className="grow" />
+        {c.mode.kind !== 'online' && (
+          <span className="undo-redo">
+            <button className="btn icon" type="button" disabled={!c.canUndo()} onClick={() => c.undo()} title="Undo (Ctrl+Z)">↶ Undo</button>
+            <button className="btn icon" type="button" disabled={!c.canRedo()} onClick={() => c.redo()} title="Redo (Ctrl+Shift+Z)">Redo ↷</button>
+          </span>
+        )}
+        {!local && <button className="btn icon-btn" type="button" onClick={onMenu}>☰ Menu</button>}
+      </div>
+      <div className="turnline"><span className="turn-num">Turn {c.game.turn}{roomCode ? ` · room ${roomCode}` : ''}</span>
+        {!local && <span className={`msg ${c.msgKind}`} role="status" aria-live="polite">{c.msg}</span>}</div>
     </div>
   );
 }
@@ -234,24 +301,36 @@ function SeatPanel({ c, team, threats }: { c: GameController; team: Team; threat
   const mine = g.status === 'playing' && c.decider() === team;
   const last = g.log[g.log.length - 1];
   const sel = c.selectedId ? g.units[c.selectedId] : null;
-  const [roster, setRoster] = useState(false);
+  const [sheet, setSheet] = useState<'roster' | 'unit' | null>(null);
+  const heroes = livingHeroes(g, team).length;
+  useEffect(() => { if (sheet === 'unit' && (!sel || !sel.alive)) setSheet(null); }, [sel, sheet]);
   return (
     <div className={`seat ${team}${team === 'p2' ? ' mirrored' : ''}${mine ? ' active' : ''}`}>
       <div className="seat-top">
-        <TeamHead c={c} team={team} />
+        <span className={`team-badge ${team}`}>{TEAM_NAMES[team]}</span>
+        <Tokens c={c} team={team} who="Tokens" />
+        <span className="count">{heroes} heroes</span>
         <span className="grow" />
         <span className={`seat-status${mine ? ' go' : ''}`}>{statusFor(c, team)}</span>
-        <button type="button" className="btn ghost tiny" onClick={() => setRoster(true)}>Team</button>
+        <button type="button" className="btn ghost tiny" onClick={() => setSheet('roster')}>Team</button>
       </div>
       <div className="seat-body">
-        {mine && sel && sel.alive ? <><SelectedAccordion c={c} compact /><SkillButton c={c} /></>
-          : <p className={`seat-msg ${mine ? c.msgKind : ''}`}>{mine && c.msg ? c.msg : last?.text}</p>}
+        {mine && sel && sel.alive ? (
+          <div className="seat-sel">
+            <button type="button" className={`seat-sel-btn ${sel.team}`} onClick={() => setSheet('unit')} aria-label="Unit details">
+              <SelTrigger c={c} u={sel} threats={threats} /><span className="acc-chev">›</span>
+            </button>
+            <SkillButton c={c} inline />
+          </div>
+        ) : <p className={`seat-msg ${mine ? c.msgKind : ''}`}>{mine && c.msg ? c.msg : last?.text}</p>}
       </div>
-      {roster && (
-        <div className="seat-sheet" onClick={() => setRoster(false)}>
+      {team === 'p2' && <Toast c={c} only="p2" />}
+      {sheet && (
+        <div className="seat-sheet" onClick={() => setSheet(null)}>
           <div className="seat-sheet-card" onClick={(e) => e.stopPropagation()}>
-            <TeamRoster c={c} team={team} threats={threats} />
-            <button type="button" className="btn" onClick={() => setRoster(false)}>Close</button>
+            {sheet === 'roster' ? <><TeamHead c={c} team={team} /><TeamRoster c={c} team={team} threats={threats} /></>
+              : sel && sel.alive ? <><SelTrigger c={c} u={sel} threats={threats} /><SelDetail c={c} u={sel} /></> : null}
+            <button type="button" className="btn tiny" onClick={() => setSheet(null)}>Close</button>
           </div>
         </div>
       )}
@@ -290,12 +369,14 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   const status = statusFor(c);
   const waiting = g.status === 'playing' && !c.deciderIsHuman();
 
-  const topbar = (
-    <div className="gamebar">
-      <button className="btn" type="button" onClick={() => setMenu(true)} aria-label="Menu">☰ Menu</button>
-      {!local && <span className={`turn${waiting ? ' thinking' : ''}`}><span className={`swatch ${over ? g.status : c.decider()}`} />{status}</span>}
-      {local && <span className="turn small">Face to face</span>}
-      <span className="turn-num">turn {g.turn}{roomCode ? ` · room ${roomCode}` : ''}</span>
+  const me: Team = c.mode.kind === 'online' ? c.mode.side : 'p1';
+  const them = other(me);
+  const topbar = !local && (
+    <div className="statusbar">
+      <span className={`turn${waiting ? ' thinking' : ''}`}><span className={`team-dot ${over ? g.status : c.decider()}`} />{status}</span>
+      <span className="grow" />
+      <Tokens c={c} team={me} who="You" />
+      <Tokens c={c} team={them} who={c.mode.kind === 'bot' ? 'Bot' : 'Opponent'} />
     </div>
   );
 
@@ -316,28 +397,26 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   const board = (
     <div className="board-host-wrap">
       <div className="board-host" ref={host} />
-      <Toast c={c} local={local} />
       {overlay}
     </div>
   );
 
   return (
     <div className="game-screen">
-      {topbar}
       {local ? (
         <div className="faceoff">
           <SeatPanel c={c} team="p2" threats={threats} />
           {board}
-          <Controls c={c} />
+          <div className="dock"><Controls c={c} onMenu={() => setMenu(true)} local /><Toast c={c} only="p1" /></div>
           <SeatPanel c={c} team="p1" threats={threats} />
         </div>
       ) : (
         <div className="stage">
           <section aria-label="Board" className="board-col">
+            {topbar}
             {board}
-            <Controls c={c} />
-            <p className={`msg below ${c.msgKind}`} role="status" aria-live="polite">{c.msg}</p>
-            <SelectedAccordion c={c} />
+            <div className="dock"><Controls c={c} onMenu={() => setMenu(true)} roomCode={roomCode} /><Toast c={c} /></div>
+            <SelectedAccordion c={c} threats={threats} />
           </section>
           <aside className="ledger">
             <Accordion className="panel-acc" trigger={<span className="acc-title">Teams</span>} defaultOpen={false}>
@@ -346,7 +425,6 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
                 <div><TeamHead c={c} team="p2" /><TeamRoster c={c} team="p2" threats={threats} /></div>
               </div>
             </Accordion>
-            <div className="tokens-mini"><TeamHead c={c} team="p1" /><TeamHead c={c} team="p2" /></div>
             <div><p className="eyebrow">Battle log</p><Log c={c} /></div>
           </aside>
         </div>
@@ -355,6 +433,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
       <Modal open={menu} onClose={() => setMenu(false)} label="Menu" className="menu-card">
         <h2>Paused</h2>
         <button className="btn primary big" type="button" onClick={() => setMenu(false)}>Resume</button>
+        <div className="menu-setting"><Switch checked={c.showThreats} onChange={(v) => c.setThreats(v)} label={<><b>Show threats</b><small>Mark units an enemy can capture next turn</small></>} /></div>
         <button className="btn big" type="button" onClick={() => { setMenu(false); setRules(true); }}>How to play</button>
         {c.mode.kind !== 'online' && <button className="btn big" type="button" onClick={() => { setMenu(false); onRematch(); }}>Restart match</button>}
         <button className="btn big" type="button" onClick={() => { setMenu(false); onChangeHeroes(); }}>Change heroes</button>

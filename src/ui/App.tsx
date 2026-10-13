@@ -158,7 +158,7 @@ export function App() {
               <HeroPicker team="p1" title="Your team" picks={picks.p1} onChange={(p) => setPicks({ ...picks, p1: p })} mode={desc} onMode={setDesc} />
               <div className="bot-team">
                 <div className="bot-team-head">
-                  <span className="swatch p2" /><h3>Bot team</h3>
+                  <span className="team-badge p2">Ember</span><h3>Bot team</h3>
                   <div className="seg" role="group" aria-label="Bot team">
                     <button type="button" aria-pressed={botTeam === 'hidden'} onClick={() => setBotTeam('hidden')}>Blind</button>
                     <button type="button" aria-pressed={botTeam === 'shuffle'} onClick={() => setBotTeam('shuffle')}>Shuffle</button>
@@ -166,14 +166,18 @@ export function App() {
                   </div>
                 </div>
                 {botTeam === 'hidden' && (
-                  <div className="slots-row">{[0, 1, 2, 3].map((i) => <span key={i} className="slot hidden-slot"><span className="n">{i + 1}</span>?</span>)}
-                    <p className="note">The bot picks in secret. You'll see its heroes when the match starts.</p></div>
+                  <>
+                    <div className="slots-row p2">{[0, 1, 2, 3].map((i) => <span key={i} className="slot hidden-slot"><span className="n">{i + 1}</span><span className="q">?</span></span>)}</div>
+                    <p className="note">The bot picks in secret. You'll see its heroes when the match starts.</p>
+                  </>
                 )}
                 {botTeam === 'shuffle' && (
-                  <div className="slots-row">
-                    {bot.map((h, i) => <span key={h} className="slot filled"><img src={ICON(h)} alt="" /><span className="n">{i + 1}</span><span className="nm">{(HEROES as any)[h].name}</span></span>)}
-                    <div className="slot-actions"><button type="button" className="btn ghost" onClick={() => setSeed(seed + 7)}>Shuffle again</button></div>
-                  </div>
+                  <>
+                    <div className="slots-row p2">
+                      {bot.map((h, i) => <span key={h} className="slot filled"><img src={ICON(h)} alt="" /><span className="n">{i + 1}</span><span className="nm">{(HEROES as any)[h].name}</span></span>)}
+                    </div>
+                    <button type="button" className="btn ghost small-btn" onClick={() => setSeed(seed + 7)}>↻ Shuffle again</button>
+                  </>
                 )}
                 {botTeam === 'manual' && (
                   <HeroPicker team="p2" title="Bot's team" picks={picks.p2} onChange={(p) => setPicks({ ...picks, p2: p })} mode={desc} onMode={setDesc} />
@@ -239,10 +243,12 @@ function Step({ title, step, onBack, children, next }: StepProps) {
   return (
     <div className="step page">
       <header className="step-head">
-        <button type="button" className="btn ghost" onClick={onBack}>← Back</button>
+        <button type="button" className="back-btn" onClick={onBack} aria-label="Back">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
         <h2>{title}</h2>
-        {step && <Steps steps={['Heroes', 'Battlefield', 'Fight']} current={step} />}
       </header>
+      {step && <Steps steps={['Heroes', 'Battlefield', 'Fight']} current={step} />}
       <div className="step-body">{children}</div>
       {next && (
         <footer className="step-foot">

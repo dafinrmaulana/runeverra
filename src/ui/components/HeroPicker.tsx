@@ -40,11 +40,16 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
   return (
     <div className={`picker ${team}${mirrored ? ' mirrored' : ''}`} ref={box}>
       <div className="picker-head">
-        <span className={`swatch ${team}`} />
+        <span className={`team-badge ${team}`}>{TEAM_NAMES[team]}</span>
         <h3>{title}</h3>
-        <span className="side-name">{TEAM_NAMES[team]}</span>
         <span className="count">{picks.length}/{SIZE}</span>
         <span className="grow" />
+        {!readOnly && (
+          <span className="head-actions">
+            <button type="button" className="btn ghost small-btn" onClick={() => { onChange(randomTeam(Date.now() % 9973)); setNote(''); }}>↻ Random</button>
+            <button type="button" className="btn ghost small-btn" onClick={() => { onChange([]); setNote(''); }} disabled={!picks.length}>Clear</button>
+          </span>
+        )}
         <div className="seg small" role="group" aria-label="Description length">
           <button type="button" aria-pressed={mode === 'short'} onClick={() => onMode('short')}>Short</button>
           <button type="button" aria-pressed={mode === 'detail'} onClick={() => onMode('detail')}>Detail</button>
@@ -62,12 +67,6 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
             <span key={i} className="slot empty"><span className="n">{i + 1}</span><span className="nm">Empty</span></span>
           );
         })}
-        {!readOnly && (
-          <div className="slot-actions">
-            <button type="button" className="btn ghost" onClick={() => { onChange(randomTeam(Date.now() % 9973)); setNote(''); }}>Random</button>
-            <button type="button" className="btn ghost" onClick={() => { onChange([]); setNote(''); }} disabled={!picks.length}>Clear</button>
-          </div>
-        )}
       </div>
       {note && <p className="picker-note">{note}</p>}
 
