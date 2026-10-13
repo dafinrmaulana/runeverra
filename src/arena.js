@@ -60,7 +60,7 @@ export const HEROES = {
     moveText: 'Steps 1 square straight.',
     skill: {
       key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reaction: true, cooldown: 3, maxReactions: 1,
-      text: 'Roots an enemy up to 3 squares away: it can\'t act on its next turn. Once per match it can instead be cast during the opponent\'s turn, when an enemy within 3 squares acts: that action is negated. After either use, it recharges for 3 of your turns.',
+      text: 'Roots an enemy up to 3 squares away in any direction, diagonals included: it can\'t act on its next turn. Once per match it can instead be cast during the opponent\'s turn, when an enemy within 3 squares acts: that action is negated. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {

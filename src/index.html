@@ -328,15 +328,24 @@
   .overlay h2 { font-family: var(--f-display); font-weight: 400; font-size: clamp(1.6rem, 5vw, 2.6rem); letter-spacing: .08em; margin: 0 0 4px; text-wrap: balance; }
   .overlay p { margin: 0 0 16px; color: var(--muted); max-width: 40ch; }
   .overlay .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .react-card {
-    background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--vine); border-radius: 8px;
-    padding: 16px 18px; max-width: 360px; display: grid; gap: 10px; justify-items: center;
-    animation: reactin .3s cubic-bezier(.2,1.2,.4,1);
+  .reactbar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--vine);
+    border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; font-size: .88rem;
+    animation: reactin .25s ease-out;
   }
-  @keyframes reactin { from { transform: scale(.85); opacity: 0; } }
-  .react-card img { width: 56px; height: 56px; border-radius: 14px; }
-  .react-card h3 { margin: 0; font-family: var(--f-display); font-weight: 400; letter-spacing: .05em; }
-  .react-card p { margin: 0; color: var(--bone); font-size: .9rem; }
+  @keyframes reactin { from { transform: translateY(-4px); opacity: 0; } }
+  .reactbar img { width: 28px; height: 28px; border-radius: 7px; flex: none; }
+  .reactbar .rt { flex: 1 1 220px; min-width: 0; }
+  .reactbar .rt b { font-weight: 700; }
+  .reactbar .rt span { color: var(--muted); }
+  .reactbar .row { display: flex; gap: 8px; flex: none; }
+  .cell.range::after { content: ""; position: absolute; inset: 0; background: rgba(89,180,74,.16); box-shadow: inset 0 0 0 1px rgba(89,180,74,.28); pointer-events: none; }
+  .cell.pending { box-shadow: inset 0 0 0 3px var(--vine); }
+  .cell.pending-to::before {
+    content: ""; position: absolute; inset: 18%; border-radius: 50%; border: 3px dashed var(--vine);
+    animation: spin 6s linear infinite;
+  }
   .btn.vine { background: var(--vine); border-color: var(--vine); color: #0d1a0b; font-weight: 700; }
 
   /* ledger */
@@ -437,6 +446,7 @@
         <span class="num" id="turn-num"></span>
         <span class="msg" id="msg" role="status" aria-live="polite"></span>
       </div>
+      <div class="reactbar" id="react" role="alertdialog" aria-label="Aggressive Root" hidden></div>
       <div class="phasebar" id="phasebar" hidden>
         <span id="phasetext"></span>
         <button class="btn" id="skip" type="button">Skip</button>
@@ -450,7 +460,6 @@
             <div class="layer pieces" id="pieces"></div>
             <canvas class="fx" id="fx" aria-hidden="true"></canvas>
           </div>
-          <div class="overlay" id="react" hidden></div>
           <div class="overlay win" id="overlay" hidden>
             <div>
               <h2 id="win-title"></h2>
@@ -492,7 +501,7 @@
           <li><b>Hexor · Storm Hammer.</b> When he captures, every unit around the target (allies too) is pushed 1 square away, chaining. An enemy pushed into terrain or off the board is eliminated; an ally that would be pushed there stays put instead.</li>
           <li><b>Aqna · Icy Step.</b> After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
           <li><b>Creeps.</b> Each side starts with 4 pawns on the flank lanes (files a, b, g, h), facing the enemy's creeps. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. Map terrain sits only in the four centre files, so it never blocks a lane. Eliminating an enemy creep gives +1 energy; a creep that reaches the far rank breaks through for +2 energy. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
-          <li><b>Distances</b> count diagonals as 1. Each hero's movement is shown on its card.</li>
+          <li><b>Distances</b> count diagonals as 1, like a chess king's steps: "within 3" means the 7×7 square around the hero. Select Plantae to see its reach tinted green. Each hero's movement is shown on its card.</li>
           <li><b>Controls.</b> Click a hero, then a marked square. Q or the skill button arms an active skill. Esc cancels.</li>
         </ul>
       </details>
@@ -504,7 +513,7 @@
 import {
   createMatch, applyAction, validateAction, listActions, moveOptions, skillTargets, getThreats,
   livingHeroes, unitAt, blockAt, squareName, samePos, toMove, heroDef, label,
-  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, SLOTS, skillCooldown,
+  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, SLOTS, skillCooldown, chebyshev,
 } from './arena.js';
 import { chooseAction, pickTeam, BOT_LEVELS } from './arena-bot.js';
 
@@ -827,6 +836,13 @@ function render() {
   const skillActs = live && ui.armed ? acts.filter((a) => a.type === 'skill' && a.unitId === live.id) : [];
   const skKey = live && live.kind === 'hero' ? HEROES[live.hero].skill.key : '';
   const iceActs = game.phase === 'ice' ? acts.filter((a) => a.type === 'ice') : [];
+  const pend = game.phase === 'react' ? game.pending.action : null;
+  const pendActor = pend && game.units[pend.unitId];
+  const pendTo = pend ? (pend.type === 'move' ? pend.to : game.units[pend.targetId]?.pos) : null;
+  // Aggressive Root's reach: shown while choosing an interrupt, or when a Plantae is selected.
+  const rangeOf = game.phase === 'react' ? game.units[game.pending.plantId]
+    : live && live.kind === 'hero' && live.hero === 'plantae' ? live : null;
+  const rootRange = HEROES.plantae.skill.range;
   const la = game.lastAction;
   for (const el of cells) {
     const p = { r: +el.dataset.r, c: +el.dataset.c };
@@ -843,6 +859,9 @@ function render() {
     el.classList.toggle('grave', tgt && skKey === 'grave');
     el.classList.toggle('root', tgt && skKey === 'root');
     el.classList.toggle('icespot', iceActs.some((a) => samePos(a.to, p)));
+    el.classList.toggle('range', !!rangeOf && chebyshev(rangeOf.pos, p) <= rootRange && !samePos(rangeOf.pos, p));
+    el.classList.toggle('pending', !!pendActor && samePos(pendActor.pos, p));
+    el.classList.toggle('pending-to', !!pendTo && samePos(pendTo, p));
     el.classList.toggle('last', !!la && [la.from, la.to].some((q) => q && samePos(q, p)));
     el.classList.remove('hit');
     const u = unitAt(game, p), b = blockAt(game, p);
@@ -964,13 +983,11 @@ function renderReact() {
   const pend = game.pending.action;
   const actor = game.units[pend.unitId];
   const plant = game.units[game.pending.plantId];
-  box.innerHTML = `<div class="react-card">
-      <img src="${ICON('plantae')}" alt="">
-      <h3>Aggressive Root?</h3>
-      <p>${label(actor)} is about to ${describe(game, pend)}.</p>
-      <p style="color:var(--muted)">Interrupt it for ${HEROES.plantae.skill.reactionCost ?? HEROES.plantae.skill.cost} energy (you have ${game.energy[plant.team]}). The action is cancelled and their turn ends. This is Plantae's only interrupt this match.</p>
-      <div class="row"><button class="btn vine" id="react-yes" type="button">Root it</button><button class="btn" id="react-no" type="button">Let it happen</button></div>
-    </div>`;
+  const cost = HEROES.plantae.skill.reactionCost ?? HEROES.plantae.skill.cost;
+  box.innerHTML = `<img src="${ICON('plantae')}" alt="">
+    <span class="rt"><b>Aggressive Root?</b> ${label(actor)} is about to ${describe(game, pend)}.
+      <span>Cancel it for ${cost} energy (you have ${game.energy[plant.team]}); their turn ends. Only one interrupt per match.</span></span>
+    <span class="row"><button class="btn vine" id="react-yes" type="button">Root it</button><button class="btn" id="react-no" type="button">Let it happen</button></span>`;
   $('react-yes').addEventListener('click', () => commit({ type: 'react', use: true }));
   $('react-no').addEventListener('click', () => commit({ type: 'react', use: false }));
 }
