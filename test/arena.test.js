@@ -59,14 +59,16 @@ test('Hasim Backstab: jumps forward over unit or object; kills jumped enemy and 
   assert.equal(t.units['p1-hexor'].alive, true);
   const t2 = setup({ 'p1-hasim': 'd4', 'p2-genga': 'h8' }, { blocks: { d5: 'pillar' } });
   act(t2, mv('p1-hasim', 'd6'));
-  // backwards works too (straight and diagonal); never sideways, never with nothing to jump
+  // every direction works: back, back-diagonal, sideways; never with nothing to jump
   const t3 = setup({ 'p1-hasim': 'd4', 'p2-aqna': 'd3', 'p2-plantae': 'c3', 'p2-genga': 'h8', 'p2-beast': 'e4' });
   const back = act(t3, mv('p1-hasim', 'd2'));
   assert.equal(back.units['p2-aqna'].alive, false);
   const backDiag = act(t3, mv('p1-hasim', 'b2'));
   assert.equal(backDiag.units['p2-plantae'].alive, false);
-  reject(t3, mv('p1-hasim', 'f4')); // sideways over the beast: not a Backstab
-  reject(t3, mv('p1-hasim', 'f6'));
+  const side = act(t3, mv('p1-hasim', 'f4')); // sideways over the beast
+  assert.equal(side.units['p2-beast'].alive, false);
+  reject(t3, mv('p1-hasim', 'f6')); // e5 is empty: nothing to jump over
+  reject(t3, mv('p1-hasim', 'b4'));
 });
 
 test('Ge\'nga: beast acts right after him (or skips), never on its own', () => {

@@ -28,7 +28,7 @@ export const HEROES = {
     moveText: 'Steps 1 square in any direction.',
     skill: {
       key: 'backstab', name: 'Backstab', type: 'passive',
-      text: 'Jumps forward or back over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',
+      text: 'Jumps in any direction over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',
     },
   },
   genga: {
@@ -185,10 +185,10 @@ export function moveOptions(s, u) {
         else if (canBeHit(u, o)) push({ to: p, kills: [o.id] });
       }
     } else if (rule.kind === 'backstab') {
-      // Forward or backward, straight or diagonal (no sideways jumps).
-      for (const f of [forward(u.team), -forward(u.team)]) for (const dc of [-1, 0, 1]) {
-        const mid = { r: u.pos.r + f, c: u.pos.c + dc };
-        const land = { r: u.pos.r + 2 * f, c: u.pos.c + 2 * dc };
+      // Any of the 8 directions: straight or diagonal.
+      for (const [dr, dc] of KING) {
+        const mid = { r: u.pos.r + dr, c: u.pos.c + dc };
+        const land = { r: u.pos.r + 2 * dr, c: u.pos.c + 2 * dc };
         if (!inBounds(mid) || !inBounds(land)) continue;
         const over = unitAt(s, mid);
         if (!over && !blockAt(s, mid)) continue; // nothing to jump over
