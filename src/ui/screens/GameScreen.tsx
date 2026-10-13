@@ -101,10 +101,10 @@ function Pips({ n }: { n: number }) {
 }
 
 /** A side's skill tokens, labelled. */
-function Tokens({ c, team, who }: { c: GameController; team: Team; who: string }) {
+function Tokens({ c, team, who, active }: { c: GameController; team: Team; who: string; active?: boolean }) {
   const n = c.game.energy[team];
   return (
-    <span className={`tokens ${team}`}>
+    <span className={`tokens ${team}${active ? ' active' : ''}`}>
       <span className={`team-dot ${team}`} /><span className="who">{who}</span>
       <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span>
     </span>
@@ -218,6 +218,17 @@ function SelectedAccordion({ c, threats }: { c: GameController; threats: Set<str
   );
 }
 
+/** A glyph per skill for the skill button (no character portraits). */
+const SKILL_ICON: Record<string, string> = {
+  none: '<svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.4 1.5 6.8L12 17l-5.5 3.5L8 13.7 3 9.3l6.4-.7z" fill="currentColor"/></svg>',
+  backstab: '<svg viewBox="0 0 24 24"><path d="M4 20l3-1 11-11 1-4-4 1L4 16z" fill="currentColor"/><path d="M3 21l3-3M8 14l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  summon: '<svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="15.5" rx="5" ry="4.2"/><circle cx="6.2" cy="10" r="2.1"/><circle cx="9.6" cy="6.4" r="2.1"/><circle cx="14.4" cy="6.4" r="2.1"/><circle cx="17.8" cy="10" r="2.1"/></svg>',
+  grave: '<svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="currentColor"/><path d="M12 7v9M8.5 10.5h7" stroke="rgba(0,0,0,.45)" stroke-width="2" stroke-linecap="round"/></svg>',
+  root: '<svg viewBox="0 0 24 24"><path d="M12 22V11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M12 13c-5 0-7-4-7-8 4 0 7 2 7 8zM12 11c4.5 0 6.5-3.5 6.5-7-3.8 0-6.5 2-6.5 7z" fill="currentColor"/><path d="M12 22c-2-1-4-1-6 0M12 22c2-1 4-1 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  storm: '<svg viewBox="0 0 24 24"><path d="M13 2L5 13h6l-2 9 9-12h-6z" fill="currentColor"/></svg>',
+  icy: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5"/></svg>',
+};
+
 /**
  * Square skill button for the selected unit. Its cost and effect show in an animated
  * card under it (on hover, focus, or while the skill is armed).
@@ -245,7 +256,7 @@ function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
     <div className={`skill-wrap${c.armed ? ' armed' : ''}${inline ? ' inline' : ''}`}>
       <button className={`skill-sq${c.armed ? ' armed' : ''}${can ? ' ready' : ''}`} type="button" disabled={!can && !c.armed}
         onClick={() => c.armSkill()} aria-label={sk ? `${sk.name}${active ? `, ${tk(sk.cost)}` : ''}` : 'Skill'}>
-        {hero ? <img src={ICON(u.hero)} alt="" /> : <span className="glyph">✦</span>}
+        <span className="glyph" dangerouslySetInnerHTML={{ __html: SKILL_ICON[sk?.key] || SKILL_ICON.none }} />
         {sk && <span className="sq-cost">{costChip(sk)}</span>}
         {cd > 0 && <span className="sq-cd">{cd}</span>}
       </button>
@@ -373,10 +384,13 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   const them = other(me);
   const topbar = !local && (
     <div className="statusbar">
-      <span className={`turn${waiting ? ' thinking' : ''}`}><span className={`team-dot ${over ? g.status : c.decider()}`} />{status}</span>
-      <span className="grow" />
-      <Tokens c={c} team={me} who="You" />
-      <Tokens c={c} team={them} who={c.mode.kind === 'bot' ? 'Bot' : 'Opponent'} />
+      <span className="sb-side left"><Tokens c={c} team={me} who="You" active={!over && c.decider() === me} /></span>
+      <span key={`${over ? g.status : c.decider()}-${over}`}
+        className={`turn-banner ${over ? g.status : c.decider()}${waiting ? ' waiting' : ''}${over ? ' over' : ''}`}>
+        {!over && <span className={`turn-arrow ${c.decider() === me ? 'to-left' : 'to-right'}`} aria-hidden="true">{c.decider() === me ? '◂' : '▸'}</span>}
+        <span className={`turn-text${waiting ? ' thinking' : ''}`}>{status}</span>
+      </span>
+      <span className="sb-side right"><Tokens c={c} team={them} who={c.mode.kind === 'bot' ? 'Bot' : 'Opponent'} active={!over && c.decider() === them} /></span>
     </div>
   );
 
