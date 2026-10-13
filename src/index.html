@@ -577,7 +577,7 @@ setup.picks.p2 = pickTeam(setup.botSeed);
 // Online room. Each side shares its own decisions (indexes into listActions) through room
 // presence; both screens replay them in turn order. See src/online.js.
 const net = {
-  room: null, unsub: null, code: null, side: null, joining: false, error: '',
+  room: null, unsub: null, code: null, side: null, joining: false, error: '', via: 'room',
   ready: false, match: 0, started: 0, mine: [], applied: { p1: 0, p2: 0 }, opp: null,
 };
 let roomApi = null;
@@ -1549,10 +1549,12 @@ async function joinRoom(text) {
 async function connectRoom(code, wantSide, rejoin, tries = 0) {
   if (!roomApi || net.joining) return;
   leaveRoom(false);
-  net.joining = true; net.error = ''; renderSetup();
+  net.joining = true; net.error = ''; net.via = 'room'; renderSetup();
   let room;
-  try { room = await roomApi.join(roomName(code)); } catch {
-    net.joining = false; net.error = 'Could not open the room. Try again in a moment.'; return renderSetup();
+  try { room = await openRoom(code); } catch (e) {
+    net.joining = false;
+    net.error = `Could not connect to rooms (${e?.code || 'unknown'}). ${e?.code === 'not_granted' ? 'This view can\'t use rooms: open the page signed in, from the Share invite or your own gallery.' : 'Try again in a moment.'}`;
+    return renderSetup();
   }
   await sleep(1600); // let the others in the room answer
   const others = room.peers().filter((p) => !p.sameTab && p.presence && p.presence.app === 'hg');
@@ -1578,6 +1580,42 @@ async function connectRoom(code, wantSide, rejoin, tries = 0) {
   onRoomPeers(room.peers());
   publish();
   renderSetup();
+}
+
+/** Wait until the room channel is up (it is normally within a second of load). */
+function waitConnected(api, ms = 5000) {
+  if (api.connected()) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let done = false, un = () => {};
+    const finish = (v) => { if (!done) { done = true; un(); resolve(v); } };
+    un = api.onConnection((c) => { if (c) finish(true); }, () => finish(false));
+    setTimeout(() => finish(api.connected()), ms);
+  });
+}
+
+/**
+ * Open the game room for a code: a named room when the platform offers it, otherwise the
+ * shared lobby with every presence tagged by the code (only same-code peers are seen).
+ */
+async function openRoom(code) {
+  await waitConnected(roomApi);
+  try { return await roomApi.join(roomName(code)); } catch (e) {
+    if (e?.code === 'not_granted' || e?.code === 'revoked') throw e;
+    net.via = `lobby (${e?.code || 'join failed'})`;
+    return lobbyRoom(roomApi, roomName(code));
+  }
+}
+
+function lobbyRoom(api, tag) {
+  const mine = (p) => p.sameTab || (p.presence && p.presence.room === tag);
+  const CLEAR = { app: null, v: null, room: null, side: null, picks: null, ready: null, match: null, mine: null, theirs: null, map: null, creeps: null };
+  return {
+    name: tag,
+    presence: (patch) => api.presence({ ...patch, room: tag }),
+    peers: () => api.peers().filter(mine),
+    onPeers: (fn, onError) => api.onPeers(() => fn({ peers: api.peers().filter(mine) }), onError),
+    leave: () => api.presence(CLEAR),
+  };
 }
 
 function leaveRoom(forget = true) {
@@ -1688,7 +1726,7 @@ function renderOnline() {
       <button class="btn" id="copycode" type="button">Copy</button></div>
     <span class="note"><span class="dot ${o ? (o.ready && o.match > net.started ? 'ready' : 'on') : ''}"></span>${oppState}
       You play ${TEAM_NAMES[net.side]}${net.side === 'p1' ? ' and pick the battlefield' : ''}.</span>
-    <button class="btn" id="leaveroom" type="button">Leave room</button>${err}`;
+    <button class="btn" id="leaveroom" type="button">Leave room</button>${err}${net.via !== 'room' ? `<span class="note" style="flex-basis:100%">Connected through the shared lobby: ${esc(net.via)}.</span>` : ''}`;
   $('copycode').addEventListener('click', () => { try { navigator.clipboard.writeText(net.code).catch(() => {}); } catch { /* no clipboard */ } $('copycode').textContent = 'Copied'; });
   $('leaveroom').addEventListener('click', () => { leaveRoom(); renderSetup(); });
 }
