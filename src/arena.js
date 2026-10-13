@@ -89,7 +89,7 @@ export const BEAST = {
 export const CREEP = {
   name: 'Creep', title: 'Minion', cls: 'claw',
   move: [{ kind: 'creep' }],
-  moveText: 'Steps 1 square forward onto an empty square, or captures an enemy diagonally in front. If terrain is straight ahead, it can step diagonally forward around it. Never moves back or sideways.',
+  moveText: 'Steps 1 square forward onto an empty square, or captures an enemy diagonally in front. If terrain is straight ahead, it can step diagonally around it or hop over it. Never moves back or sideways.',
 };
 export const heroDef = (u) => (u.kind === 'beast' ? BEAST : u.kind === 'creep' ? CREEP : HEROES[u.hero]);
 
@@ -211,13 +211,16 @@ export function moveOptions(s, u) {
       }
       const ahead = { r: u.pos.r + f, c: u.pos.c };
       if (inBounds(ahead) && !blockAt(s, ahead) && !unitAt(s, ahead)) push({ to: ahead, kills: [] });
-      // Terrain straight ahead (pillar, tree, ruin, rock, ice): the creep may step around it,
-      // diagonally forward onto an empty square. Units ahead still block, as with chess pawns.
+      // Terrain straight ahead (pillar, tree, ruin, rock, ice) never stops a creep: it may step
+      // around it diagonally forward, or hop over it to the square just beyond (both onto empty
+      // squares). Units straight ahead still block, as with chess pawns.
       if (inBounds(ahead) && blockAt(s, ahead)) {
         for (const dc of [-1, 1]) {
           const p = { r: u.pos.r + f, c: u.pos.c + dc };
           if (inBounds(p) && !blockAt(s, p) && !unitAt(s, p)) push({ to: p, kills: [] });
         }
+        const beyond = { r: u.pos.r + 2 * f, c: u.pos.c };
+        if (inBounds(beyond) && !blockAt(s, beyond) && !unitAt(s, beyond)) push({ to: beyond, kills: [] });
       }
     } else if (rule.kind === 'backstab') {
       // Any of the 8 directions: straight or diagonal.

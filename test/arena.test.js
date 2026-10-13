@@ -320,7 +320,11 @@ test('Storm Hammer never kills Hexor\'s own allies: blocked allies stay put', ()
 test('creeps step diagonally around terrain straight ahead, but not around units', () => {
   const s = setup({ 'p1-creep-c': 'c3', 'p1-hasim': 'a1', 'p2-genga': 'h8' }, { blocks: { c4: 'pillar' } });
   const dests = listActions(s).filter((a) => a.unitId === 'p1-creep-c').map((a) => a.to);
-  assert.deepEqual(dests.sort((a, b) => a.c - b.c), [sq('b4'), sq('d4')]);
+  assert.deepEqual(dests.sort((a, b) => a.c - b.c || a.r - b.r), [sq('b4'), sq('c5'), sq('d4')]);
+  // both diagonals taken by units: the hop over the pillar still works
+  const h = setup({ 'p1-creep-c': 'c3', 'p1-hasim': 'b4', 'p1-hexor': 'd4', 'p2-genga': 'h8' }, { blocks: { c4: 'pillar' } });
+  const hop = act(h, mv('p1-creep-c', 'c5'));
+  assert.deepEqual(hop.units['p1-creep-c'].pos, sq('c5'));
   const n = act(s, mv('p1-creep-c', 'd4'));
   assert.deepEqual(n.units['p1-creep-c'].pos, sq('d4'));
   // a unit straight ahead still blocks (no sidestep)

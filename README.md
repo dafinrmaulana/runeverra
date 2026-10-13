@@ -51,7 +51,7 @@ Three more portraits are in the roster as "Coming soon"; they need skill descrip
 
 Each side starts with 4 pawn-like creeps on its second rank (files a, c, e, g for Ivory; mirrored for Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
 
-- You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. If terrain (a map obstacle or Aqna's ice) is straight ahead, the creep may step diagonally forward around it onto an empty square, so obstacles never trap a creep; units ahead still block it. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
+- You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. If terrain (a map obstacle or Aqna's ice) is straight ahead, the creep may step diagonally forward around it or hop over it to the square just beyond (onto empty squares), so obstacles never trap a creep; units straight ahead still block it. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
 - Eliminating an enemy creep gives the killer's side +1 energy (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +2 energy.
 - Creeps don't count for victory, but a creep capture can eliminate a hero and win the match.
 - They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root or interrupt them, Magumba can ward them.
