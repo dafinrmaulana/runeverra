@@ -40,7 +40,7 @@ test('setup: 4 heroes each, beast beside Ge\'nga, symmetric map blocks, no first
   assert.throws(() => createMatch({ p1: ['hasim', 'hexor', 'aqna'] }));
 });
 
-test('roles: Roam and Assassin move 2 straight, Support 1, Hexor is a Roam with an L jump', () => {
+test('roles: Roam moves 2 straight, Assassin 2 in any direction, Support 1, Hexor is a Roam with an L jump', () => {
   assert.equal(HEROES.aqna.role, 'roam');
   assert.equal(HEROES.hexor.role, 'roam');
   assert.equal(HEROES.hasim.role, 'assassin');
@@ -48,7 +48,7 @@ test('roles: Roam and Assassin move 2 straight, Support 1, Hexor is a Roam with 
   assert.equal(ENERGY.max, 4);
   const s = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'h4', 'p2-plantae': 'h8' });
   const names = (u) => moveOptions(s, s.units[u]).map((o) => 'abcdefgh'[o.to.c] + (8 - o.to.r)).sort();
-  assert.deepEqual(names('p1-hasim'), ['b4', 'c4', 'd2', 'd3', 'd5', 'd6', 'e4', 'f4']);
+  assert.deepEqual(names('p1-hasim'), ['b2', 'b4', 'b6', 'c3', 'c4', 'c5', 'd2', 'd3', 'd5', 'd6', 'e3', 'e4', 'e5', 'f2', 'f4', 'f6']);
   assert.deepEqual(names('p2-aqna'), ['f4', 'g4', 'h2', 'h3', 'h5', 'h6']);
   assert.deepEqual(names('p2-plantae'), ['g8', 'h7']);
 });
@@ -66,32 +66,28 @@ test('basic movement per hero, terrain blocks, capture by moving', () => {
   assert.equal(n2.units['p1-hasim'].alive, false);
 });
 
-test('Hasim Backstab: costs 1 token per jump, any direction; kills jumped enemy and landing enemy', () => {
-  const opts = { energy: { p1: 1, p2: 0 } };
-  const broke = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'd5', 'p2-plantae': 'd6', 'p2-genga': 'h8' });
-  assert.match(reject(broke, mv('p1-hasim', 'd6')), /token/);
-  assert.equal(listActions(broke).some((a) => a.unitId === 'p1-hasim' && a.to.r === sq('d6').r && a.to.c === sq('d6').c), false);
-  let s = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'd5', 'p2-plantae': 'd6', 'p2-genga': 'h8' }, opts);
+test('Hasim Backstab: free signature move in any direction; kills jumped enemy and landing enemy', () => {
+  let s = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'd5', 'p2-plantae': 'd6', 'p2-genga': 'h8' });
+  assert.equal(s.energy.p1, 0);
   s = act(s, mv('p1-hasim', 'd6'));
   assert.equal(s.units['p2-aqna'].alive, false);
   assert.equal(s.units['p2-plantae'].alive, false);
   assert.deepEqual(s.units['p1-hasim'].pos, sq('d6'));
-  assert.equal(s.energy.p1, 0, 'paid 1 token');
-  // a plain slide stays free
-  const free = act(setup({ 'p1-hasim': 'd4', 'p2-genga': 'h8' }), mv('p1-hasim', 'd6'));
-  assert.deepEqual(free.units['p1-hasim'].pos, sq('d6'));
+  assert.equal(s.energy.p1, 0, 'costs no tokens');
   // over an ally: no kill; over terrain: allowed
-  let t = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'c5', 'p2-genga': 'h8' }, { ...opts, blocks: { d5: 'pillar' } });
+  let t = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'c5', 'p2-genga': 'h8' }, { blocks: { d5: 'pillar' } });
   t = act(t, mv('p1-hasim', 'b6'));
   assert.equal(t.units['p1-hexor'].alive, true);
-  act(setup({ 'p1-hasim': 'd4', 'p2-genga': 'h8' }, { ...opts, blocks: { d5: 'pillar' } }), mv('p1-hasim', 'd6'));
-  // back, back-diagonal, sideways; never with nothing to jump
-  const t3 = setup({ 'p1-hasim': 'd4', 'p2-aqna': 'd3', 'p2-plantae': 'c3', 'p2-genga': 'h8', 'p2-beast': 'e4' }, opts);
+  act(setup({ 'p1-hasim': 'd4', 'p2-genga': 'h8' }, { blocks: { d5: 'pillar' } }), mv('p1-hasim', 'd6'));
+  // back, back-diagonal, sideways
+  const t3 = setup({ 'p1-hasim': 'd4', 'p2-aqna': 'd3', 'p2-plantae': 'c3', 'p2-genga': 'h8', 'p2-beast': 'e4' });
   assert.equal(act(t3, mv('p1-hasim', 'd2')).units['p2-aqna'].alive, false);
   assert.equal(act(t3, mv('p1-hasim', 'b2')).units['p2-plantae'].alive, false);
   assert.equal(act(t3, mv('p1-hasim', 'f4')).units['p2-beast'].alive, false);
-  reject(t3, mv('p1-hasim', 'f6')); // e5 is empty
-  reject(t3, mv('p1-hasim', 'b6')); // c5 is empty
+  // over an empty square it is just a 2-square move: nobody dies; never 3 squares
+  const plain = act(t3, mv('p1-hasim', 'f6'));
+  assert.equal(Object.values(plain.units).filter((u) => !u.alive).length, 0);
+  reject(t3, mv('p1-hasim', 'd7'));
 });
 
 test('Ge\'nga: the beast follow-up costs 1 token and is only offered when affordable', () => {

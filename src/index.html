@@ -493,10 +493,10 @@
         <ul>
           <li><b>Goal.</b> Eliminate all four enemy heroes. Beasts and creeps don't count.</li>
           <li><b>One action per turn:</b> move one unit, or use an active skill. Moving onto an enemy eliminates it.</li>
-          <li><b>Roles.</b> Roam (Ge'nga, Aqna, Hexor) and Assassin (Hasim) move up to 2 squares straight; Hexor's L jump counts as his 2 steps. Support (Plantae) steps 1 but reaches 3 with its skill. Magumba slides up to 2 diagonally.</li>
+          <li><b>Roles.</b> Roam (Ge'nga, Aqna, Hexor) move up to 2 squares straight; Hexor's L jump counts as his 2 steps. Assassin (Hasim) moves up to 2 squares in any direction. Support (Plantae) steps 1 but reaches 3 with its skill. Magumba slides up to 2 diagonally.</li>
           <li><b>Terrain</b> (pillars, trees, ruins, rocks, ice) blocks movement. Only Hasim's Backstab and Hexor's jump go over it; nobody lands on it.</li>
-          <li><b>Skill tokens</b> pay for every skill, passive or active. Both sides start with 4 (the max) and they don't refill each turn: you only earn +1 for killing an enemy creep or getting your creep to the far rank. Costs follow impact: Backstab 1 per jump, beast follow-up 1, ice 1, Empty Grave 2, Storm Hammer 2, Aggressive Root 2 (interrupt 3).</li>
-          <li><b>Hasim · Backstab</b> (1 token per jump). Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps you can afford.</li>
+          <li><b>Skill tokens</b> pay for every skill, passive or active. Both sides start with 4 (the max) and they don't refill each turn: you only earn +1 for killing an enemy creep or getting your creep to the far rank. Costs follow impact (Hasim's Backstab is his free signature move): beast follow-up 1, ice 1, Empty Grave 2, Storm Hammer 2, Aggressive Root 2 (interrupt 3).</li>
+          <li><b>Hasim · Backstab</b> (signature move, free). Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps.</li>
           <li><b>Ge'nga · Wild Company</b> (1 token). Right after he acts you may pay to move his beast too, or skip. It flees if he falls.</li>
           <li><b>Magumba · Empty Grave</b> (2 tokens, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn. Clears Root.</li>
           <li><b>Plantae · Aggressive Root</b> (2 tokens, range 3, cooldown 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you may interrupt for 3 tokens: the action is negated and their turn ends. The catch (the hole): Plantae roots itself and can't act on your next turn. Either use puts it on cooldown for 3 of your turns.</li>
@@ -524,7 +524,7 @@ const tk = (n) => `${n} token${n === 1 ? '' : 's'}`;
 /** Short cost label for a skill, e.g. "Active · 2 tokens". */
 function costLabel(sk) {
   if (sk.type === 'active') return `Active · ${tk(sk.cost)}${sk.reactionCost ? ` · interrupt ${sk.reactionCost}` : ''}`;
-  if (sk.type === 'move') return `Passive · ${tk(sk.cost)} per jump`;
+  if (sk.type === 'move') return sk.cost ? `Passive · ${tk(sk.cost)} per jump` : 'Signature move · free';
   return `Follow-up · ${tk(sk.cost)}`;
 }
 const roleOf = (id) => (HEROES[id].role ? ROLES[HEROES[id].role] : '');
@@ -625,7 +625,7 @@ function renderSetup() {
       <span class="body">
         <span class="sk">${sk.name} <em>${costLabel(sk)}</em></span>
         <span class="txt">${sk.text}</span>
-        <span class="mv">${moveDiagram(id)}<span>${h.moveText}${id === 'hasim' ? ' Red squares: Backstab jumps (any direction, over a unit or terrain).' : ''}</span></span>
+        <span class="mv">${moveDiagram(id)}<span>${h.moveText}${id === 'hasim' ? ' Red squares can also be reached by Backstab, jumping over a unit or terrain.' : ''}</span></span>
       </span>
     </button>`;
   }).join('') + LOCKED.map((l) => `<div class="card locked" aria-disabled="true">
@@ -661,7 +661,7 @@ function moveDiagram(hero) {
   let out = '';
   for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) {
     const k = `${r},${c}`;
-    out += `<i class="${r === 3 && c === 3 ? 'me' : go.has(k) ? 'go' : jump.has(k) ? 'jump' : ''}"></i>`;
+    out += `<i class="${r === 3 && c === 3 ? 'me' : jump.has(k) ? 'jump' : go.has(k) ? 'go' : ''}"></i>`;
   }
   return `<span class="diag" aria-hidden="true">${out}</span>`;
 }

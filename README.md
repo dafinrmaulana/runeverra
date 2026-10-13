@@ -32,7 +32,7 @@ Heroes are data in `HEROES` (src/arena.js): name, class, role, movement rules, s
 | Role | Heroes | Movement |
 |---|---|---|
 | Roam | Ge'nga, Aqna, Hexor | up to 2 squares straight; Hexor's L jump counts as his 2 steps |
-| Assassin | Hasim | up to 2 squares straight, plus the Backstab jump |
+| Assassin | Hasim | up to 2 squares in any direction, plus the Backstab jump (free signature move) |
 | Support | Plantae | 1 square straight; skill reaches 3, with a weakness (below) |
 | (none yet) | Magumba | up to 2 squares diagonally |
 
@@ -42,7 +42,7 @@ Each team has 4 heroes and at most 4 tokens. Both sides start full (4) and token
 
 | Hero | Skill | Type | Cost | What it does |
 |---|---|---|---|---|
-| Hasim | Backstab | per jump | 1 | jumps in any of the 8 directions over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
+| Hasim | Backstab | signature move | free | jumps in any of the 8 directions over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
 | Ge'nga | Wild Company | follow-up | 1 | after Ge'nga acts, the beast also moves (or skip, free); it flees if he falls |
 | Aqna | Icy Step | follow-up | 1 | after a kill, raise an ice block within 3; max 10, then her oldest block moves |
 | Magumba | Empty Grave | active, range 3 | 2 | an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
