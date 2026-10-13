@@ -472,7 +472,7 @@
           <li><b>One action per turn:</b> move one hero, or use an active skill. Moving onto an enemy eliminates it.</li>
           <li><b>Terrain</b> (pillars, trees, ruins, rocks, ice) blocks movement. Only Hasim's Backstab and Hexor's jump go over it; nobody lands on it.</li>
           <li><b>Energy</b> pays for active skills: +1 at the start of each of your turns, up to 6. Both sides start with 1.</li>
-          <li><b>Hasim · Backstab.</b> Jumps forward (straight or diagonal) over the adjacent unit or terrain. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps.</li>
+          <li><b>Hasim · Backstab.</b> Jumps forward or back (straight or diagonal, not sideways) over the adjacent unit or terrain. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps.</li>
           <li><b>Ge'nga · Wild Company.</b> His beast acts right after him each time he acts (or you skip). It flees if he falls.</li>
           <li><b>Magumba · Empty Grave</b> (3 energy, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn. Clears Root.</li>
           <li><b>Plantae · Aggressive Root</b> (3 energy, range 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you're asked whether to interrupt: the action is negated and their turn ends.</li>
@@ -620,7 +620,7 @@ function moveDiagram(hero) {
   s.units = { x: me };
   const go = new Set(moveOptions(s, me).map((o) => `${o.to.r},${o.to.c}`));
   const jump = new Set();
-  if (hero === 'hasim') for (const dc of [-1, 0, 1]) jump.add(`1,${3 + 2 * dc}`);
+  if (hero === 'hasim') for (const r of [1, 5]) for (const dc of [-1, 0, 1]) jump.add(`${r},${3 + 2 * dc}`);
   let out = '';
   for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) {
     const k = `${r},${c}`;

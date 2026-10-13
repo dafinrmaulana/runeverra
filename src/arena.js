@@ -28,7 +28,7 @@ export const HEROES = {
     moveText: 'Steps 1 square in any direction.',
     skill: {
       key: 'backstab', name: 'Backstab', type: 'passive',
-      text: 'Jumps forward over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',
+      text: 'Jumps forward or back over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',
     },
   },
   genga: {
@@ -185,8 +185,8 @@ export function moveOptions(s, u) {
         else if (canBeHit(u, o)) push({ to: p, kills: [o.id] });
       }
     } else if (rule.kind === 'backstab') {
-      const f = forward(u.team);
-      for (const dc of [-1, 0, 1]) {
+      // Forward or backward, straight or diagonal (no sideways jumps).
+      for (const f of [forward(u.team), -forward(u.team)]) for (const dc of [-1, 0, 1]) {
         const mid = { r: u.pos.r + f, c: u.pos.c + dc };
         const land = { r: u.pos.r + 2 * f, c: u.pos.c + 2 * dc };
         if (!inBounds(mid) || !inBounds(land)) continue;

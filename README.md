@@ -29,7 +29,7 @@ Heroes are data in `HEROES` (src/arena.js): name, class, movement rules, skill. 
 
 | Hero | Class | Moves | Skill |
 |---|---|---|---|
-| Hasim, Desert Assassin | Claw | 1 square any direction | **Backstab** (passive): jumps forward (straight or diagonal) over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
+| Hasim, Desert Assassin | Claw | 1 square any direction | **Backstab** (passive): jumps forward or back (straight or diagonal, not sideways) over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
 | Ge'nga, Beast Master | Claw | up to 2 straight | **Wild Company** (passive): starts with a beast; the beast acts right after him (or skip); it flees if he falls |
 | Magumba, Shadow Shaman | Leaf | up to 2 diagonal | **Empty Grave** (active, 3 energy, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
 | Plantae, Jungle Keeper | Leaf | 1 straight | **Aggressive Root** (active, 3 energy, range 3): roots an enemy for its next turn, or interrupts an enemy action within range during their turn (the action is negated, their turn ends) |
@@ -43,7 +43,7 @@ Three more portraits are in the roster as "Coming soon"; they need skill descrip
 
 - Movement for every hero was chosen by me (cards only describe skills). Change `move` in `HEROES` to adjust.
 - Moving onto an enemy eliminates it (capture), for every hero and the beast.
-- Hasim's "forward" = toward the enemy side, straight or diagonal. Board edges and terrain count as "terrain" for Storm Hammer.
+- Hasim's Backstab goes forward or back, straight or diagonal; sideways jumps aren't included. Board edges and terrain count as "terrain" for Storm Hammer.
 - Empty Grave lasts until the caster's next turn. Aggressive Root's reaction negates the action; the unit isn't also rooted on its next turn.
 - Energy: both start with 1, +1 at the start of each own turn, max 6.
 
