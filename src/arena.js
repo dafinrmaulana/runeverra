@@ -6,14 +6,14 @@ export const BOARD_SIZE = 8;
 export const TEAMS = ['p1', 'p2'];
 export const TEAM_NAMES = { p1: 'Ivory', p2: 'Ember' };
 // Skill tokens ("energy" in code): every skill costs tokens according to its impact.
-export const ENERGY = { start: 1, perTurn: 1, max: 4 };
+export const ENERGY = { start: 4, perTurn: 0, max: 4 };
 export const TEAM_SIZE = 4;
 export const ICE_LIMIT = 10;
 // Creeps: pawn-like minions moved by their player (moving one uses the turn's action).
 //   files: the flank lanes; both sides' creeps start on these files (second rank) and face each other.
 //   Map terrain never sits on these files, so creeps are only ever blocked by units.
 //   lastHit: tokens for eliminating an enemy creep; breach: tokens when a creep reaches the far rank
-export const CREEPS = { files: ['a', 'b', 'g', 'h'], lastHit: 1, breach: 2 };
+export const CREEPS = { files: ['a', 'b', 'g', 'h'], lastHit: 1, breach: 1 };
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];

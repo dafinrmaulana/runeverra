@@ -495,14 +495,14 @@
           <li><b>One action per turn:</b> move one unit, or use an active skill. Moving onto an enemy eliminates it.</li>
           <li><b>Roles.</b> Roam (Ge'nga, Aqna, Hexor) and Assassin (Hasim) move up to 2 squares straight; Hexor's L jump counts as his 2 steps. Support (Plantae) steps 1 but reaches 3 with its skill. Magumba slides up to 2 diagonally.</li>
           <li><b>Terrain</b> (pillars, trees, ruins, rocks, ice) blocks movement. Only Hasim's Backstab and Hexor's jump go over it; nobody lands on it.</li>
-          <li><b>Skill tokens</b> pay for every skill: +1 at the start of each of your turns, up to 4. Both sides start with 1. Costs follow impact: Backstab 1 per jump, beast follow-up 1, ice 1, Empty Grave 2, Storm Hammer 2, Aggressive Root 2 (interrupt 3).</li>
+          <li><b>Skill tokens</b> pay for every skill, passive or active. Both sides start with 4 (the max) and they don't refill each turn: you only earn +1 for killing an enemy creep or getting your creep to the far rank. Costs follow impact: Backstab 1 per jump, beast follow-up 1, ice 1, Empty Grave 2, Storm Hammer 2, Aggressive Root 2 (interrupt 3).</li>
           <li><b>Hasim · Backstab</b> (1 token per jump). Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps you can afford.</li>
           <li><b>Ge'nga · Wild Company</b> (1 token). Right after he acts you may pay to move his beast too, or skip. It flees if he falls.</li>
           <li><b>Magumba · Empty Grave</b> (2 tokens, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn. Clears Root.</li>
           <li><b>Plantae · Aggressive Root</b> (2 tokens, range 3, cooldown 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you may interrupt for 3 tokens: the action is negated and their turn ends. The catch (the hole): Plantae roots itself and can't act on your next turn. Either use puts it on cooldown for 3 of your turns.</li>
           <li><b>Hexor · Storm Hammer</b> (2 tokens). After he captures, you may pay to slam: every unit around him (allies too) is pushed 1 square away, chaining. An enemy pushed into terrain or off the board is eliminated; an ally that would be pushed there stays put instead.</li>
           <li><b>Aqna · Icy Step</b> (1 token). After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
-          <li><b>Creeps.</b> Each side starts with 4 pawns on the flank lanes (files a, b, g, h), facing the enemy's creeps. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. Map terrain sits only in the four centre files, so it never blocks a lane. Eliminating an enemy creep gives +1 token; a creep that reaches the far rank breaks through for +2 tokens. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
+          <li><b>Creeps.</b> Each side starts with 4 pawns on the flank lanes (files a, b, g, h), facing the enemy's creeps. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. Map terrain sits only in the four centre files, so it never blocks a lane. Eliminating an enemy creep gives +1 token; a creep that reaches the far rank breaks through for +1 token. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
           <li><b>Distances</b> count diagonals as 1, like a chess king's steps: "within 3" means the 7×7 square around the hero. Select Plantae to see its reach tinted green. Each hero's movement is shown on its card.</li>
           <li><b>Controls.</b> Click a hero, then a marked square. Q or the skill button arms an active skill. Esc cancels.</li>
         </ul>
@@ -1051,7 +1051,7 @@ function renderHero(u, threats) {
     const cdNote = sk.type === 'active' && skillCooldown(u) ? `<span style="color:var(--brass)">Recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.</span>` : '';
     skillHtml = `<div class="skill"><b>${sk.name}<em>${meta}</em></b><span>${sk.text}</span>${cdNote}${btn}</div>`;
   } else if (u.kind === 'creep') {
-    skillHtml = `<div class="skill"><b>Minion<em>no skill</em></b><span>Moving a creep uses your turn. Killing an enemy creep gives +${tk(CREEPS.lastHit)}; a creep that reaches the far rank breaks through for +${CREEPS.breach}.</span></div>`;
+    skillHtml = `<div class="skill"><b>Minion<em>no skill</em></b><span>Moving a creep uses your turn. Killing an enemy creep gives +${tk(CREEPS.lastHit)}; a creep that reaches the far rank breaks through for +${tk(CREEPS.breach)}.</span></div>`;
   } else {
     skillHtml = '<div class="skill"><b>Companion<em>no skill</em></b><span>Acts only in the follow-up after Ge\'nga. It can capture like any unit.</span></div>';
   }
@@ -1379,7 +1379,7 @@ const FX = (() => {
         flash(la.to, COL.brass, 1.2, 420);
         ring(la.to, COL.brass, { to: 1.3, w: 4, life: 560 });
         burst(la.to, [COL.brass, COL.white], 16, { shape: 'spark', dir: -Math.PI / 2, spread: 1.2, min: 2, max: 4.5, life: [300, 600] });
-        text(la.to, `+${CREEPS.breach} TOKENS`, COL.brass);
+        text(la.to, `+${tk(CREEPS.breach).toUpperCase()}`, COL.brass);
       });
     }
     if (la.kind === 'move') {

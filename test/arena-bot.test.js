@@ -28,7 +28,7 @@ test('bot answers follow-up phases and reaction prompts with legal choices', () 
   assert.ok(applyAction(s, r.action).ok);
   // storm phase: Hexor captured with 2 tokens in the bank
   let t = setup({ 'p1-hexor': 'b3', 'p1-hasim': 'a1', 'p2-aqna': 'c5', 'p2-plantae': 'd5', 'p2-genga': 'h8' });
-  t.energy.p1 = 2;
+  t.energy = { p1: 2, p2: 0 };
   t = applyAction(t, { type: 'move', unitId: 'p1-hexor', to: sq('c5') }).state;
   assert.equal(t.phase, 'storm');
   const st = chooseAction(t, 'normal');

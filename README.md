@@ -38,7 +38,7 @@ Heroes are data in `HEROES` (src/arena.js): name, class, role, movement rules, s
 
 ### Skill tokens
 
-Each team has 4 heroes and at most 4 tokens. Both sides start with 1, gain +1 at the start of each own turn, +1 for killing an enemy creep, +2 when a creep breaks through. Every skill costs tokens according to its impact:
+Each team has 4 heroes and at most 4 tokens. Both sides start full (4) and tokens do **not** refill each turn: the only income is +1 for killing an enemy creep (last hit) and +1 when your creep reaches the far rank. Every skill, passive or active, costs tokens according to its impact:
 
 | Hero | Skill | Type | Cost | What it does |
 |---|---|---|---|---|
@@ -64,7 +64,7 @@ Follow-ups are offered only when you can afford them, and skipping is free. Thre
 Each side starts with 4 pawn-like creeps on its second rank in the flank lanes (files a, b, g, h), facing the enemy's creeps. Map terrain only sits in the four centre files (c–f), so obstacles never block a lane; heroes start on c1–f1 (Ivory) and c8–f8 (Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
 
 - You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
-- Eliminating an enemy creep gives the killer's side +1 token (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +2 tokens.
+- Eliminating an enemy creep gives the killer's side +1 token (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +1 token.
 - Creeps don't count for victory, but a creep capture can eliminate a hero and win the match.
 - They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root or interrupt them, Magumba can ward them.
 
@@ -114,14 +114,18 @@ Phases: `main` → optional `storm` (after a Hexor capture), `beast` (after Ge'n
 
 `chooseAction(state, level)` uses iterative deepening alpha-beta under a time limit (Easy 0.15 s, Normal 0.6 s, Hard 1.4 s), extends capture sequences, and spends no depth on in-turn follow-ups. It decides reactions too.
 
-## Balance notes (bot vs bot, 4-hero teams, token costs)
+## Balance notes (bot vs bot, 4-hero teams)
 
-Small samples (16 games each, bot Normal, random maps, run 8 at a time on 2 cores, so the bots search shallower than in the browser):
+Bot Normal, random maps, 300-action limit, run several at a time on 2 cores (shallower search than in the browser).
 
-- Random teams: Ivory 5, Ember 6, unfinished at 300 actions 5. Median length of decided games about 120 actions.
-- Plantae's team vs a team without Plantae: 8–3, 5 unfinished, about 3 interrupts per game. Better than the uncapped original (24–0), but Plantae is still the strongest pick; if it stays ahead, the next lever is the interrupt cost (3 → 4, i.e. a full bank).
-- Skill use per game (average): Empty Grave 13, Ge'nga's beast 9, Aggressive Root 8, Backstab 4, interrupt 3, Storm Hammer 1, Icy Step 1. Storm Hammer and Icy Step are rarely bought, so they may be priced too high or just rarely triggered.
-- Stalls remain: about a third of games end without a winner. There is no draw rule yet.
+| Token rule | Games | Ivory | Ember | Unfinished | Plantae team vs other |
+|---|---|---|---|---|---|
+| start 1, +1 per turn, creep kill +1, breach +2 | 16 + 16 | 5 | 6 | 5 | 8–3, 5 unfinished |
+| **start 4, no refill, creep kill +1, breach +1 (current)** | 8 + 8 | 0 | 2 | 6 | 0–1, 7 unfinished |
+
+- With no refill, tokens run out early and skills almost disappear from the midgame (about 1–2 skill uses per game after the opening spend). Plantae interrupted once in 8 games instead of about 3 times per game.
+- Matches stall far more often: most games end without a winner. An anti-stall rule matters even more now; creep income is the only way to get tokens back, so pushing creeps is the main route to skills.
+- Small samples; treat as direction, not as numbers.
 
 ## Tests
 

@@ -147,7 +147,7 @@ test('Plantae interrupt: 3 tokens, negates the action, then Plantae is rooted on
   let used = act(s, { type: 'react', use: true });
   assert.deepEqual(used.units['p1-hexor'].pos, sq('d4'));
   assert.equal(used.current, 'p2', 'Ivory\'s turn is over; Ember plays normally');
-  assert.equal(used.energy.p2, 1, '3 spent, +1 for the new turn');
+  assert.equal(used.energy.p2, 0, '3 spent, no refill on the new turn');
   assert.equal(used.units['p2-plantae'].rooted, 1);
   assert.ok(!listActions(used).some((a) => a.unitId === 'p2-plantae'), 'Plantae is stuck this turn');
   assert.match(reject(used, mv('p2-plantae', 'd6')), /roots/);
@@ -177,7 +177,7 @@ test('Hexor Storm Hammer: optional 2-token slam after a capture; pushes, chains,
   const skipped = act(s, { type: 'skip' });
   assert.equal(skipped.current, 'p2');
   assert.deepEqual(skipped.units['p2-plantae'].pos, sq('d5'), 'skip: nobody is pushed');
-  assert.equal(skipped.energy.p2, 1);
+  assert.equal(skipped.energy.p2, 0, 'tokens do not refill each turn');
   s = act(s, { type: 'storm' });
   assert.equal(s.energy.p1, 0);
   assert.equal(s.lastAction.kind, 'storm');
@@ -226,14 +226,22 @@ test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest m
   assert.equal(u.energy.p1, 1);
 });
 
-test('tokens: start at 1, +1 per own turn, capped at 4', () => {
+test('tokens: start full at 4, never refill per turn, only creeps give more (capped at 4)', () => {
   let s = createMatch({ map: 'field' });
-  assert.deepEqual(s.energy, { p1: 1, p2: 1 });
+  assert.deepEqual(s.energy, { p1: 4, p2: 4 });
   s = act(s, mv('p1-hasim', 'c2'));
-  assert.equal(s.energy.p2, 2);
-  s.energy.p1 = 4;
-  s = act(s, listActions(s).find((a) => a.type === 'move'));
-  assert.equal(s.energy.p1, 4);
+  assert.equal(s.energy.p2, 4);
+  s.energy = { p1: 1, p2: 1 };
+  s = act(s, mv('p2-creep-a', 'a6'));
+  s = act(s, mv('p1-creep-a', 'a3'));
+  assert.deepEqual(s.energy, { p1: 1, p2: 1 }, 'no +1 per turn');
+  assert.equal(CREEPS.lastHit, 1);
+  assert.equal(CREEPS.breach, 1);
+  // a creep kill at full tokens stays at the cap
+  let k = setup({ 'p1-aqna': 'd4', 'p1-hasim': 'a1', 'p2-creep-b': 'd6', 'p2-genga': 'h8' }, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 4, p2: 0 } });
+  k = act(k, mv('p1-aqna', 'd6'));
+  if (k.phase === 'ice') k = act(k, { type: 'skip' });
+  assert.equal(k.energy.p1, 4);
 });
 
 test('win when every enemy hero is down (beasts do not count)', () => {
