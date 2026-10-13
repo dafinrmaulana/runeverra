@@ -59,8 +59,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
     moveText: 'Steps 1 square straight.',
     skill: {
-      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reaction: true,
-      text: 'Roots an enemy up to 3 squares away: it can\'t act on its next turn. Can also be cast during the opponent\'s turn, when an enemy within 3 squares acts: that action is negated.',
+      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reaction: true, cooldown: 3, maxReactions: 1,
+      text: 'Roots an enemy up to 3 squares away: it can\'t act on its next turn. Once per match it can instead be cast during the opponent\'s turn, when an enemy within 3 squares acts: that action is negated. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {
@@ -165,7 +165,7 @@ export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } =
 }
 
 function makeUnit(id, team, hero, kind, pos) {
-  return { id, team, hero, kind, pos: { ...pos }, alive: true, rooted: 0, warded: false };
+  return { id, team, hero, kind, pos: { ...pos }, alive: true, rooted: 0, warded: false, cd: 0 };
 }
 
 // The log is append-only and its entries are never mutated, so it is shared, not deep-copied.
@@ -236,9 +236,12 @@ export function moveOptions(s, u) {
 }
 
 // ---------- skills ----------
+/** Turns until a hero's active skill is ready again (0 = ready). */
+export const skillCooldown = (u) => u.cd || 0;
+
 export function skillTargets(s, u) {
   const sk = HEROES[u.hero]?.skill;
-  if (!sk || sk.type !== 'active') return [];
+  if (!sk || sk.type !== 'active' || skillCooldown(u) > 0) return [];
   if (sk.key === 'grave') {
     return livingUnits(s, u.team).filter((a) => chebyshev(a.pos, u.pos) <= sk.range && !a.warded).map((a) => a.id);
   }
@@ -312,6 +315,7 @@ function explain(s, a) {
   if (a.type === 'skill') {
     const sk = HEROES[u.hero].skill;
     if (sk.type !== 'active') return `${sk.name} is passive; it triggers on its own.`;
+    if (skillCooldown(u) > 0) return `${sk.name} is recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.`;
     if (s.energy[u.team] < sk.cost) return `${sk.name} needs ${sk.cost} energy; you have ${s.energy[u.team]}.`;
     const t = s.units[a.targetId];
     if (!t || !t.alive) return 'Choose a living target.';
@@ -400,6 +404,7 @@ function resolveSkill(s, action, lines, last) {
   const sk = HEROES[u.hero].skill;
   const t = s.units[action.targetId];
   s.energy[u.team] -= sk.cost;
+  if (sk.cooldown) u.cd = sk.cooldown;
   last.kind = sk.key; last.from = { ...u.pos }; last.to = null; last.hits.push({ ...t.pos }); last.targetId = t.id;
   if (sk.key === 'grave') {
     t.warded = true; t.rooted = 0;
@@ -434,7 +439,10 @@ export function applyAction(state, action, { trusted = false } = {}) {
     const plant = plantaeOf(s, other(s.current));
     s.phase = s.pending.resume; s.pending = s.pending.resumePending;
     if (action.use) {
-      s.energy[plant.team] -= HEROES.plantae.skill.cost;
+      const sk = HEROES.plantae.skill;
+      s.energy[plant.team] -= sk.reactionCost ?? sk.cost;
+      plant.cd = sk.cooldown || 0;
+      plant.reacts = (plant.reacts || 0) + 1;
       last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, phase: 'react' };
       lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated.`);
       pushLog(s, lines, plant.team);
@@ -525,8 +533,10 @@ function canReact(s, action) {
   if (!actor) return false;
   const team = other(actor.team);
   const plant = plantaeOf(s, team);
-  if (!plant || plant.rooted) return false;
-  if (s.energy[team] < HEROES.plantae.skill.cost) return false;
+  const sk = HEROES.plantae.skill;
+  if (!plant || plant.rooted || skillCooldown(plant) > 0) return false;
+  if (sk.maxReactions != null && (plant.reacts || 0) >= sk.maxReactions) return false;
+  if (s.energy[team] < (sk.reactionCost ?? sk.cost)) return false;
   if (actor.warded) return false;
   return chebyshev(plant.pos, actor.pos) <= HEROES.plantae.skill.range;
 }
@@ -612,7 +622,10 @@ function endTurn(s) {
     s.turn += 1;
     s.phase = 'main'; s.pending = null;
     s.energy[s.current] = Math.min(ENERGY.max, s.energy[s.current] + ENERGY.perTurn);
-    for (const u of livingUnits(s, s.current)) u.warded = false; // Empty Grave lasts until the caster's next turn
+    for (const u of livingUnits(s, s.current)) {
+      u.warded = false; // Empty Grave lasts until the caster's next turn
+      if (u.cd > 0) u.cd -= 1; // skill cooldowns tick at the start of the owner's turn
+    }
     if (hasAnyAction(s)) return;
     s.log.push({ turn: s.turn, team: s.current, text: `${TEAM_NAMES[s.current]} has no legal action and passes.` });
   }

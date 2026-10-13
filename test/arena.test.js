@@ -268,3 +268,37 @@ test('creeps can be turned off', () => {
   const s = createMatch({ map: 'field', creeps: false });
   assert.equal(Object.values(s.units).filter((u) => u.kind === 'creep').length, 0);
 });
+
+test('Aggressive Root has a 3-turn cooldown shared by active use and reactions', () => {
+  // active use, then not available for the next 2 Ember turns, ready on the 3rd
+  let s = setup({ 'p2-plantae': 'd6', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 6 } });
+  s = act(s, { type: 'skill', unitId: 'p2-plantae', skill: 'root', targetId: 'p1-hexor' });
+  assert.equal(s.units['p2-plantae'].cd, 3);
+  s = act(s, mv('p1-hasim', 'a2'));
+  assert.equal(s.units['p2-plantae'].cd, 2);
+  s.energy.p2 = 6;
+  assert.match(reject(s, { type: 'skill', unitId: 'p2-plantae', skill: 'root', targetId: 'p1-hasim' }), /recharging: ready in 2 turns/);
+  // and no reaction prompt while recharging
+  s = act(s, mv('p2-aqna', 'h7'));
+  const noPrompt = act(s, mv('p1-hexor', 'e6'));
+  assert.equal(noPrompt.phase, 'main');
+  // reaction also starts the cooldown
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 6 } });
+  let r = act(act(base, mv('p1-hexor', 'e6')), { type: 'react', use: true });
+  assert.equal(r.units['p2-plantae'].cd, 2, 'set to 3, ticked once at the start of Ember\'s turn');
+  assert.equal(listActions(r).some((a) => a.type === 'skill'), false);
+});
+
+test('Aggressive Root can interrupt only once per match', () => {
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 6 } });
+  let s = act(act(base, mv('p1-hexor', 'e6')), { type: 'react', use: true });
+  assert.equal(s.units['p2-plantae'].reacts, 1);
+  s.units['p2-plantae'].cd = 0; s.energy.p2 = 6;           // even fully recharged and rich...
+  s = act(s, mv('p2-aqna', 'h7'));
+  const again = act(s, mv('p1-hexor', 'e6'));
+  assert.equal(again.phase, 'main', '...no second interrupt prompt');
+  assert.deepEqual(again.units['p1-hexor'].pos, sq('e6'));
+  // active rooting is still available after the interrupt is spent
+  s = again; s.units['p2-plantae'].cd = 0;
+  assert.ok(listActions(s).some((a) => a.type === 'skill' && a.skill === 'root'));
+});

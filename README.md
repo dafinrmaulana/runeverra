@@ -32,7 +32,7 @@ Heroes are data in `HEROES` (src/arena.js): name, class, movement rules, skill. 
 | Hasim, Desert Assassin | Claw | 1 square any direction | **Backstab** (passive): jumps in any of the 8 directions over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
 | Ge'nga, Beast Master | Claw | up to 2 straight | **Wild Company** (passive): starts with a beast; the beast acts right after him (or skip); it flees if he falls |
 | Magumba, Shadow Shaman | Leaf | up to 2 diagonal | **Empty Grave** (active, 3 energy, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
-| Plantae, Jungle Keeper | Leaf | 1 straight | **Aggressive Root** (active, 3 energy, range 3): roots an enemy for its next turn, or interrupts an enemy action within range during their turn (the action is negated, their turn ends) |
+| Plantae, Jungle Keeper | Leaf | 1 straight | **Aggressive Root** (active, 3 energy, range 3, cooldown 3): roots an enemy for its next turn; once per match it can instead interrupt an enemy action within range during their turn (the action is negated, their turn ends) |
 | Hexor, Iron Knight | Shield | chess-knight jump | **Storm Hammer** (passive): on a capture, every unit around the target is pushed 1 square away, chaining; pushed into terrain or off the board = eliminated (allies too) |
 | Aqna, Winter Hunter | Shield | slides any distance straight | **Icy Step** (passive): after a kill she may raise an ice block within 3; max 10, then her oldest block moves |
 | Beast | — | 1 square any direction | Companion; doesn't count toward victory |
@@ -67,6 +67,20 @@ Each side starts with 4 pawn-like creeps on its second rank (files a, c, e, g fo
 | Creeps march every 3 turns | 24 | 11–6 | 7 | 15 |
 
 Creeps bring fights forward. Without the head start they widened Ivory's first-move edge. Skill use stayed around 5% of actions in every variant: only Magumba and Plantae spend energy, so the extra energy from creeps has little to buy yet.
+
+### Limiting Aggressive Root
+
+Plantae's team vs a team without Plantae, bot Normal vs Normal, 20–24 games each:
+
+| Limit | Plantae team | Other team | Unfinished |
+|---|---|---|---|
+| none (before) | 24 | 0 | 0 |
+| cooldown 3 | 19 | 1 | 4 |
+| cooldown 3, interrupt costs 5 | 17 | 1 | 2 |
+| cooldown 3, max 2 interrupts | 14 | 3 | 3 |
+| **cooldown 3, max 1 interrupt (default)** | **7** | **5** | 8 |
+
+Plantae without the skill loses 0–5, so its strength was the interrupt itself: each one cancels a whole enemy turn.
 
 ## Maps
 

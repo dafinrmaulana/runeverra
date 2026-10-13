@@ -361,6 +361,7 @@
   .chip.wd { color: #b3a5ff; border-color: #b3a5ff; }
   .chip.rt { color: var(--vine); border-color: var(--vine); }
   .chip.th { color: var(--blood); border-color: var(--blood); }
+  .chip.cdn { color: var(--brass); border-color: var(--brass); }
 
   .hpanel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; display: grid; }
   .hpanel .hart { height: 92px; background-size: cover; background-position: center 35%; position: relative; }
@@ -488,7 +489,7 @@
           <li><b>Hasim · Backstab.</b> Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps.</li>
           <li><b>Ge'nga · Wild Company.</b> His beast acts right after him each time he acts (or you skip). It flees if he falls.</li>
           <li><b>Magumba · Empty Grave</b> (3 energy, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn. Clears Root.</li>
-          <li><b>Plantae · Aggressive Root</b> (3 energy, range 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you're asked whether to interrupt: the action is negated and their turn ends.</li>
+          <li><b>Plantae · Aggressive Root</b> (3 energy, range 3, cooldown 3): on your turn, roots an enemy for its next turn. Once per match, on the enemy's turn, when one of their units within 3 acts, you're asked whether to interrupt: the action is negated and their turn ends. Either use puts it on cooldown for 3 of your turns, so no prompts appear while it recharges or after the interrupt is spent.</li>
           <li><b>Hexor · Storm Hammer.</b> When he captures, every unit around the target (allies too) is pushed 1 square away, chaining. Pushed into terrain or off the board: eliminated.</li>
           <li><b>Aqna · Icy Step.</b> After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
           <li><b>Creeps.</b> Each side starts with 4 pawns on its second rank. They march 1 square forward on their own at the end of every 2nd turn of their owner (Ember's wave starts one turn earlier), and strike an enemy diagonally in front instead of moving. Eliminating an enemy creep gives +1 energy; a creep that reaches the far rank breaks through for +2 energy. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
@@ -504,7 +505,7 @@
 import {
   createMatch, applyAction, validateAction, listActions, moveOptions, skillTargets, getThreats,
   livingHeroes, unitAt, blockAt, squareName, samePos, toMove, heroDef, label,
-  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, creepsMarchNext,
+  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, creepsMarchNext, skillCooldown,
 } from './arena.js';
 import { chooseAction, pickTeam, BOT_LEVELS } from './arena-bot.js';
 
@@ -975,7 +976,7 @@ function renderReact() {
       <img src="${ICON('plantae')}" alt="">
       <h3>Aggressive Root?</h3>
       <p>${label(actor)} is about to ${describe(game, pend)}.</p>
-      <p style="color:var(--muted)">Interrupt it for ${HEROES.plantae.skill.cost} energy (you have ${game.energy[plant.team]}). The action is cancelled and their turn ends.</p>
+      <p style="color:var(--muted)">Interrupt it for ${HEROES.plantae.skill.reactionCost ?? HEROES.plantae.skill.cost} energy (you have ${game.energy[plant.team]}). The action is cancelled and their turn ends. This is Plantae's only interrupt this match.</p>
       <div class="row"><button class="btn vine" id="react-yes" type="button">Root it</button><button class="btn" id="react-no" type="button">Let it happen</button></div>
     </div>`;
   $('react-yes').addEventListener('click', () => commit({ type: 'react', use: true }));
@@ -997,6 +998,8 @@ function renderRoster(threats) {
         <span>${u.kind === 'beast' ? 'Beast' : HEROES[u.hero].name}</span>
         ${u.warded ? '<span class="chip wd">grave</span>' : ''}
         ${u.rooted ? '<span class="chip rt">rooted</span>' : ''}
+        ${skillCooldown(u) ? `<span class="chip cdn" title="Skill recharging">cd ${skillCooldown(u)}</span>` : ''}
+        ${u.kind === 'hero' && HEROES[u.hero].skill.maxReactions != null && (u.reacts || 0) >= HEROES[u.hero].skill.maxReactions ? '<span class="chip" style="color:var(--muted);border-color:var(--line)" title="Interrupt used">no interrupt</span>' : ''}
         ${threats.has(u.id) ? '<span class="chip th">threat</span>' : ''}
       </button></li>`).join('')}</ul>${creepLine}</div>`;
   }).join('');
@@ -1017,10 +1020,15 @@ function renderHero(u, threats) {
     const sk = d.skill;
     let btn = '';
     if (sk.type === 'active' && own) {
-      const can = !u.rooted && game.energy[u.team] >= sk.cost && skillTargets(game, u).length > 0;
-      btn = `<button class="btn use ${ui.armed ? 'primary' : ''}" id="useskill" type="button" ${can || ui.armed ? '' : 'disabled'}>${ui.armed ? 'Cancel' : `Use ${sk.name}`} (Q)</button>`;
+      const cd = skillCooldown(u);
+      const can = !u.rooted && !cd && game.energy[u.team] >= sk.cost && skillTargets(game, u).length > 0;
+      const labelTxt = ui.armed ? 'Cancel' : cd ? `Ready in ${cd} turn${cd > 1 ? 's' : ''}` : `Use ${sk.name}`;
+      btn = `<button class="btn use ${ui.armed ? 'primary' : ''}" id="useskill" type="button" ${can || ui.armed ? '' : 'disabled'}>${labelTxt}${cd && !ui.armed ? '' : ' (Q)'}</button>`;
     }
-    skillHtml = `<div class="skill"><b>${sk.name}<em>${sk.type === 'active' ? `active · ${sk.cost} energy · range ${sk.range}` : 'passive'}</em></b><span>${sk.text}</span>${btn}</div>`;
+    const meta = sk.type === 'active' ? `active · ${sk.cost} energy · range ${sk.range}${sk.cooldown ? ` · cooldown ${sk.cooldown}` : ''}` : 'passive';
+    const cdNote = (sk.type === 'active' && skillCooldown(u) ? `<span style="color:var(--brass)">Recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.</span>` : '')
+      + (sk.maxReactions != null ? `<span style="color:var(--muted)">Interrupts left this match: ${Math.max(0, sk.maxReactions - (u.reacts || 0))}.</span>` : '');
+    skillHtml = `<div class="skill"><b>${sk.name}<em>${meta}</em></b><span>${sk.text}</span>${cdNote}${btn}</div>`;
   } else if (u.kind === 'creep') {
     const next = creepsMarchNext(game, u.team);
     skillHtml = `<div class="skill"><b>Minion<em>no skill</em></b><span>Can't be ordered. ${next ? 'Marches at the end of this side\'s next turn.' : 'Waits one more turn before marching.'} Killing it gives the killer +${CREEPS.lastHit} energy; reaching the far rank gives its side +${CREEPS.breach}.</span></div>`;
