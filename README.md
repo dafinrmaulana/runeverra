@@ -4,25 +4,44 @@ A playable prototype of a deterministic hero tactics game on an 8×8 board. Pick
 
 ## Run
 
-Requires Node 18+. No dependencies.
+Requires Node 18+.
 
 ```bash
-npm run dev     # http://localhost:5173  (classic chess-hero mode at /classic.html)
-npm test        # rules engine + bot tests (node:test)
-npm run build   # dist/: index.html + assets/ (open dist/index.html directly), classic.html
+npm install
+npm run dev     # Vite dev server, http://localhost:5173
+npm test        # rules engine, bot and online helpers (node:test)
+npm run build   # type-check, then dist/index.html (single file, JS/CSS inlined) + dist/assets,
+                # dist/artifact.html (same page without the document skeleton), dist/classic.html
 ```
+
+## Stack
+
+- **Rules engine, bot, online protocol:** plain JavaScript ES modules (`src/arena.js`, `src/arena-bot.js`, `src/online.js`), no dependencies, tested with `node:test`.
+- **UI:** React 18 + TypeScript, built with Vite into one self-contained HTML file (`vite-plugin-singlefile`). The board stage (cells, pieces, terrain, canvas effects and ambient particles) stays an imperative module (`src/ui/game/board.js`) driven by a small controller; React renders the screens, panels and menus around it.
 
 ## Layout
 
 ```
-src/arena.js        Rules engine for the hero roster: pure functions, data-driven heroes and maps
-src/arena-bot.js    Bot: time-boxed alpha-beta over the engine, incl. follow-up phases and reactions
-src/online.js       Online play helpers: room codes, move encoding, deterministic replay
-src/index.html      Setup screen (maps, hero cards, opponent) and game screen (board, effects, ledger)
-assets/icons, art   Character portraits and card art
-src/classic.html    The earlier Assassin/Mage/Guardian version (src/engine.js, src/bot.js)
-build.mjs, serve.mjs
+src/arena.js              Rules engine: pure functions, data-driven heroes and maps
+src/arena-bot.js          Bot: time-boxed alpha-beta over the engine
+src/online.js             Online helpers: room codes, move encoding, deterministic replay
+src/ui/App.tsx            Screen flow: home → difficulty / room → heroes → battlefield → game
+src/ui/screens/GameScreen.tsx   Game screen: board, prompts, roster, selected unit, log; face-to-face seats
+src/ui/components/        HeroPicker (2-column list, tooltips, short/detail), MapPicker, Rules
+src/ui/game/controller.ts Match state, selection, bot turns, undo; drives the board
+src/ui/game/board.js      Board DOM, terrain, pieces, effects (canvas), ambient particles
+src/ui/online/room.ts     Room client over the platform room capability
+public/assets/            Character portraits and card art
+src/classic.html          The earlier Assassin/Mage/Guardian version (src/engine.js, src/bot.js)
 ```
+
+## Screens
+
+1. **Home:** Play vs Bot, Offline · face to face, Online · room code. How to play, Classic mode.
+2. **Bot:** pick Easy / Normal / Hard. **Online:** create a room or join with a code.
+3. **Heroes:** teams start empty. Heroes are listed in two columns; hover shows a description (Short or Detail), the ⓘ button opens it as a card (touch screens). Tap a hero to add it, tap a slot to remove it, or use Random / Clear. Against the bot, its team can be **Blind** (picked in secret, revealed when the match starts), **Shuffle** (random, visible) or **Pick manually**. Face to face, Player 2's picker is turned 180° for the player across the table.
+4. **Battlefield:** map and creeps. Online, the host picks and both press Ready.
+5. **Game:** menu (resume, how to play, restart, change heroes, quit), threats toggle, undo (not online). Face to face, each player has a panel on their side of the board (the top one turned 180°) with their status, prompts, selected unit and the latest log lines.
 
 ## Heroes
 
@@ -109,7 +128,7 @@ Plantae without the skill loses 0–5, so its strength was the interrupt itself:
 
 Works in the published page (it uses the platform's `room` capability; the local build shows the option disabled).
 
-- Opponent → **Online · room code**. One player presses **Create room** and sends the 5-character code; the other types it and presses **Join**. The creator plays Ivory and picks the battlefield and creeps; each player picks their own four heroes, then both press **Ready**.
+- Home → **Online · room code**. One player presses **Create room** and sends the 5-character code; the other types it and presses **Join**. The creator plays Ivory and picks the battlefield and creeps; each player picks their own four heroes, then both press **Ready** on the battlefield step.
 - Both players must be signed in and have access to the page: invite your friend by email from the Share menu (visitors on a public link can't join rooms).
 - Nothing runs on a server. The engine is deterministic, so each player shares only their own decisions, as indexes into `listActions(state)`, in their room presence; both screens replay them in turn order (`src/online.js`). An index that isn't a legal action is rejected.
 - Reloading the tab rejoins the room and replays the match; each side also keeps a copy of the other's decisions, so nothing is lost. Undo is off online. Rematch starts when both press it.

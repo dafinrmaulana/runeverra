@@ -1,8 +1,7 @@
-// Inlines the page's ES modules into one HTML file and copies image assets:
-//   dist/index.html      standalone page (open from the dist folder, no server needed)
-//   dist/artifact.html   same page without the document skeleton (for hosts that add their own)
-//   dist/assets/...      character portraits and card art
-import { readFileSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
+// Post-build step after `vite build`:
+//   dist/artifact.html   the app page without its document skeleton (for hosts that add their own)
+//   dist/classic.html    the classic mode, its ES modules inlined into one file
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const IMPORT = /import\s*\{([^}]+)\}\s*from\s*'\.\/([\w.-]+\.js)';\n?/g;
@@ -39,11 +38,14 @@ export const wrap = (content) =>
   `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n${content}\n</body>\n</html>\n`;
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const out = bundle('index.html');
-  mkdirSync(new URL('./dist/', import.meta.url), { recursive: true });
-  writeFileSync(new URL('./dist/artifact.html', import.meta.url), out);
-  writeFileSync(new URL('./dist/index.html', import.meta.url), wrap(out));
+  // Runs after `vite build` (which writes dist/index.html, JS and CSS inlined, plus public/assets).
+  // 1. dist/artifact.html: the same page without the document skeleton, for hosts that add their own.
+  const page = readFileSync(new URL('./dist/index.html', import.meta.url), 'utf8');
+  const head = page.slice(page.indexOf('<head>') + 6, page.indexOf('</head>'))
+    .replace(/<meta charset[^>]*>\s*/i, '').replace(/<meta name="viewport"[^>]*>\s*/i, '');
+  const body = page.slice(page.indexOf('<body>') + 6, page.lastIndexOf('</body>'));
+  writeFileSync(new URL('./dist/artifact.html', import.meta.url), `${head.trim()}\n${body.trim()}\n`);
+  // 2. dist/classic.html: the earlier Assassin/Mage/Guardian version, inlined from src/.
   writeFileSync(new URL('./dist/classic.html', import.meta.url), wrap(bundle('classic.html')));
-  cpSync(new URL('./assets/', import.meta.url), new URL('./dist/assets/', import.meta.url), { recursive: true });
-  console.log('Built dist/index.html, dist/artifact.html, dist/classic.html and dist/assets/');
+  console.log('Built dist/index.html (vite), dist/artifact.html, dist/classic.html');
 }
