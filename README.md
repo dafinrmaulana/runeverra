@@ -43,7 +43,7 @@ Each team has 4 heroes and at most 4 tokens. Both sides start full (4) and token
 | Hero | Skill | Type | Cost | What it does |
 |---|---|---|---|---|
 | Hasim | Backstab | signature move | free | jumps in any of the 8 directions over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
-| Ge'nga | Wild Company | active | 2 | after Ge'nga acts, the beast may also move (always free); once the beast has fallen, pay to summon it again on an empty square next to him (uses the turn); it flees if he falls |
+| Ge'nga | Wild Company | active | 3 | after Ge'nga acts, the beast may also move (always free); once the beast has fallen, pay to summon it again on an empty square next to him (uses the turn); it flees if he falls |
 | Aqna | Icy Step | follow-up | 1 | after a kill, raise an ice block within 3; max 10, then her oldest block moves |
 | Magumba | Empty Grave | active, range 3 | 2 | an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
 | Hexor | Storm Hammer | follow-up | 2 | after Hexor captures, slam: every unit around him is pushed 1 square away, chaining; enemies pushed into terrain or off the board die, allies there stay put |

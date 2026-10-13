@@ -90,7 +90,7 @@ test('Hasim Backstab: free signature move in any direction; kills jumped enemy a
   reject(t3, mv('p1-hasim', 'd7'));
 });
 
-test('Ge\'nga: the beast follow-up is free; Wild Company (2 tokens) summons a fallen beast', () => {
+test('Ge\'nga: the beast follow-up is free; Wild Company (3 tokens) summons a fallen beast', () => {
   let s = setup({ 'p2-genga': 'd8', 'p2-beast': 'd7', 'p2-plantae': 'h8', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 0 } });
   assert.match(reject(s, mv('p2-beast', 'd6')), /after Ge'nga/);
   s = act(s, mv('p2-genga', 'b8'));
@@ -104,12 +104,12 @@ test('Ge\'nga: the beast follow-up is free; Wild Company (2 tokens) summons a fa
   const alive = setup({ 'p2-genga': 'd8', 'p2-beast': 'd7', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 4 } });
   assert.ok(!listActions(alive).some((a) => a.type === 'skill'));
   assert.match(reject(alive, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('c8') }), /still alive/);
-  // beast killed: Ge'nga can summon it next to him for 2 tokens, which ends the turn
-  let k = setup({ 'p2-genga': 'd8', 'p2-beast': 'd6', 'p1-aqna': 'd4', 'p1-hasim': 'a1' }, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 0, p2: 1 } });
+  // beast killed: Ge'nga can summon it next to him for 3 tokens, which ends the turn
+  let k = setup({ 'p2-genga': 'd8', 'p2-beast': 'd6', 'p1-aqna': 'd4', 'p1-hasim': 'a1' }, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 0, p2: 2 } });
   k = act(k, mv('p1-aqna', 'd6'));
   assert.equal(k.units['p2-beast'].alive, false);
-  assert.match(reject(k, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('c8') }), /needs 2 tokens/);
-  k.energy.p2 = 2;
+  assert.match(reject(k, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('c8') }), /needs 3 tokens/);
+  k.energy.p2 = 3;
   const spots = listActions(k).filter((a) => a.type === 'skill' && a.skill === 'summon');
   assert.equal(spots.length, 5, 'empty squares around d8');
   reject(k, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('d5') });

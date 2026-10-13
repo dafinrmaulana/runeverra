@@ -47,8 +47,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
     moveText: 'Moves up to 2 squares straight.',
     skill: {
-      key: 'summon', name: 'Wild Company', type: 'active', cost: 2, range: 1,
-      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also move (free). Active: once the beast has fallen, spend 2 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
+      key: 'summon', name: 'Wild Company', type: 'active', cost: 3, range: 1,
+      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also move (free). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
     },
   },
   magumba: {
