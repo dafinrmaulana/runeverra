@@ -47,8 +47,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
     moveText: 'Moves up to 2 squares straight.',
     skill: {
-      key: 'wild', name: 'Wild Company', type: 'follow', cost: 1,
-      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, you may spend a token to also move the beast. If Ge\'nga falls, the beast flees.',
+      key: 'summon', name: 'Wild Company', type: 'active', cost: 2, range: 1,
+      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also move (free). Active: once the beast has fallen, spend 2 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
     },
   },
   magumba: {
@@ -65,7 +65,7 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
     moveText: 'Steps 1 square straight.',
     skill: {
-      key: 'root', name: 'Aggressive Root', type: 'active', cost: 2, range: 3, reaction: true, reactionCost: 3, cooldown: 3,
+      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reaction: true, reactionCost: 3, cooldown: 3,
       text: 'Roots an enemy up to 3 squares away in any direction, diagonals included: it can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy within 3 squares acts: that action is negated, but Plantae is rooted itself on your next turn. After either use, it recharges for 3 of your turns.',
     },
   },
@@ -256,6 +256,29 @@ export function skillTargets(s, u) {
   return [];
 }
 
+/** Ge'nga's dead beast (the unit to bring back), or null while it is alive. */
+export const fallenBeastOf = (s, u) => (beastOf(s, u) ? null
+  : Object.values(s.units).find((b) => b.kind === 'beast' && b.ownerId === u.id) || null);
+
+/** Empty squares next to Ge'nga where his fallen beast can be summoned. */
+export function summonSpots(s, u) {
+  if (u.hero !== 'genga' || !fallenBeastOf(s, u)) return [];
+  const out = [];
+  for (const [dr, dc] of KING) {
+    const p = { r: u.pos.r + dr, c: u.pos.c + dc };
+    if (inBounds(p) && !blockAt(s, p) && !unitAt(s, p)) out.push(p);
+  }
+  return out;
+}
+
+/** Every legal active-skill action for a hero right now (ignores whose turn it is). */
+export function skillActions(s, u) {
+  const sk = u.kind === 'hero' ? HEROES[u.hero].skill : null;
+  if (!sk || sk.type !== 'active' || u.rooted || skillCooldown(u) > 0 || s.energy[u.team] < sk.cost) return [];
+  if (sk.key === 'summon') return summonSpots(s, u).map((to) => ({ type: 'skill', unitId: u.id, skill: sk.key, to }));
+  return skillTargets(s, u).map((t) => ({ type: 'skill', unitId: u.id, skill: sk.key, targetId: t }));
+}
+
 // ---------- action listing (the single source of legality) ----------
 /** Units the side to move may act with in the main phase: heroes and creeps (beasts only follow Ge'nga). */
 const mainActors = (s) => livingUnits(s, s.current).filter((u) => u.kind !== 'beast');
@@ -284,11 +307,7 @@ export function listActions(s) {
   for (const u of mainActors(s)) {
     if (u.rooted) continue;
     for (const o of moveOptions(s, u)) if ((o.cost || 0) <= s.energy[u.team]) out.push({ type: 'move', unitId: u.id, to: o.to });
-    if (u.kind !== 'hero') continue;
-    const sk = HEROES[u.hero].skill;
-    if (sk.type === 'active' && s.energy[u.team] >= sk.cost) {
-      for (const t of skillTargets(s, u)) out.push({ type: 'skill', unitId: u.id, skill: sk.key, targetId: t });
-    }
+    out.push(...skillActions(s, u));
   }
   return out;
 }
@@ -330,6 +349,10 @@ function explain(s, a) {
     if (sk.type !== 'active') return `${sk.name} is passive; it triggers on its own.`;
     if (skillCooldown(u) > 0) return `${sk.name} is recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.`;
     if (s.energy[u.team] < sk.cost) return `${sk.name} needs ${sk.cost} tokens; you have ${s.energy[u.team]}.`;
+    if (sk.key === 'summon') {
+      if (beastOf(s, u)) return 'The beast is still alive. Wild Company can only summon it after it falls.';
+      return 'Summon the beast on an empty square next to Ge\'nga.';
+    }
     const t = s.units[a.targetId];
     if (!t || !t.alive) return 'Choose a living target.';
     if (chebyshev(t.pos, u.pos) > sk.range) return `Target is out of range (${sk.range} squares).`;
@@ -422,9 +445,16 @@ function resolveMove(s, action, lines, last) {
 function resolveSkill(s, action, lines, last) {
   const u = s.units[action.unitId];
   const sk = HEROES[u.hero].skill;
-  const t = s.units[action.targetId];
   s.energy[u.team] -= sk.cost;
   if (sk.cooldown) u.cd = sk.cooldown;
+  if (sk.key === 'summon') {
+    const b = fallenBeastOf(s, u);
+    Object.assign(b, { alive: true, pos: { ...action.to }, rooted: 0, warded: false, cd: 0 });
+    last.kind = 'summon'; last.from = { ...u.pos }; last.to = { ...action.to }; last.hits.push({ ...action.to }); last.targetId = b.id;
+    lines.push(`${label(u)} calls the wild: ${label(b)} returns on ${squareName(action.to)}.`);
+    return;
+  }
+  const t = s.units[action.targetId];
   last.kind = sk.key; last.from = { ...u.pos }; last.to = null; last.hits.push({ ...t.pos }); last.targetId = t.id;
   if (sk.key === 'grave') {
     t.warded = true; t.rooted = 0;
@@ -540,7 +570,6 @@ export function applyAction(state, action, { trusted = false } = {}) {
 function finishUnitAction(s, action, last, lines) {
   const actor = s.units[action.unitId];
   const wasBeast = s.phase === 'beast';
-  if (wasBeast) s.energy[actor.team] -= HEROES.genga.skill.cost;
   let killed = 0;
   if (action.type === 'move') killed = resolveMove(s, action, lines, last).killed;
   else resolveSkill(s, action, lines, last);
@@ -550,6 +579,7 @@ function finishUnitAction(s, action, last, lines) {
   if (s.status !== 'playing') return { ok: true, state: s, reason: null };
 
   s.phase = 'main'; s.pending = null;
+  if (action.type === 'skill') { endTurn(s); return { ok: true, state: s, reason: null }; } // a cast ends the turn
   if (!wasBeast && actor.alive && actor.kind === 'hero' && actor.hero === 'hexor' && killed > 0
       && s.energy[actor.team] >= HEROES.hexor.skill.cost) {
     s.phase = 'storm'; s.pending = { type: 'storm', unitId: actor.id, then: null };
@@ -558,7 +588,7 @@ function finishUnitAction(s, action, last, lines) {
   return continueTurn(s, { actorId: actor.id, wasBeast, killed });
 }
 
-/** Follow-ups that can come after a unit action: Aqna's ice, Ge'nga's beast. Each costs tokens. */
+/** Follow-ups after a unit action: Aqna's ice (costs a token), Ge'nga's beast (free). */
 function continueTurn(s, { actorId, wasBeast, killed }) {
   const actor = s.units[actorId];
   if (!wasBeast && actor.alive && actor.hero === 'aqna' && killed > 0 && hasIceSpot(s, actor)
@@ -566,8 +596,7 @@ function continueTurn(s, { actorId, wasBeast, killed }) {
     s.phase = 'ice'; s.pending = { type: 'ice', unitId: actor.id };
     return { ok: true, state: s, reason: null };
   }
-  if (!wasBeast && actor.alive && actor.hero === 'genga' && actor.kind === 'hero'
-      && s.energy[actor.team] >= HEROES.genga.skill.cost) {
+  if (!wasBeast && actor.alive && actor.hero === 'genga' && actor.kind === 'hero') {
     const b = beastOf(s, actor);
     if (b && !b.rooted && moveOptions(s, b).length) {
       s.phase = 'beast'; s.pending = { type: 'beast', unitId: b.id };
@@ -634,9 +663,7 @@ function hasAnyAction(s) {
   for (const u of mainActors(s)) {
     if (u.rooted) continue;
     if (moveOptions(s, u).some((o) => (o.cost || 0) <= s.energy[u.team])) return true;
-    if (u.kind !== 'hero') continue;
-    const sk = HEROES[u.hero].skill;
-    if (sk.type === 'active' && s.energy[u.team] >= sk.cost && skillTargets(s, u).length) return true;
+    if (skillActions(s, u).length) return true;
   }
   return false;
 }

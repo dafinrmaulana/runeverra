@@ -495,11 +495,11 @@
           <li><b>One action per turn:</b> move one unit, or use an active skill. Moving onto an enemy eliminates it.</li>
           <li><b>Roles.</b> Roam (Ge'nga, Aqna, Hexor) move up to 2 squares straight; Hexor's L jump counts as his 2 steps. Assassin (Hasim) moves up to 2 squares in any direction. Support (Plantae) steps 1 but reaches 3 with its skill. Magumba slides up to 2 diagonally.</li>
           <li><b>Terrain</b> (pillars, trees, ruins, rocks, ice) blocks movement. Only Hasim's Backstab and Hexor's jump go over it; nobody lands on it.</li>
-          <li><b>Skill tokens</b> pay for every skill, passive or active. Both sides start with 4 (the max) and they don't refill each turn: you only earn +1 for killing an enemy creep or getting your creep to the far rank. Costs follow impact (Hasim's Backstab is his free signature move): beast follow-up 1, ice 1, Empty Grave 2, Storm Hammer 2, Aggressive Root 2 (interrupt 3).</li>
+          <li><b>Skill tokens</b> pay for every skill, passive or active. Both sides start with 4 (the max) and they don't refill each turn: you only earn +1 for killing an enemy creep or getting your creep to the far rank. Costs follow impact (Hasim's Backstab and Ge'nga's beast moves are free): ice 1, Empty Grave 2, Storm Hammer 2, summoning the beast 2, Aggressive Root 3 (interrupt 3).</li>
           <li><b>Hasim · Backstab</b> (signature move, free). Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps.</li>
-          <li><b>Ge'nga · Wild Company</b> (1 token). Right after he acts you may pay to move his beast too, or skip. It flees if he falls.</li>
+          <li><b>Ge'nga · Wild Company.</b> Right after he acts his beast may also move (free), or skip. Active (2 tokens): once the beast has fallen, summon it again on an empty square next to him; this uses your turn. It flees if he falls.</li>
           <li><b>Magumba · Empty Grave</b> (2 tokens, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn. Clears Root.</li>
-          <li><b>Plantae · Aggressive Root</b> (2 tokens, range 3, cooldown 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you may interrupt for 3 tokens: the action is negated and their turn ends. The catch (the hole): Plantae roots itself and can't act on your next turn. Either use puts it on cooldown for 3 of your turns.</li>
+          <li><b>Plantae · Aggressive Root</b> (3 tokens, range 3, cooldown 3): on your turn, roots an enemy for its next turn. On the enemy's turn, when one of their units within 3 acts, you may interrupt for 3 tokens: the action is negated and their turn ends. The catch (the hole): Plantae roots itself and can't act on your next turn. Either use puts it on cooldown for 3 of your turns.</li>
           <li><b>Hexor · Storm Hammer</b> (2 tokens). After he captures, you may pay to slam: every unit around him (allies too) is pushed 1 square away, chaining. An enemy pushed into terrain or off the board is eliminated; an ally that would be pushed there stays put instead.</li>
           <li><b>Aqna · Icy Step</b> (1 token). After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
           <li><b>Creeps.</b> Each side starts with 4 pawns on the flank lanes (files a, b, g, h), facing the enemy's creeps. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. Map terrain sits only in the four centre files, so it never blocks a lane. Eliminating an enemy creep gives +1 token; a creep that reaches the far rank breaks through for +1 token. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
@@ -513,7 +513,7 @@
 
 <script type="module">
 import {
-  createMatch, applyAction, validateAction, listActions, moveOptions, skillTargets, getThreats,
+  createMatch, applyAction, validateAction, listActions, moveOptions, skillTargets, skillActions, beastOf, getThreats,
   livingHeroes, unitAt, blockAt, squareName, samePos, toMove, heroDef, label,
   HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, SLOTS, TEAM_SIZE, ROLES, skillCooldown, chebyshev,
 } from './arena.js';
@@ -783,8 +783,9 @@ function onCell(pos) {
 
   const sel = ui.selectedId && game.units[ui.selectedId];
   if (ui.armed && sel) {
-    const a = occupant && acts.find((x) => x.type === 'skill' && x.unitId === sel.id && x.targetId === occupant.id);
+    const a = acts.find((x) => x.type === 'skill' && x.unitId === sel.id && (x.to ? samePos(x.to, pos) : occupant && x.targetId === occupant.id));
     if (a) return void commit(a);
+    if (HEROES[sel.hero].skill.key === 'summon') { ui.armed = false; say('Summon cancelled. Pick a highlighted square next to Ge\'nga.'); return render(); }
     if (occupant && occupant.team === sel.team && occupant.id !== sel.id && HEROES[sel.hero].skill.key !== 'grave') return select(occupant.id);
     if (occupant) {
       say(validateAction(game, { type: 'skill', unitId: sel.id, skill: HEROES[sel.hero].skill.key, targetId: occupant.id }).reason, 'err');
@@ -826,9 +827,10 @@ function armSkill() {
   if (ui.armed) { ui.armed = false; say('Skill cancelled.'); return render(); }
   if (u.rooted) { say(`${label(u)} is held by roots this turn.`, 'err'); return render(); }
   if (game.energy[u.team] < sk.cost) { say(`${sk.name} needs ${tk(sk.cost)}; you have ${game.energy[u.team]}.`, 'err'); return render(); }
-  if (!skillTargets(game, u).length) { say(`${sk.name} has no valid target in range.`, 'err'); return render(); }
+  if (sk.key === 'summon' && beastOf(game, u)) { say('The beast is still alive. Wild Company summons it only after it falls.', 'err'); return render(); }
+  if (!skillActions(game, u).length) { say(`${sk.name} has no valid target in range.`, 'err'); return render(); }
   ui.armed = true;
-  say(`${sk.name}: click a highlighted ${sk.key === 'grave' ? 'ally' : 'enemy'}.`);
+  say(sk.key === 'summon' ? 'Wild Company: click a highlighted square next to Ge\'nga to summon the beast.' : `${sk.name}: click a highlighted ${sk.key === 'grave' ? 'ally' : 'enemy'}.`);
   render();
 }
 
@@ -848,7 +850,7 @@ function render() {
   const iceActs = game.phase === 'ice' ? acts.filter((a) => a.type === 'ice') : [];
   const pend = game.phase === 'react' ? game.pending.action : null;
   const pendActor = pend && game.units[pend.unitId];
-  const pendTo = pend ? (pend.type === 'move' ? pend.to : game.units[pend.targetId]?.pos) : null;
+  const pendTo = pend ? (pend.to || game.units[pend.targetId]?.pos) : null;
   // Aggressive Root's reach: shown while choosing an interrupt, or when a Plantae is selected.
   const rangeOf = game.phase === 'react' ? game.units[game.pending.plantId]
     : live && live.kind === 'hero' && live.hero === 'plantae' ? live : null;
@@ -864,7 +866,7 @@ function render() {
     el.classList.toggle('capture', (!!opt && opt.kills.length > 0) || (!!gh && gh.kills.length > 0));
     el.classList.toggle('stab', !!opt && !!opt.backstab);
     el.classList.toggle('ghost', !!gh && !gh.kills.length);
-    const tgt = skillActs.some((a) => samePos(game.units[a.targetId].pos, p));
+    const tgt = skillActs.some((a) => samePos(a.to || game.units[a.targetId].pos, p));
     el.classList.toggle('target', tgt);
     el.classList.toggle('grave', tgt && skKey === 'grave');
     el.classList.toggle('root', tgt && skKey === 'root');
@@ -902,7 +904,7 @@ function render() {
   if (!pb.hidden) {
     const have = `you have ${game.energy[game.current]}`;
     $('phasetext').textContent = game.phase === 'beast'
-      ? `Wild Company: move the beast for ${tk(HEROES.genga.skill.cost)} (${have}), or skip.`
+      ? 'Wild Company: the beast may move now (free), or skip.'
       : game.phase === 'ice'
         ? `Icy Step: raise an ice block on a dashed square for ${tk(HEROES.aqna.skill.cost)} (${have}), or skip.`
         : `Storm Hammer: slam for ${tk(HEROES.hexor.skill.cost)} (${have}) and push everything around Hexor, or skip.`;
@@ -979,7 +981,7 @@ function renderPieces(live, threats) {
 
 function describe(s, a) {
   const u = s.units[a.unitId];
-  if (a.type === 'skill') return `cast ${HEROES[u.hero].skill.name} on ${label(s.units[a.targetId])}`;
+  if (a.type === 'skill') return a.skill === 'summon' ? `summon the beast on ${squareName(a.to)}` : `cast ${HEROES[u.hero].skill.name} on ${label(s.units[a.targetId])}`;
   const o = moveOptions(s, u).find((x) => samePos(x.to, a.to));
   if (o?.backstab) return `Backstab to ${squareName(a.to)}${o.kills.length ? `, eliminating ${o.kills.map((id) => label(s.units[id])).join(' and ')}` : ''}`;
   if (o?.kills.length) return `strike ${label(s.units[o.kills[0]])} on ${squareName(a.to)}`;
@@ -1043,7 +1045,7 @@ function renderHero(u, threats) {
     let btn = '';
     if (sk.type === 'active' && own) {
       const cd = skillCooldown(u);
-      const can = !u.rooted && !cd && game.energy[u.team] >= sk.cost && skillTargets(game, u).length > 0;
+      const can = skillActions(game, u).length > 0;
       const labelTxt = ui.armed ? 'Cancel' : cd ? `Ready in ${cd} turn${cd > 1 ? 's' : ''}` : `Use ${sk.name}`;
       btn = `<button class="btn use ${ui.armed ? 'primary' : ''}" id="useskill" type="button" ${can || ui.armed ? '' : 'disabled'}>${labelTxt}${cd && !ui.armed ? '' : ' (Q)'}</button>`;
     }
@@ -1324,6 +1326,16 @@ const FX = (() => {
         burst(tgt, [COL.vine, COL.leaf], 18, { shape: 'leaf', min: 1, max: 2.8, life: [500, 900], size: [2, 3.2] });
         text(tgt, 'INTERRUPTED', COL.vine);
         shake(0.6);
+      });
+      return;
+    }
+    if (la.kind === 'summon') {
+      line(la.from, la.to, COL.mane, { arc: 0.3, life: 380, w: 2.5 });
+      at(160, () => {
+        flash(la.to, COL.mane, 1, 320);
+        ring(la.to, COL.mane, { from: 0.2, to: 0.9, life: 520, w: 3 });
+        burst(la.to, [COL.mane, COL.dust], 14, { shape: 'smoke', min: 0.4, max: 1.4, life: [400, 700], size: [4, 7] });
+        text(la.to, 'SUMMONED', COL.mane);
       });
       return;
     }
