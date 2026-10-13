@@ -17,6 +17,7 @@ npm run build   # dist/: index.html + assets/ (open dist/index.html directly), c
 ```
 src/arena.js        Rules engine for the hero roster: pure functions, data-driven heroes and maps
 src/arena-bot.js    Bot: time-boxed alpha-beta over the engine, incl. follow-up phases and reactions
+src/online.js       Online play helpers: room codes, move encoding, deterministic replay
 src/index.html      Setup screen (maps, hero cards, opponent) and game screen (board, effects, ledger)
 assets/icons, art   Character portraits and card art
 src/classic.html    The earlier Assassin/Mage/Guardian version (src/engine.js, src/bot.js)
@@ -103,6 +104,15 @@ Plantae without the skill loses 0–5, so its strength was the interrupt itself:
 | Jungle Ruins | jungle, falling leaves | 6 ruins forming a central fort |
 | Winter Keep | snow, snowfall | 4 rocks forming a keep |
 | Open Field | slate | none |
+
+## Online play (room code)
+
+Works in the published page (it uses the platform's `room` capability; the local build shows the option disabled).
+
+- Opponent → **Online · room code**. One player presses **Create room** and sends the 5-character code; the other types it and presses **Join**. The creator plays Ivory and picks the battlefield and creeps; each player picks their own four heroes, then both press **Ready**.
+- Both players must be signed in and have access to the page: invite your friend by email from the Share menu (visitors on a public link can't join rooms).
+- Nothing runs on a server. The engine is deterministic, so each player shares only their own decisions, as indexes into `listActions(state)`, in their room presence; both screens replay them in turn order (`src/online.js`). An index that isn't a legal action is rejected.
+- Reloading the tab rejoins the room and replays the match; each side also keeps a copy of the other's decisions, so nothing is lost. Undo is off online. Rematch starts when both press it.
 
 ## Engine API
 

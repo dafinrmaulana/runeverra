@@ -158,6 +158,18 @@
   }
   .startbar .hint { color: var(--muted); font-size: .85rem; flex: 1 1 200px; min-width: 0; }
 
+  /* online room panel */
+  .online { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--brass); border-radius: 6px; padding: 12px 14px; }
+  .online .grp { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .online input { width: 7.5em; background: var(--ink); color: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 7px 8px; font: inherit; font-family: ui-monospace, Menlo, monospace; letter-spacing: .18em; text-transform: uppercase; }
+  .online .code { font-family: ui-monospace, Menlo, monospace; font-size: 1.5rem; letter-spacing: .22em; color: var(--brass); }
+  .online .note { color: var(--muted); font-size: .82rem; flex: 1 1 260px; min-width: 0; }
+  .online .err { color: var(--blood); font-size: .85rem; flex-basis: 100%; }
+  .online .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+  .online .dot.on { background: #6fcf55; box-shadow: 0 0 6px #6fcf55; }
+  .online .dot.ready { background: var(--brass); box-shadow: 0 0 6px var(--brass); }
+  .teamtab.locked { cursor: default; }
+
   /* ================= game ================= */
   .stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
   @media (max-width: 880px) { .stage { grid-template-columns: minmax(0, 1fr); } }
@@ -422,6 +434,7 @@
       <p class="eyebrow">2 · Teams · pick 4 heroes each</p>
       <div class="teambar" id="teambar"></div>
     </div>
+    <div class="online" id="online" hidden></div>
     <div class="cards" id="cards"></div>
     <div class="startbar">
       <label class="toggle" for="creeps"><input type="checkbox" id="creeps" checked> Creeps</label>
@@ -431,6 +444,7 @@
           <option value="normal" selected>Bot · Normal</option>
           <option value="hard">Bot · Hard</option>
           <option value="human">Human (same screen)</option>
+          <option value="online" id="opt-online" disabled>Online · room code</option>
         </select>
       </label>
       <span class="hint" id="starthint"></span>
@@ -518,6 +532,9 @@ import {
   HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, SLOTS, TEAM_SIZE, ROLES, skillCooldown, chebyshev,
 } from './arena.js';
 import { chooseAction, pickTeam, BOT_LEVELS } from './arena-bot.js';
+import {
+  newRoomCode, cleanCode, roomName, encodeMoves, decodeMoves, actionIndex, matchFromConfig, nextMove,
+} from './online.js';
 
 const $ = (id) => document.getElementById(id);
 const tk = (n) => `${n} token${n === 1 ? '' : 's'}`;
@@ -557,12 +574,20 @@ const TERRAIN_SVG = {
 let screen = 'setup';
 const setup = { map: 'oasis', creeps: true, opponent: 'normal', picks: { p1: ['hasim', 'hexor', 'magumba', 'plantae'], p2: [] }, editing: 'p1', botSeed: 1 + (Date.now() % 997) };
 setup.picks.p2 = pickTeam(setup.botSeed);
+// Online room. Each side shares its own decisions (indexes into listActions) through room
+// presence; both screens replay them in turn order. See src/online.js.
+const net = {
+  room: null, unsub: null, code: null, side: null, joining: false, error: '',
+  ready: false, match: 0, started: 0, mine: [], applied: { p1: 0, p2: 0 }, opp: null,
+};
+let roomApi = null;
 let game = null;
 let history = [];
 let ui = { selectedId: null, armed: false, msg: '', msgKind: '', showThreats: true, deathDelay: 0, hits: [] };
 let botTimer = null, gen = 0;
-const vsBot = () => setup.opponent !== 'human';
-const humanTeams = () => (vsBot() ? ['p1'] : ['p1', 'p2']);
+const isOnline = () => setup.opponent === 'online';
+const vsBot = () => setup.opponent !== 'human' && !isOnline();
+const humanTeams = () => (isOnline() ? (net.side ? [net.side] : []) : vsBot() ? ['p1'] : ['p1', 'p2']);
 const deciderIsBot = () => vsBot() && game && game.status === 'playing' && toMove(game) === BOT_TEAM;
 const deciderIsHuman = () => !!game && game.status === 'playing' && humanTeams().includes(toMove(game));
 
@@ -592,16 +617,25 @@ function renderSetup() {
       <span class="mini theme-${m.theme}">${cellsHtml}</span>
       <b>${m.name}</b><span>${m.blurb}</span></button>`;
   }).join('');
-  $('maps').querySelectorAll('.maptile').forEach((b) => b.addEventListener('click', () => { setup.map = b.dataset.map; renderSetup(); }));
+  $('maps').querySelectorAll('.maptile').forEach((b) => b.addEventListener('click', () => {
+    if (isOnline() && net.side === 'p2') { net.error = 'The host (Ivory) picks the battlefield.'; return renderSetup(); }
+    setup.map = b.dataset.map;
+    if (isOnline()) onlineSetupChanged();
+    renderSetup();
+  }));
 
   const tab = (team) => {
     const picks = setup.picks[team];
-    const who = team === 'p1' ? (vsBot() ? 'You' : 'Player 1') : (vsBot() ? 'Bot' : 'Player 2');
+    const who = isOnline() ? (team === net.side ? 'You' : 'Opponent')
+      : team === 'p1' ? (vsBot() ? 'You' : 'Player 1') : (vsBot() ? 'Bot' : 'Player 2');
+    const locked = isOnline() && team !== net.side;
     const slots = SLOTS[team].map((_, i) => (picks[i]
       ? `<span class="slot filled"><img src="${ICON(picks[i])}" alt="${HEROES[picks[i]].name}"><span class="n">${i + 1}</span></span>`
       : `<span class="slot">${SLOTS[team][i]}</span>`)).join('');
-    return `<button type="button" class="teamtab ${team}" data-team="${team}" aria-pressed="${setup.editing === team}">
-      <span class="th"><span class="swatch ${team}"></span>${TEAM_NAMES[team]} · ${who}<small>${picks.length}/${TEAM_SIZE} picked</small></span>
+    const status = locked ? (net.opp ? (net.opp.ready && net.opp.match > net.started ? 'ready' : `${picks.length}/${TEAM_SIZE} picked`) : 'not here yet')
+      : isOnline() && net.ready ? 'ready' : `${picks.length}/${TEAM_SIZE} picked`;
+    return `<button type="button" class="teamtab ${team}${locked ? ' locked' : ''}" data-team="${team}" aria-pressed="${setup.editing === team}">
+      <span class="th"><span class="swatch ${team}"></span>${TEAM_NAMES[team]} · ${who}<small>${status}</small></span>
       <span class="slots">${slots}</span>
       ${team === 'p2' && vsBot() ? '<span class="btn shuffle" data-shuffle="1">Shuffle bot team</span>' : ''}
     </button>`;
@@ -609,10 +643,12 @@ function renderSetup() {
   $('teambar').innerHTML = tab('p1') + tab('p2');
   $('teambar').querySelectorAll('.teamtab').forEach((b) => b.addEventListener('click', (e) => {
     if (e.target.closest('[data-shuffle]')) { setup.botSeed += 7; setup.picks.p2 = pickTeam(setup.botSeed); }
+    else if (isOnline()) setup.editing = net.side || 'p1';
     else setup.editing = b.dataset.team;
     renderSetup();
   }));
 
+  if (isOnline() && net.side) setup.editing = net.side;
   const ed = setup.editing;
   $('cards').innerHTML = Object.entries(HEROES).map(([id, h]) => {
     const idx = setup.picks[ed].indexOf(id);
@@ -639,10 +675,26 @@ function renderSetup() {
     if (i >= 0) list.splice(i, 1);
     else if (list.length < TEAM_SIZE) list.push(b.dataset.hero);
     else { list.shift(); list.push(b.dataset.hero); }
-    if (ed === 'p1' && list.length === TEAM_SIZE && !vsBot() && setup.picks.p2.length < TEAM_SIZE) setup.editing = 'p2';
+    if (ed === 'p1' && list.length === TEAM_SIZE && !vsBot() && !isOnline() && setup.picks.p2.length < TEAM_SIZE) setup.editing = 'p2';
+    if (isOnline()) onlineSetupChanged();
     renderSetup();
   }));
 
+  renderOnline();
+  $('creeps').disabled = isOnline() && net.side === 'p2';
+  $('creeps').checked = setup.creeps !== false;
+  if (isOnline()) {
+    const mine = setup.picks[net.side || 'p1'];
+    $('start').textContent = net.ready ? 'Not ready' : 'Ready';
+    $('start').disabled = !net.room || mine.length < TEAM_SIZE;
+    $('starthint').textContent = !net.room ? 'Create a room or join one with a code.'
+      : mine.length < TEAM_SIZE ? `Pick ${TEAM_SIZE - mine.length} more for ${TEAM_NAMES[net.side]}.`
+        : !net.opp ? 'Waiting for your opponent to join.'
+          : net.ready ? 'Ready. The match starts when your opponent is ready too.'
+            : 'Press Ready when your team is set.';
+    return;
+  }
+  $('start').textContent = 'Start match';
   const need = setup.picks.p1.length < TEAM_SIZE ? 'p1' : setup.picks.p2.length < TEAM_SIZE ? 'p2' : null;
   $('start').disabled = !!need;
   $('starthint').textContent = need
@@ -667,17 +719,24 @@ function moveDiagram(hero) {
 }
 
 $('opponent').addEventListener('change', (e) => {
+  if (setup.opponent === 'online' && e.target.value !== 'online') leaveRoom();
   setup.opponent = e.target.value;
+  if (isOnline()) { setup.editing = 'p1'; net.error = ''; }
   if (vsBot()) { setup.editing = 'p1'; if (setup.picks.p2.length < TEAM_SIZE) setup.picks.p2 = pickTeam(setup.botSeed); }
   if (screen === 'game') { cancelBot(); say(vsBot() ? `Opponent: ${BOT_LEVELS[setup.opponent].label} bot.` : 'Opponent: human on this screen.'); render(); }
   renderSetup();
 });
-$('start').addEventListener('click', startMatch);
-$('creeps').addEventListener('change', (e) => { setup.creeps = e.target.checked; renderSetup(); });
+$('start').addEventListener('click', () => (isOnline() ? toggleReady() : startMatch()));
+$('creeps').addEventListener('change', (e) => { setup.creeps = e.target.checked; if (isOnline()) onlineSetupChanged(); renderSetup(); });
 
 function startMatch() {
+  if (isOnline()) return toggleReady(true);
+  beginMatch(createMatch({ p1: [...setup.picks.p1], p2: [...setup.picks.p2], map: setup.map, creeps: setup.creeps, seed: Date.now() % 100000 }));
+}
+
+function beginMatch(match, intro = true) {
   cancelBot(); FX.clear();
-  game = createMatch({ p1: [...setup.picks.p1], p2: [...setup.picks.p2], map: setup.map, creeps: setup.creeps, seed: Date.now() % 100000 });
+  game = match;
   history = [];
   screen = 'game';
   for (const el of pieceEls.values()) el.remove();
@@ -685,11 +744,12 @@ function startMatch() {
   for (const el of blockEls.values()) el.remove();
   blockEls.clear();
   clearSel();
-  say(vsBot() ? `You play Ivory against the ${BOT_LEVELS[setup.opponent].label} bot. Select a hero to begin.` : 'Ivory moves first. Select a hero to begin.', 'ok');
+  say(isOnline() ? `Online match in room ${net.code}. You play ${TEAM_NAMES[net.side]}; Ivory moves first.`
+    : vsBot() ? `You play Ivory against the ${BOT_LEVELS[setup.opponent].label} bot. Select a hero to begin.` : 'Ivory moves first. Select a hero to begin.', 'ok');
   renderSetup();
   applyTheme();
   render();
-  FX.intro();
+  if (intro) FX.intro();
   Ambient.start(MAPS[game.map].theme);
   window.scrollTo({ top: 0 });
 }
@@ -726,15 +786,20 @@ const blockEls = new Map();
 function say(text, kind = '') { ui.msg = text; ui.msgKind = kind; }
 function clearSel() { ui.selectedId = null; ui.armed = false; }
 
-function commit(action, byBot = false) {
+/** Apply a decision. `src`: 'me' (this screen), 'bot', or 'remote' (online opponent). */
+function commit(action, src = 'me') {
+  const byBot = src !== 'me';
+  const online = isOnline() && net.started === net.match && net.side;
+  const idx = online && src === 'me' ? actionIndex(game, action) : -1;
   const res = applyAction(game, action);
   if (!res.ok) { say(res.reason, 'err'); render(); return false; }
   const before = game;
-  if (!byBot) history.push(before);
+  if (!byBot && !online) history.push(before);
+  if (online && src === 'me') { net.mine.push(idx); net.applied[net.side] += 1; publish(); }
   game = res.state;
   clearSel();
   const newLines = game.log.slice(before.log.length).map((l) => l.text).join(' ');
-  if (newLines) say((byBot ? 'Bot: ' : '') + newLines, 'ok');
+  if (newLines) say((src === 'bot' ? 'Bot: ' : src === 'remote' ? 'Opponent: ' : '') + newLines, 'ok');
   else if (game.phase === 'react') say(`${label(game.units[game.pending.plantId])} can interrupt this action.`);
   const plan = FX.plan(before, game);
   ui.deathDelay = plan.deathDelay;
@@ -757,7 +822,7 @@ function maybeBot() {
     botTimer = null;
     if (myGen !== gen || !deciderIsBot()) return;
     const pick = chooseAction(game, setup.opponent);
-    if (pick?.action) commit(pick.action, true);
+    if (pick?.action) commit(pick.action, 'bot');
   }, game.phase === 'main' ? BOT_DELAY_MS : 420);
 }
 function cancelBot() { gen++; if (botTimer) { clearTimeout(botTimer); botTimer = null; } }
@@ -889,14 +954,18 @@ function render() {
   const who = $('turn-who');
   who.classList.toggle('thinking', deciderIsBot());
   if (game.status !== 'playing') who.textContent = `${TEAM_NAMES[game.status]} victorious`;
+  else if (isOnline() && net.opp && !net.opp.ready) who.textContent = 'Opponent left the match';
+  else if (isOnline() && !deciderIsHuman()) who.textContent = !net.opp ? 'Opponent disconnected · waiting' : !net.opp.ready ? 'Opponent left the match' : `Waiting for ${TEAM_NAMES[toMove(game)]}`;
+  else if (isOnline()) who.textContent = `Your turn · ${TEAM_NAMES[toMove(game)]}`;
   else if (deciderIsBot()) who.textContent = game.phase === 'react' ? 'Bot is deciding whether to root' : `${TEAM_NAMES[BOT_TEAM]} bot is thinking`;
   else if (vsBot()) who.textContent = `Your turn · ${TEAM_NAMES[toMove(game)]}`;
   else who.textContent = `${TEAM_NAMES[toMove(game)]} to act`;
-  $('turn-num').textContent = `turn ${game.turn}`;
+  $('turn-num').textContent = `turn ${game.turn}${isOnline() && net.code ? ` · room ${net.code}` : ''}`;
+  who.classList.toggle('thinking', deciderIsBot() || (isOnline() && game.status === 'playing' && !deciderIsHuman() && !!net.opp));
 
   $('msg').textContent = ui.msg;
   $('msg').className = `msg ${ui.msgKind}`;
-  $('undo').disabled = !history.length || deciderIsBot();
+  $('undo').disabled = !history.length || deciderIsBot() || isOnline();
 
   const pb = $('phasebar');
   pb.hidden = !(deciderIsHuman() && ['beast', 'ice', 'storm'].includes(game.phase));
@@ -914,7 +983,12 @@ function render() {
   $('overlay').hidden = game.status === 'playing';
   if (game.status !== 'playing') {
     const w = game.status, l = w === 'p1' ? 'p2' : 'p1';
-    $('win-title').textContent = !vsBot() ? `${TEAM_NAMES[w]} wins` : w === BOT_TEAM ? 'The bot wins' : 'You win';
+    $('win-title').textContent = isOnline() ? (w === net.side ? 'You win' : 'You lose')
+      : !vsBot() ? `${TEAM_NAMES[w]} wins` : w === BOT_TEAM ? 'The bot wins' : 'You win';
+    $('again').textContent = !isOnline() ? 'Rematch'
+      : net.ready && net.match > net.started ? 'Waiting for opponent…'
+        : net.opp && net.opp.ready && net.opp.match > net.started ? 'Accept rematch' : 'Rematch';
+    $('again').disabled = isOnline() && (!net.opp || (net.ready && net.match > net.started));
     $('win-sub').textContent = `${TEAM_NAMES[l]} has no heroes left · ${livingHeroes(game, w).map((u) => HEROES[u.hero].name).join(', ')} still standing`;
   }
 
@@ -1423,6 +1497,220 @@ const FX = (() => {
   return { plan, run, intro, victory, clear };
 })();
 
+// =====================================================================
+// ONLINE (room code)
+// =====================================================================
+// Per tab (sessionStorage): a reload of this tab rejoins its room; another tab is another player.
+const STORE = 'hero-gambit-online';
+const otherSide = (t) => (t === 'p1' ? 'p2' : 'p1');
+const oppMoves = () => decodeMoves(net.opp?.mine);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const DEFAULT_GUEST = ['genga', 'aqna', 'plantae', 'hasim'];
+
+function saveNet() {
+  try {
+    if (!net.code) { sessionStorage.removeItem(STORE); return; }
+    sessionStorage.setItem(STORE, JSON.stringify({
+      code: net.code, side: net.side, ready: net.ready, match: net.match, started: net.started, mine: net.mine,
+      picks: setup.picks[net.side], map: setup.map, creeps: setup.creeps,
+    }));
+  } catch { /* storage is a convenience only */ }
+}
+function loadNet() { try { return JSON.parse(sessionStorage.getItem(STORE) || 'null'); } catch { return null; } }
+
+/** Share this side's state with the room: picks, readiness, and every decision made so far. */
+function publish() {
+  saveNet();
+  if (!net.room) return;
+  const inGame = net.started === net.match && net.started > 0;
+  const p = {
+    app: 'hg', v: 1, side: net.side, picks: setup.picks[net.side] || [], ready: net.ready, match: net.match,
+    mine: inGame ? encodeMoves(net.mine) : '',
+    // the opponent's decisions as applied here, so they can recover after a reload
+    theirs: inGame ? encodeMoves(oppMoves().slice(0, net.applied[otherSide(net.side)])) : '',
+  };
+  if (net.side === 'p1') { p.map = setup.map; p.creeps = setup.creeps !== false; }
+  net.room.presence(p).catch(() => {});
+}
+
+function findOpponent(peers) {
+  const c = peers.filter((p) => !p.sameTab && p.presence && p.presence.app === 'hg' && p.presence.side === otherSide(net.side));
+  c.sort((a, b) => b.updatedAt - a.updatedAt);
+  return c[0] || null;
+}
+
+async function createRoom() { await connectRoom(newRoomCode(), 'p1', false); }
+async function joinRoom(text) {
+  const code = cleanCode(text);
+  if (!code) { net.error = 'A room code has 5 letters or digits, like K7Q2M.'; return renderSetup(); }
+  await connectRoom(code, null, false);
+}
+
+async function connectRoom(code, wantSide, rejoin, tries = 0) {
+  if (!roomApi || net.joining) return;
+  leaveRoom(false);
+  net.joining = true; net.error = ''; renderSetup();
+  let room;
+  try { room = await roomApi.join(roomName(code)); } catch {
+    net.joining = false; net.error = 'Could not open the room. Try again in a moment.'; return renderSetup();
+  }
+  await sleep(1600); // let the others in the room answer
+  const others = room.peers().filter((p) => !p.sameTab && p.presence && p.presence.app === 'hg');
+  const sides = new Set(others.map((p) => p.presence.side));
+  let side = wantSide;
+  if (!rejoin && wantSide && sides.has(wantSide)) { // a fresh code that is already taken: pick another
+    room.leave().catch(() => {}); net.joining = false;
+    return tries < 3 ? connectRoom(newRoomCode(), wantSide, false, tries + 1) : renderSetup();
+  }
+  if (!side) {
+    side = !others.length ? null : !sides.has('p1') ? 'p1' : !sides.has('p2') ? 'p2' : null;
+    if (!side) {
+      room.leave().catch(() => {}); net.joining = false;
+      net.error = others.length ? `Room ${code} already has two players.` : `No one is in room ${code}. Check the code, or ask your friend to create the room first.`;
+      return renderSetup();
+    }
+  }
+  Object.assign(net, { room, code, side, joining: false, error: '', opp: null });
+  if (!rejoin) Object.assign(net, { ready: false, match: 0, started: 0, mine: [], applied: { p1: 0, p2: 0 } });
+  if (setup.picks[side].length !== TEAM_SIZE) setup.picks[side] = side === 'p1' ? ['hasim', 'hexor', 'magumba', 'plantae'] : [...DEFAULT_GUEST];
+  setup.editing = side;
+  net.unsub = room.onPeers((ch) => onRoomPeers(ch.peers), () => { net.error = 'The room connection was closed.'; renderSetup(); });
+  onRoomPeers(room.peers());
+  publish();
+  renderSetup();
+}
+
+function leaveRoom(forget = true) {
+  try { net.unsub?.(); } catch { /* already gone */ }
+  net.room?.leave().catch(() => {});
+  Object.assign(net, { room: null, unsub: null, opp: null, joining: false });
+  if (forget) { Object.assign(net, { code: null, side: null, ready: false, match: 0, started: 0, mine: [], applied: { p1: 0, p2: 0 } }); saveNet(); }
+}
+
+function onRoomPeers(peers) {
+  if (!net.room) return;
+  const had = !!net.opp;
+  const p = findOpponent(peers);
+  net.opp = p ? p.presence : null;
+  if (net.opp) {
+    const picks = Array.isArray(net.opp.picks) ? net.opp.picks.filter((h) => HEROES[h]).slice(0, TEAM_SIZE) : [];
+    setup.picks[otherSide(net.side)] = picks;
+    if (net.side === 'p2') {
+      if (MAPS[net.opp.map]) setup.map = net.opp.map;
+      setup.creeps = net.opp.creeps !== false;
+    }
+  }
+  if (screen === 'game' && had !== !!net.opp) say(net.opp ? 'Your opponent is back.' : 'Your opponent left the room. The match waits for them.', net.opp ? 'ok' : 'err');
+  maybeStartOnline();
+  if (screen === 'game') { pullRemote(); render(); } else renderSetup();
+}
+
+function onlineSetupChanged() {
+  if (net.ready) net.ready = false;
+  publish();
+}
+
+function toggleReady(force) {
+  if (!net.room) return;
+  if (net.ready && !force) { net.ready = false; publish(); return renderSetup(); }
+  const o = net.opp;
+  // Join the opponent's pending request, or open a new match number.
+  net.match = o && o.ready && o.match > net.started ? o.match : Math.max(net.started, net.match, o ? o.match || 0 : 0) + 1;
+  net.ready = true; net.mine = [];
+  publish();
+  maybeStartOnline();
+  if (screen === 'game') render(); else renderSetup();
+}
+
+function onlineConfig() {
+  const host = net.side === 'p1' ? { map: setup.map, creeps: setup.creeps } : { map: net.opp.map, creeps: net.opp.creeps };
+  const mine = [...setup.picks[net.side]], theirs = net.opp.picks.slice(0, TEAM_SIZE);
+  return { p1: net.side === 'p1' ? mine : theirs, p2: net.side === 'p2' ? mine : theirs, map: MAPS[host.map] ? host.map : 'oasis', creeps: host.creeps !== false };
+}
+
+function maybeStartOnline() {
+  const o = net.opp;
+  if (!o || !net.ready || !o.ready || o.match !== net.match || net.started === net.match) return;
+  if (setup.picks[net.side].length !== TEAM_SIZE || !Array.isArray(o.picks) || o.picks.length !== TEAM_SIZE) return;
+  let match;
+  try { match = matchFromConfig(onlineConfig()); } catch { return; }
+  net.started = net.match;
+  // After a reload, our own decisions come back from the opponent's copy.
+  const recovered = decodeMoves(o.theirs);
+  if (recovered.length > net.mine.length) net.mine = recovered;
+  net.applied = { p1: 0, p2: 0 };
+  // Replay everything already decided, without effects.
+  const moves = { [net.side]: net.mine, [otherSide(net.side)]: oppMoves() };
+  for (let n = nextMove(match, moves, net.applied); n && !n.bad; n = nextMove(match, moves, net.applied)) {
+    match = applyAction(match, n.action).state;
+    net.applied[n.side] += 1;
+  }
+  beginMatch(match, match.turn === 1);
+  publish();
+}
+
+/** Apply the opponent's new decisions, one at a time with effects. */
+function pullRemote() {
+  if (!game || net.started !== net.match || !net.opp || net.opp.match !== net.match) return;
+  const moves = { [net.side]: net.mine, [otherSide(net.side)]: oppMoves() };
+  let changed = false;
+  for (let guard = 0; guard < 64; guard++) {
+    const n = nextMove(game, moves, net.applied);
+    if (!n) break;
+    if (n.bad) { say('The opponent sent a move this match cannot take. Waiting for a valid one.', 'err'); break; }
+    if (n.side === net.side) { game = applyAction(game, n.action).state; net.applied[n.side] += 1; continue; }
+    if (!commit(n.action, 'remote')) break;
+    net.applied[n.side] += 1; changed = true;
+  }
+  if (changed) publish();
+}
+
+function renderOnline() {
+  const box = $('online');
+  box.hidden = !isOnline();
+  if (box.hidden) return;
+  const err = net.error ? `<span class="err">${esc(net.error)}</span>` : '';
+  if (net.joining) { box.innerHTML = '<span class="note">Connecting to the room…</span>'; return; }
+  if (!net.room) {
+    box.innerHTML = `<div class="grp"><button class="btn primary" id="mkroom" type="button">Create room</button></div>
+      <div class="grp"><input id="roomcode" maxlength="7" placeholder="CODE" aria-label="Room code" autocomplete="off" spellcheck="false">
+        <button class="btn" id="joinroom" type="button">Join</button></div>
+      <span class="note">Create a room and send the code to a friend, or type their code. Your friend needs access to this page: invite them by email from the Share menu.</span>${err}`;
+    $('mkroom').addEventListener('click', createRoom);
+    $('joinroom').addEventListener('click', () => joinRoom($('roomcode').value));
+    $('roomcode').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom($('roomcode').value); });
+    return;
+  }
+  const o = net.opp;
+  const oppState = !o ? 'Waiting for your opponent to join with this code.'
+    : o.ready && o.match > net.started ? 'Opponent is ready.' : 'Opponent joined and is picking heroes.';
+  box.innerHTML = `<div class="grp"><span class="note" style="flex:none">Room</span><span class="code">${esc(net.code)}</span>
+      <button class="btn" id="copycode" type="button">Copy</button></div>
+    <span class="note"><span class="dot ${o ? (o.ready && o.match > net.started ? 'ready' : 'on') : ''}"></span>${oppState}
+      You play ${TEAM_NAMES[net.side]}${net.side === 'p1' ? ' and pick the battlefield' : ''}.</span>
+    <button class="btn" id="leaveroom" type="button">Leave room</button>${err}`;
+  $('copycode').addEventListener('click', () => { try { navigator.clipboard.writeText(net.code).catch(() => {}); } catch { /* no clipboard */ } $('copycode').textContent = 'Copied'; });
+  $('leaveroom').addEventListener('click', () => { leaveRoom(); renderSetup(); });
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+// The room capability only exists in the published page; elsewhere online play stays off.
+(async () => {
+  try { roomApi = window.claude?.use ? await window.claude.use('room') : null; } catch { roomApi = null; }
+  $('opt-online').disabled = !roomApi;
+  $('opt-online').textContent = roomApi ? 'Online · room code' : 'Online · room code (published page only)';
+  if (!roomApi) return;
+  const saved = loadNet();
+  if (saved?.code && cleanCode(saved.code) && (saved.side === 'p1' || saved.side === 'p2')) {
+    Object.assign(net, { ready: !!saved.ready, match: saved.match | 0, started: 0, mine: Array.isArray(saved.mine) ? saved.mine : [] });
+    if (Array.isArray(saved.picks) && saved.picks.length === TEAM_SIZE) setup.picks[saved.side] = saved.picks.filter((h) => HEROES[h]);
+    if (saved.side === 'p1' && MAPS[saved.map]) { setup.map = saved.map; setup.creeps = saved.creeps !== false; }
+    setup.opponent = 'online'; $('opponent').value = 'online';
+    if (screen !== 'setup') toSetup();
+    await connectRoom(saved.code, saved.side, true);
+  } else renderSetup();
+})();
+
 // ---------- controls ----------
 $('skip').addEventListener('click', () => { if (deciderIsHuman()) commit({ type: 'skip' }); });
 $('slam').addEventListener('click', () => { if (deciderIsHuman() && game.phase === 'storm') commit({ type: 'storm' }); });
@@ -1446,7 +1734,11 @@ $('newmatch').addEventListener('click', () => {
   clearTimeout(armedNew); armedNew = null; btn.textContent = 'New match'; btn.classList.remove('primary');
   toSetup();
 });
-function toSetup() { cancelBot(); FX.clear(); Ambient.stop(); screen = 'setup'; renderSetup(); window.scrollTo({ top: 0 }); }
+function toSetup() {
+  cancelBot(); FX.clear(); Ambient.stop(); screen = 'setup';
+  if (isOnline() && net.ready) { net.ready = false; publish(); }
+  renderSetup(); window.scrollTo({ top: 0 });
+}
 $('again').addEventListener('click', startMatch);
 $('tosetup').addEventListener('click', toSetup);
 $('threats').addEventListener('change', (e) => { ui.showThreats = e.target.checked; render(); });
@@ -1459,9 +1751,10 @@ document.addEventListener('keydown', (e) => {
 // Keep the match across live page updates in an open viewer.
 function boot(data) {
   if (data?.setup) Object.assign(setup, data.setup);
+  if (setup.opponent === 'online') setup.opponent = 'normal'; // a room is re-joined from storage, not from a snapshot
   $('opponent').value = setup.opponent;
   $('creeps').checked = setup.creeps !== false;
-  if (data?.screen === 'game' && data.game?.units && data.game.phase) {
+  if (data?.screen === 'game' && data.game?.units && data.game.phase && data.setup?.opponent !== 'online') {
     game = data.game; screen = 'game'; history = [];
     renderSetup(); applyTheme(); render(); Ambient.start(MAPS[game.map].theme);
   } else {
