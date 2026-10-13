@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { HEROES, TEAM_NAMES } from '../../arena.js';
-import { HERO_IDS, ICON, costChip, roleOf, randomTeam, type HeroId, type Team } from '../data';
+import { HERO_IDS, ICON, ART, costChip, roleOf, randomTeam, type HeroId, type Team } from '../data';
 import { HeroInfo, type DescMode } from './HeroInfo';
+import { Modal } from './ui';
 
 const SIZE = 4;
 
@@ -94,30 +95,37 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
       </div>
 
       {hover && !modal && (
-        <div className="tip" style={{ top: hover.top }} role="tooltip">
+        <div key={hover.id} className="tip" style={{ top: hover.top }} role="tooltip">
           <HeroInfo id={hover.id} mode={mode} />
         </div>
       )}
 
-      {modal && (
-        <div className="picker-modal" role="dialog" aria-label={`${(HEROES as any)[modal].name} details`} onClick={() => setModal(null)}>
-          <div className="picker-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="seg small" role="group" aria-label="Description length">
-              <button type="button" aria-pressed={mode === 'short'} onClick={() => onMode('short')}>Short</button>
-              <button type="button" aria-pressed={mode === 'detail'} onClick={() => onMode('detail')}>Detail</button>
+      <Modal open={!!modal} onClose={() => setModal(null)} label="Hero details" full mirrored={mirrored} className="hero-modal">
+        {modal && (
+          <>
+            <div className="hero-modal-art" style={{ ['--art' as any]: `url(${ART(modal)})` }}>
+              <img src={ICON(modal)} alt="" />
+              <button type="button" className="modal-x" aria-label="Close" onClick={() => setModal(null)}>✕</button>
             </div>
-            <HeroInfo id={modal} mode={mode} />
-            <div className="row">
-              {!readOnly && (
-                <button type="button" className="btn primary" onClick={() => { toggle(modal as HeroId); setModal(null); }}>
-                  {picks.includes(modal as HeroId) ? 'Remove from team' : picks.length >= SIZE ? 'Team is full' : 'Add to team'}
-                </button>
-              )}
-              <button type="button" className="btn" onClick={() => setModal(null)}>Close</button>
+            <div className="hero-modal-body">
+              <div className="seg small" role="group" aria-label="Description length">
+                <button type="button" aria-pressed={mode === 'short'} onClick={() => onMode('short')}>Short</button>
+                <button type="button" aria-pressed={mode === 'detail'} onClick={() => onMode('detail')}>Detail</button>
+              </div>
+              <HeroInfo id={modal} mode={mode} />
+              <div className="row">
+                {!readOnly && (
+                  <button type="button" className="btn primary big" disabled={!picks.includes(modal as HeroId) && picks.length >= SIZE}
+                    onClick={() => { toggle(modal as HeroId); setModal(null); }}>
+                    {picks.includes(modal as HeroId) ? 'Remove from team' : picks.length >= SIZE ? 'Team is full' : 'Add to team'}
+                  </button>
+                )}
+                <button type="button" className="btn big" onClick={() => setModal(null)}>Close</button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

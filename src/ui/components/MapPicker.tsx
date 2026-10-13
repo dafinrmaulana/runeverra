@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { MAPS, SLOTS, CREEPS, createMatch } from '../../arena.js';
 import { MAP_IDS } from '../data';
+import { Switch } from './ui';
 
 function MiniMap({ id, creeps }: { id: string; creeps: boolean }) {
   const blocks = useMemo(() => createMatch({ map: id }).blocks as Record<string, unknown>, [id]);
@@ -35,11 +36,8 @@ export function MapPicker({ map, creeps, onMap, onCreeps, readOnly }: Props) {
           );
         })}
       </div>
-      <label className={`switch${readOnly ? ' off' : ''}`}>
-        <input type="checkbox" checked={creeps} disabled={readOnly} onChange={(e) => onCreeps?.(e.target.checked)} />
-        <span className="knob" />
-        <span><b>Creeps</b> · four pawns per side on the flank lanes; killing one or breaking through gives a token</span>
-      </label>
+      <Switch checked={creeps} disabled={readOnly} onChange={(v) => onCreeps?.(v)}
+        label={<><b>Creeps</b> · four pawns per side on the flank lanes; killing one or breaking through gives a token</>} />
     </div>
   );
 }

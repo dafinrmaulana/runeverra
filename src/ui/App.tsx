@@ -8,6 +8,7 @@ import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
+import { Modal, Steps } from './components/ui';
 import { ICON, pref, setPref, type HeroId, type Team } from './data';
 import type { DescMode } from './components/HeroInfo';
 
@@ -89,7 +90,7 @@ export function App() {
       : r.ready && r.match > r.started ? { label: 'Waiting for opponent…', disabled: true }
         : { label: r.oppReadyForNext() ? 'Accept rematch' : 'Rematch', disabled: !r.opp };
     return (
-      <div className="app">
+      <div className="app page" key="game">
         <GameScreen ctrl={ctrl} roomCode={online ? r.code : null} rematch={rematch}
           onRematch={() => (online ? r.setReady(true) : startLocal())}
           onChangeHeroes={() => { ctrl.destroy(); setCtrl(null); room.controller = null; if (online) r.setReady(false); setScreen('heroes'); }}
@@ -99,9 +100,9 @@ export function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" key={screen}>
       {screen === 'home' && (
-        <div className="home">
+        <div className="home page">
           <div className="home-hero">
             <div className="home-faces">{['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'].map((h) => <img key={h} src={ICON(h)} alt="" />)}</div>
             <h1 className="logo">Hero Gambit</h1>
@@ -215,14 +216,10 @@ export function App() {
         </Step>
       )}
 
-      {rules && (
-        <div className="modal" role="dialog" aria-label="How to play" onClick={() => setRules(false)}>
-          <div className="modal-card wide" onClick={(e) => e.stopPropagation()}>
-            <Rules />
-            <button className="btn primary" type="button" onClick={() => setRules(false)}>Close</button>
-          </div>
-        </div>
-      )}
+      <Modal open={rules} onClose={() => setRules(false)} label="How to play" className="wide">
+        <Rules />
+        <button className="btn primary" type="button" onClick={() => setRules(false)}>Close</button>
+      </Modal>
     </div>
   );
 }
@@ -240,11 +237,11 @@ type StepProps = {
 };
 function Step({ title, step, onBack, children, next }: StepProps) {
   return (
-    <div className="step">
+    <div className="step page">
       <header className="step-head">
         <button type="button" className="btn ghost" onClick={onBack}>← Back</button>
         <h2>{title}</h2>
-        {step && <ol className="progress"><li className={step === 1 ? 'on' : 'done'}>Heroes</li><li className={step === 2 ? 'on' : ''}>Battlefield</li><li>Fight</li></ol>}
+        {step && <Steps steps={['Heroes', 'Battlefield', 'Fight']} current={step} />}
       </header>
       <div className="step-body">{children}</div>
       {next && (

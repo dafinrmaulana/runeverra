@@ -39,9 +39,11 @@ src/classic.html          The earlier Assassin/Mage/Guardian version (src/engine
 
 1. **Home:** Play vs Bot, Offline · face to face, Online · room code. How to play, Classic mode.
 2. **Bot:** pick Easy / Normal / Hard. **Online:** create a room or join with a code.
-3. **Heroes:** teams start empty. Heroes are listed in two columns; hover shows a description (Short or Detail), the ⓘ button opens it as a card (touch screens). Tap a hero to add it, tap a slot to remove it, or use Random / Clear. Against the bot, its team can be **Blind** (picked in secret, revealed when the match starts), **Shuffle** (random, visible) or **Pick manually**. Face to face, Player 2's picker is turned 180° for the player across the table.
+3. **Heroes:** teams start empty. Heroes are listed in two columns; hover shows a description (Short or Detail, both with the move pattern), the ⓘ button opens it full screen. Tap a hero to add it, tap a slot to remove it, or use Random / Clear. Against the bot, its team can be **Blind** (picked in secret, revealed when the match starts), **Shuffle** (random, visible) or **Pick manually**. Face to face, Player 2's picker is turned 180° for the player across the table.
 4. **Battlefield:** map and creeps. Online, the host picks and both press Ready.
-5. **Game:** menu (resume, how to play, restart, change heroes, quit), threats toggle, undo (not online). Face to face, each player has a panel on their side of the board (the top one turned 180°) with their status, prompts, selected unit and the latest log lines.
+5. **Game:** decisions (interrupt, slam, beast, ice) pop up as a toast over the board, so the board never moves. Right under the board: the skill button, undo/redo (not online), the threats switch, the last message, and the selected unit as an accordion (short line; expand for move pattern and full skill text). Teams list is collapsed in the side panel. Menu: resume, how to play, restart, change heroes, quit. Face to face, each player has a fixed-height panel on their side (the top one turned 180°) and toasts appear at the deciding player's edge.
+
+Screens, modals, toasts and accordions fade or drop in; the hero details card opens full screen.
 
 ## Heroes
 

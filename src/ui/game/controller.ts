@@ -29,6 +29,7 @@ export class GameController {
   msgKind: '' | 'ok' | 'err' = '';
   showThreats = true;
   history: any[] = [];
+  future: any[] = [];
   version = 0;
   /** True while the online opponent is connected (set by the room client). */
   peerHere = true;
@@ -91,7 +92,7 @@ export class GameController {
     const res = applyAction(this.game, action);
     if (!res.ok) { this.say(res.reason || 'Not allowed.', 'err'); this.render({}); return false; }
     const before = this.game;
-    if (src === 'me' && !online) this.history.push(before);
+    if (src === 'me' && !online) { this.history.push(before); this.future = []; }
     if (online && src === 'me') (this.mode as any).onLocalMove(idx);
     this.game = res.state;
     this.clearSel();
@@ -209,14 +210,24 @@ export class GameController {
   escape() { if (this.armed) this.armed = false; else this.clearSel(); this.say(''); this.render({}); }
 
   canUndo() { return this.mode.kind !== 'online' && this.history.length > 0 && !this.deciderIsBot(); }
-  undo() {
-    if (!this.canUndo()) return;
+  canRedo() { return this.mode.kind !== 'online' && this.future.length > 0 && !this.deciderIsBot(); }
+  private jump(to: any, note: string) {
     this.cancelBot(); this.board?.clearFx();
-    this.game = this.history.pop();
+    this.game = to;
     this.board?.reset();
     this.clearSel();
-    this.say(this.mode.kind === 'bot' ? 'Took back your last decision and the bot\'s reply.' : 'Took back the last decision.');
+    this.say(note);
     this.render({});
+  }
+  undo() {
+    if (!this.canUndo()) return;
+    this.future.push(this.game);
+    this.jump(this.history.pop(), this.mode.kind === 'bot' ? 'Took back your last decision and the bot\'s reply.' : 'Took back the last decision.');
+  }
+  redo() {
+    if (!this.canRedo()) return;
+    this.history.push(this.game);
+    this.jump(this.future.pop(), 'Replayed the decision again.');
   }
 
   setThreats(on: boolean) { this.showThreats = on; this.render({}); }

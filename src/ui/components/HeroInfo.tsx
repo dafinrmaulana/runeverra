@@ -20,7 +20,7 @@ export function HeroInfo({ id, mode }: { id: string; mode: DescMode }) {
     return (
       <div className="hinfo short">
         <div className="hinfo-head"><b>{h.name}</b><span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span></div>
-        <p><span className="lbl">Move</span>{s.move}</p>
+        <div className="hinfo-move"><MoveDiagram hero={id} size={8} /><span><span className="lbl">Move</span>{s.move}</span></div>
         <p><span className="lbl">{sk.name}</span>{s.skill} <span className="cost">{costChip(sk)}</span></p>
       </div>
     );
