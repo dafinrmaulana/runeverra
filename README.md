@@ -33,7 +33,7 @@ Heroes are data in `HEROES` (src/arena.js): name, class, movement rules, skill. 
 | Ge'nga, Beast Master | Claw | up to 2 straight | **Wild Company** (passive): starts with a beast; the beast acts right after him (or skip); it flees if he falls |
 | Magumba, Shadow Shaman | Leaf | up to 2 diagonal | **Empty Grave** (active, 3 energy, range 3): an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
 | Plantae, Jungle Keeper | Leaf | 1 straight | **Aggressive Root** (active, 3 energy, range 3, cooldown 3): roots an enemy for its next turn; once per match it can instead interrupt an enemy action within range during their turn (the action is negated, their turn ends) |
-| Hexor, Iron Knight | Shield | chess-knight jump | **Storm Hammer** (passive): on a capture, every unit around the target is pushed 1 square away, chaining; pushed into terrain or off the board = eliminated (allies too) |
+| Hexor, Iron Knight | Shield | chess-knight jump | **Storm Hammer** (passive): on a capture, every unit around the target is pushed 1 square away, chaining; enemies pushed into terrain or off the board are eliminated; allies are pushed too but never die from it (blocked allies stay put) |
 | Aqna, Winter Hunter | Shield | slides any distance straight | **Icy Step** (passive): after a kill she may raise an ice block within 3; max 10, then her oldest block moves |
 | Beast | — | 1 square any direction | Companion; doesn't count toward victory |
 

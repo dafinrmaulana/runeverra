@@ -298,3 +298,21 @@ test('Aggressive Root can interrupt only once per match', () => {
   s = again; s.units['p2-plantae'].cd = 0;
   assert.ok(listActions(s).some((a) => a.type === 'skill' && a.skill === 'root'));
 });
+
+test('Storm Hammer never kills Hexor\'s own allies: blocked allies stay put', () => {
+  // Hexor b5 -> b7 captures Aqna. Around b7: ally Hasim a8 (corner, pushed off-board) and
+  // ally creep c8 (edge) must survive; enemy Plantae a7 (pushed off the left edge) dies.
+  let s = setup({ 'p1-hexor': 'c5', 'p1-hasim': 'a8', 'p1-creep-c': 'c8', 'p2-aqna': 'b7', 'p2-plantae': 'a7', 'p2-genga': 'h1' });
+  s = act(s, mv('p1-hexor', 'b7'));
+  assert.equal(s.units['p2-aqna'].alive, false);
+  assert.equal(s.units['p2-plantae'].alive, false, 'enemy off the board is eliminated');
+  assert.equal(s.units['p1-hasim'].alive, true, 'ally is not eliminated');
+  assert.deepEqual(s.units['p1-hasim'].pos, sq('a8'));
+  assert.equal(s.units['p1-creep-c'].alive, true);
+  assert.deepEqual(s.units['p1-creep-c'].pos, sq('c8'));
+  // ally against terrain also survives
+  let t = setup({ 'p1-hexor': 'b3', 'p1-hasim': 'd5', 'p2-aqna': 'c5', 'p2-genga': 'h1' }, { blocks: { e5: 'rock' } });
+  t = act(t, mv('p1-hexor', 'c5'));
+  assert.equal(t.units['p1-hasim'].alive, true);
+  assert.deepEqual(t.units['p1-hasim'].pos, sq('d5'));
+});

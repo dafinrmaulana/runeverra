@@ -68,7 +68,7 @@ export const HEROES = {
     moveText: 'Jumps in an L, like a chess knight.',
     skill: {
       key: 'storm', name: 'Storm Hammer', type: 'passive',
-      text: 'When Hexor hits an enemy, every unit around the target is pushed 1 square away, pushing any unit behind it too. A unit pushed into terrain or off the board is eliminated.',
+      text: 'When Hexor hits an enemy, every unit around the target is pushed 1 square away, pushing any unit behind it too. An enemy pushed into terrain or off the board is eliminated; an ally there just stays put.',
     },
   },
   aqna: {
@@ -352,6 +352,11 @@ function stormHammer(s, hexor, center, lines, fx) {
     visited.add(u.id);
     if (u.warded) { fx.push({ id: u.id, from: { ...u.pos }, to: { ...u.pos }, blocked: true }); return false; }
     const dest = { r: u.pos.r + dr, c: u.pos.c + dc };
+    if ((!inBounds(dest) || blockAt(s, dest)) && u.team === hexor.team) {
+      // Allies are shoved but never killed: against terrain or the edge they just hold their ground.
+      fx.push({ id: u.id, from: { ...u.pos }, to: { ...u.pos }, blocked: true });
+      return false;
+    }
     if (!inBounds(dest) || blockAt(s, dest)) {
       fx.push({ id: u.id, from: { ...u.pos }, to: dest, stuck: true });
       lines.push(`${label(u)} is slammed into ${inBounds(dest) ? 'terrain' : 'the board edge'}.`);
