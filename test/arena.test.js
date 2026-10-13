@@ -316,3 +316,27 @@ test('Storm Hammer never kills Hexor\'s own allies: blocked allies stay put', ()
   assert.equal(t.units['p1-hasim'].alive, true);
   assert.deepEqual(t.units['p1-hasim'].pos, sq('d5'));
 });
+
+test('creeps step diagonally around terrain straight ahead, but not around units', () => {
+  const s = setup({ 'p1-creep-c': 'c3', 'p1-hasim': 'a1', 'p2-genga': 'h8' }, { blocks: { c4: 'pillar' } });
+  const dests = listActions(s).filter((a) => a.unitId === 'p1-creep-c').map((a) => a.to);
+  assert.deepEqual(dests.sort((a, b) => a.c - b.c), [sq('b4'), sq('d4')]);
+  const n = act(s, mv('p1-creep-c', 'd4'));
+  assert.deepEqual(n.units['p1-creep-c'].pos, sq('d4'));
+  // a unit straight ahead still blocks (no sidestep)
+  const u = setup({ 'p1-creep-c': 'c3', 'p1-hasim': 'a1', 'p2-genga': 'c4', 'p2-plantae': 'h8' });
+  assert.equal(listActions(u).filter((a) => a.unitId === 'p1-creep-c').length, 0);
+  // every map: no creep starts or gets permanently trapped by terrain in its own file
+  for (const map of Object.keys(MAPS)) {
+    const m = createMatch({ map });
+    for (const c of Object.values(m.units).filter((x) => x.kind === 'creep')) {
+      const f = c.team === 'p1' ? -1 : 1;
+      for (let r = c.pos.r + f; r >= 0 && r <= 7; r += f) {
+        const ahead = { r, c: c.pos.c };
+        if (!blockAt(m, ahead)) continue;
+        const around = [-1, 1].some((dc) => { const p = { r, c: c.pos.c + dc }; return p.c >= 0 && p.c <= 7 && !blockAt(m, p); });
+        assert.ok(around, `${map}: creep on file ${c.pos.c} would be walled in at row ${r}`);
+      }
+    }
+  }
+});
