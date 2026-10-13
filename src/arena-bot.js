@@ -34,7 +34,7 @@ function teamScore(s, team) {
 function killsBy(s, team) {
   const out = new Map();
   for (const u of livingUnits(s, team)) {
-    if (u.rooted || u.kind !== 'hero') continue; // beasts and creeps don't act at will
+    if (u.rooted || u.kind === 'beast') continue; // the beast only acts after Ge'nga
     for (const o of moveOptions(s, u)) {
       let sum = 0;
       for (const id of o.kills) sum += val(s.units[id]);

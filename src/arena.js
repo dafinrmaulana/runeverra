@@ -7,11 +7,10 @@ export const TEAMS = ['p1', 'p2'];
 export const TEAM_NAMES = { p1: 'Ivory', p2: 'Ember' };
 export const ENERGY = { start: 1, perTurn: 1, max: 6 };
 export const ICE_LIMIT = 10;
-// Creeps: pawn-like minions that march on their own.
+// Creeps: pawn-like minions moved by their player (moving one uses the turn's action).
 //   files: starting files on each side's second rank (mirrored for Ember)
-//   every: they march at the end of every Nth turn of their owner
 //   lastHit: energy for eliminating an enemy creep; breach: energy when a creep reaches the far rank
-export const CREEPS = { files: ['a', 'c', 'e', 'g'], every: 2, lastHit: 1, breach: 2 };
+export const CREEPS = { files: ['a', 'c', 'e', 'g'], lastHit: 1, breach: 2 };
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -90,7 +89,7 @@ export const BEAST = {
 export const CREEP = {
   name: 'Creep', title: 'Minion', cls: 'claw',
   move: [{ kind: 'creep' }],
-  moveText: `Marches 1 square forward on its own every ${CREEPS.every} turns. Strikes an enemy diagonally in front instead of moving.`,
+  moveText: 'Steps 1 square forward onto an empty square, or captures an enemy diagonally in front. Never moves back or sideways.',
 };
 export const heroDef = (u) => (u.kind === 'beast' ? BEAST : u.kind === 'creep' ? CREEP : HEROES[u.hero]);
 
@@ -157,8 +156,6 @@ export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } =
     map, teams, seed,
     energy: { p1: ENERGY.start, p2: ENERGY.start },
     units, blocks, iceBy: {},
-    // Ember's creeps get a one-turn head start to offset Ivory moving first.
-    creepClock: { p1: 0, p2: CREEPS.every - 1 }, lastMarch: null,
     log: [{ turn: 0, team: null, text: `Match begins on ${m.name}. Ivory moves first.` }],
     lastAction: null,
   };
@@ -252,6 +249,9 @@ export function skillTargets(s, u) {
 }
 
 // ---------- action listing (the single source of legality) ----------
+/** Units the side to move may act with in the main phase: heroes and creeps (beasts only follow Ge'nga). */
+const mainActors = (s) => livingUnits(s, s.current).filter((u) => u.kind !== 'beast');
+
 export function listActions(s) {
   if (s.status !== 'playing') return [];
   if (s.phase === 'react') return [{ type: 'react', use: true }, { type: 'react', use: false }];
@@ -272,9 +272,10 @@ export function listActions(s) {
     return out;
   }
   const out = [];
-  for (const u of livingHeroes(s, s.current)) {
+  for (const u of mainActors(s)) {
     if (u.rooted) continue;
     for (const o of moveOptions(s, u)) out.push({ type: 'move', unitId: u.id, to: o.to });
+    if (u.kind !== 'hero') continue;
     const sk = HEROES[u.hero].skill;
     if (sk.type === 'active' && s.energy[u.team] >= sk.cost) {
       for (const t of skillTargets(s, u)) out.push({ type: 'skill', unitId: u.id, skill: sk.key, targetId: t });
@@ -391,6 +392,12 @@ function resolveMove(s, action, lines, last) {
   }
   for (const v of victims) { last.hits.push({ ...v.pos }); eliminate(s, v, lines, u.team); }
   u.pos = { ...opt.to };
+  if (u.kind === 'creep' && u.pos.r === (u.team === 'p1' ? 0 : BOARD_SIZE - 1)) {
+    u.alive = false;
+    s.energy[u.team] = Math.min(ENERGY.max, s.energy[u.team] + CREEPS.breach);
+    last.breach = true;
+    lines.push(`${label(u)} breaks through on ${squareName(u.pos)}: +${CREEPS.breach} energy.`);
+  }
   if (u.hero === 'hexor' && u.kind === 'hero' && victims.length) {
     lines.push(`${label(u)}'s Storm Hammer shakes the ground.`);
     last.storm = [];
@@ -556,67 +563,8 @@ function checkWinner(s) {
   }
 }
 
-const VALUE_ORDER = { hero: 3, beast: 2, creep: 1 };
-
-/** The current team's creeps march (every CREEPS.every of its turns). Returns moves for FX. */
-function march(s) {
-  const team = s.current;
-  const creeps = livingUnits(s, team).filter((u) => u.kind === 'creep');
-  s.creepClock[team] = (s.creepClock[team] || 0) + 1;
-  if (!creeps.length || s.creepClock[team] % CREEPS.every !== 0) return null;
-  const f = forward(team);
-  const lines = [];
-  const moves = [];
-  // Front creeps first so a column advances together.
-  creeps.sort((a, b) => (b.pos.r - a.pos.r) * f || a.pos.c - b.pos.c);
-  for (const c of creeps) {
-    if (!c.alive || c.rooted) continue;
-    const targets = [-1, 1]
-      .map((dc) => ({ r: c.pos.r + f, c: c.pos.c + dc }))
-      .filter(inBounds)
-      .map((p) => unitAt(s, p))
-      .filter((o) => o && canBeHit(c, o))
-      .sort((a, b) => VALUE_ORDER[b.kind] - VALUE_ORDER[a.kind] || a.pos.c - b.pos.c);
-    const from = { ...c.pos };
-    let to = null, kill = null;
-    if (targets.length) {
-      kill = targets[0];
-      to = { ...kill.pos };
-      lines.push(`${label(c)} strikes ${label(kill)} on ${squareName(to)}.`);
-      eliminate(s, kill, lines, team);
-    } else {
-      const ahead = { r: c.pos.r + f, c: c.pos.c };
-      if (inBounds(ahead) && !blockAt(s, ahead) && !unitAt(s, ahead)) to = ahead;
-    }
-    if (!to) continue;
-    c.pos = to;
-    const move = { id: c.id, from, to: { ...to }, kill: kill ? kill.id : null, breach: false };
-    if (to.r === (team === 'p1' ? 0 : BOARD_SIZE - 1)) {
-      move.breach = true;
-      c.alive = false;
-      s.energy[team] = Math.min(ENERGY.max, s.energy[team] + CREEPS.breach);
-      lines.push(`${label(c)} breaks through on ${squareName(to)}: +${CREEPS.breach} energy.`);
-    }
-    moves.push(move);
-  }
-  if (!moves.length) return null;
-  if (!lines.length) lines.push(`${TEAM_NAMES[team]} creeps march.`);
-  pushLog(s, lines, team);
-  return { team, moves };
-}
-
-/** Does `team`'s creep wave march at the end of its next turn? */
-export function creepsMarchNext(s, team) {
-  return ((s.creepClock?.[team] || 0) + 1) % CREEPS.every === 0;
-}
-
 function endTurn(s) {
-  s.lastMarch = null;
   for (let guard = 0; guard < 4; guard++) {
-    const m = march(s);
-    if (m) s.lastMarch = m;
-    checkWinner(s);
-    if (s.status !== 'playing') return;
     for (const u of livingUnits(s, s.current)) if (u.rooted > 0) u.rooted -= 1;
     s.current = other(s.current);
     s.turn += 1;
@@ -632,9 +580,10 @@ function endTurn(s) {
 }
 
 function hasAnyAction(s) {
-  for (const u of livingHeroes(s, s.current)) {
+  for (const u of mainActors(s)) {
     if (u.rooted) continue;
     if (moveOptions(s, u).length) return true;
+    if (u.kind !== 'hero') continue;
     const sk = HEROES[u.hero].skill;
     if (sk.type === 'active' && s.energy[u.team] >= sk.cost && skillTargets(s, u).length) return true;
   }
@@ -647,7 +596,6 @@ export function getThreats(s, team) {
   const opp = other(team);
   for (const e of livingUnits(s, opp)) {
     if (e.rooted) continue;
-    if (e.kind === 'creep' && !creepsMarchNext(s, opp)) continue;
     for (const o of moveOptions(s, e)) for (const id of o.kills) out.add(id);
   }
   return out;

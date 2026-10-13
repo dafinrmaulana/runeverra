@@ -51,22 +51,19 @@ Three more portraits are in the roster as "Coming soon"; they need skill descrip
 
 Each side starts with 4 pawn-like creeps on its second rank (files a, c, e, g for Ivory; mirrored for Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
 
-- They can't be ordered. At the end of every 2nd turn of their owner, each creep marches (Ember's wave starts one turn earlier, to offset Ivory moving first) 1 square forward, or strikes an enemy diagonally in front instead (eliminating it, like a pawn capture). Front creeps move first; blocked creeps wait.
+- You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
 - Eliminating an enemy creep gives the killer's side +1 energy (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +2 energy.
-- Creeps don't count for victory, but a creep strike can eliminate a hero and win the match.
-- They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root them (a rooted creep skips its march), Magumba can ward them.
+- Creeps don't count for victory, but a creep capture can eliminate a hero and win the match.
+- They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root or interrupt them, Magumba can ward them.
 
-### Creep simulation (bot Normal vs Normal, random teams and maps)
+Bot Normal vs Normal, 24 games each, current rules:
 
-| Variant | Games | Ivory–Ember | Unfinished | First hero kill (median turn) |
+| | Ivory–Ember | Unfinished at 300 actions | Median length | First hero kill (median turn) |
 |---|---|---|---|---|
-| No creeps | 24 | 12–8 | 4 | 26 |
-| Creeps, same start | 48 | 26–12 | 10 | 19–21 |
-| **Creeps, Ember head start (default)** | 24 | 13–9 | 2 | 16 |
-| Creeps march every turn | 24 | 13–5 | 6 | 19 |
-| Creeps march every 3 turns | 24 | 11–6 | 7 | 15 |
+| No creeps | 5–7 | 12 | 111 | 25 |
+| Manual creeps | 8–5 | 11 | 158 | 29 |
 
-Creeps bring fights forward. Without the head start they widened Ivory's first-move edge. Skill use stayed around 5% of actions in every variant: only Magumba and Plantae spend energy, so the extra energy from creeps has little to buy yet.
+Manual creeps keep sides even but make matches longer. About half of bot games still stall, with or without creeps: an anti-stall rule is the biggest open problem.
 
 ### Limiting Aggressive Root
 
