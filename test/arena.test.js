@@ -180,7 +180,7 @@ test('Aqna Icy Step: optional ice after a kill; ice blocks everyone; oldest move
 test('energy: +1 per own turn, capped', () => {
   let s = createMatch({ map: 'field' });
   assert.deepEqual(s.energy, { p1: 1, p2: 1 });
-  s = act(s, mv('p1-hasim', 'b2'));
+  s = act(s, mv('p1-hasim', 'c2'));
   assert.equal(s.energy.p2, 2);
   s.energy.p1 = 6;
   s = act(s, listActions(s).find((a) => a.type === 'move' && a.unitId === 'p2-aqna'));
@@ -218,46 +218,48 @@ test('random play: every listed action is accepted, no shared squares, matches e
 test('creeps: start on a/c/e/g and are moved by their player like pawns', () => {
   let s = createMatch({ p1: ['hasim', 'hexor', 'magumba'], p2: ['genga', 'aqna', 'plantae'], map: 'field' });
   assert.deepEqual(s.units['p1-creep-a'].pos, sq('a2'));
+  assert.deepEqual(s.units['p1-creep-b'].pos, sq('b2'));
   assert.deepEqual(s.units['p2-creep-h'].pos, sq('h7'));
+  assert.deepEqual(s.units['p2-creep-a'].pos, sq('a7'));
   const creepMoves = listActions(s).filter((a) => a.unitId === 'p1-creep-a');
   assert.deepEqual(creepMoves.map((a) => a.to), [sq('a3')], 'one step forward only');
   reject(s, mv('p1-creep-a', 'a4'));           // no double step
-  reject(s, mv('p1-creep-c', 'b2'));           // no sideways
+  reject(s, mv('p1-creep-b', 'c2'));           // no sideways
   s = act(s, mv('p1-creep-a', 'a3'));          // uses the turn
   assert.equal(s.current, 'p2');
-  assert.deepEqual(s.units['p1-creep-c'].pos, sq('c2'), 'other creeps stay put');
+  assert.deepEqual(s.units['p1-creep-b'].pos, sq('b2'), 'other creeps stay put');
   reject(s, mv('p2-creep-h', 'h8'));           // never backwards
 });
 
 test('creeps: capture diagonally, are blocked straight ahead, break through for energy', () => {
   // diagonal capture of a hero
-  let s = setup({ 'p1-creep-c': 'c4', 'p1-hasim': 'a1', 'p2-aqna': 'd5', 'p2-genga': 'h8' });
-  s = act(s, mv('p1-creep-c', 'd5'));
+  let s = setup({ 'p1-creep-b': 'c4', 'p1-hasim': 'a1', 'p2-aqna': 'd5', 'p2-genga': 'h8' });
+  s = act(s, mv('p1-creep-b', 'd5'));
   assert.equal(s.units['p2-aqna'].alive, false);
-  assert.deepEqual(s.units['p1-creep-c'].pos, sq('d5'));
+  assert.deepEqual(s.units['p1-creep-b'].pos, sq('d5'));
   // can't capture straight ahead, can't step into an occupied square
-  const b = setup({ 'p1-creep-c': 'c4', 'p1-hasim': 'a1', 'p2-genga': 'c5', 'p2-plantae': 'h8' });
-  reject(b, mv('p1-creep-c', 'c5'));
+  const b = setup({ 'p1-creep-b': 'c4', 'p1-hasim': 'a1', 'p2-genga': 'c5', 'p2-plantae': 'h8' });
+  reject(b, mv('p1-creep-b', 'c5'));
   // breach
-  let r = setup({ 'p1-creep-e': 'e7', 'p1-hasim': 'a1', 'p2-genga': 'h8' });
+  let r = setup({ 'p1-creep-g': 'e7', 'p1-hasim': 'a1', 'p2-genga': 'h8' });
   r.energy = { p1: 1, p2: 0 };
-  r = act(r, mv('p1-creep-e', 'e8'));
-  assert.equal(r.units['p1-creep-e'].alive, false);
+  r = act(r, mv('p1-creep-g', 'e8'));
+  assert.equal(r.units['p1-creep-g'].alive, false);
   assert.equal(r.energy.p1, 1 + CREEPS.breach);
   assert.ok(r.lastAction.breach);
 });
 
 test('creeps: last hit gives energy; a creep capture can win the game; rooted creeps cannot move', () => {
-  let s = setup({ 'p1-hexor': 'd4', 'p1-hasim': 'a1', 'p2-creep-d': 'e6', 'p2-genga': 'h8' });
+  let s = setup({ 'p1-hexor': 'd4', 'p1-hasim': 'a1', 'p2-creep-b': 'e6', 'p2-genga': 'h8' });
   s.energy = { p1: 1, p2: 0 };
   s = act(s, mv('p1-hexor', 'e6'));
   assert.equal(s.energy.p1, 1 + CREEPS.lastHit);
-  let w = setup({ 'p1-creep-c': 'c4', 'p1-hasim': 'a1', 'p2-aqna': 'd5' });
-  w = act(w, mv('p1-creep-c', 'd5'));
+  let w = setup({ 'p1-creep-b': 'c4', 'p1-hasim': 'a1', 'p2-aqna': 'd5' });
+  w = act(w, mv('p1-creep-b', 'd5'));
   assert.equal(w.status, 'p1');
-  const rt = setup({ 'p1-creep-c': 'c4', 'p1-hasim': 'a1', 'p2-genga': 'h8' });
-  rt.units['p1-creep-c'].rooted = 1;
-  assert.match(reject(rt, mv('p1-creep-c', 'c5')), /roots/);
+  const rt = setup({ 'p1-creep-b': 'c4', 'p1-hasim': 'a1', 'p2-genga': 'h8' });
+  rt.units['p1-creep-b'].rooted = 1;
+  assert.match(reject(rt, mv('p1-creep-b', 'c5')), /roots/);
 });
 
 test('creeps can be turned off', () => {
@@ -302,14 +304,14 @@ test('Aggressive Root can interrupt only once per match', () => {
 test('Storm Hammer never kills Hexor\'s own allies: blocked allies stay put', () => {
   // Hexor b5 -> b7 captures Aqna. Around b7: ally Hasim a8 (corner, pushed off-board) and
   // ally creep c8 (edge) must survive; enemy Plantae a7 (pushed off the left edge) dies.
-  let s = setup({ 'p1-hexor': 'c5', 'p1-hasim': 'a8', 'p1-creep-c': 'c8', 'p2-aqna': 'b7', 'p2-plantae': 'a7', 'p2-genga': 'h1' });
+  let s = setup({ 'p1-hexor': 'c5', 'p1-hasim': 'a8', 'p1-creep-b': 'c8', 'p2-aqna': 'b7', 'p2-plantae': 'a7', 'p2-genga': 'h1' });
   s = act(s, mv('p1-hexor', 'b7'));
   assert.equal(s.units['p2-aqna'].alive, false);
   assert.equal(s.units['p2-plantae'].alive, false, 'enemy off the board is eliminated');
   assert.equal(s.units['p1-hasim'].alive, true, 'ally is not eliminated');
   assert.deepEqual(s.units['p1-hasim'].pos, sq('a8'));
-  assert.equal(s.units['p1-creep-c'].alive, true);
-  assert.deepEqual(s.units['p1-creep-c'].pos, sq('c8'));
+  assert.equal(s.units['p1-creep-b'].alive, true);
+  assert.deepEqual(s.units['p1-creep-b'].pos, sq('c8'));
   // ally against terrain also survives
   let t = setup({ 'p1-hexor': 'b3', 'p1-hasim': 'd5', 'p2-aqna': 'c5', 'p2-genga': 'h1' }, { blocks: { e5: 'rock' } });
   t = act(t, mv('p1-hexor', 'c5'));
@@ -317,30 +319,17 @@ test('Storm Hammer never kills Hexor\'s own allies: blocked allies stay put', ()
   assert.deepEqual(t.units['p1-hasim'].pos, sq('d5'));
 });
 
-test('creeps step diagonally around terrain straight ahead, but not around units', () => {
-  const s = setup({ 'p1-creep-c': 'c3', 'p1-hasim': 'a1', 'p2-genga': 'h8' }, { blocks: { c4: 'pillar' } });
-  const dests = listActions(s).filter((a) => a.unitId === 'p1-creep-c').map((a) => a.to);
-  assert.deepEqual(dests.sort((a, b) => a.c - b.c || a.r - b.r), [sq('b4'), sq('c5'), sq('d4')]);
-  // both diagonals taken by units: the hop over the pillar still works
-  const h = setup({ 'p1-creep-c': 'c3', 'p1-hasim': 'b4', 'p1-hexor': 'd4', 'p2-genga': 'h8' }, { blocks: { c4: 'pillar' } });
-  const hop = act(h, mv('p1-creep-c', 'c5'));
-  assert.deepEqual(hop.units['p1-creep-c'].pos, sq('c5'));
-  const n = act(s, mv('p1-creep-c', 'd4'));
-  assert.deepEqual(n.units['p1-creep-c'].pos, sq('d4'));
-  // a unit straight ahead still blocks (no sidestep)
-  const u = setup({ 'p1-creep-c': 'c3', 'p1-hasim': 'a1', 'p2-genga': 'c4', 'p2-plantae': 'h8' });
-  assert.equal(listActions(u).filter((a) => a.unitId === 'p1-creep-c').length, 0);
-  // every map: no creep starts or gets permanently trapped by terrain in its own file
+test('creeps: lanes are the flank files and no map puts terrain in them', () => {
   for (const map of Object.keys(MAPS)) {
     const m = createMatch({ map });
-    for (const c of Object.values(m.units).filter((x) => x.kind === 'creep')) {
-      const f = c.team === 'p1' ? -1 : 1;
-      for (let r = c.pos.r + f; r >= 0 && r <= 7; r += f) {
-        const ahead = { r, c: c.pos.c };
-        if (!blockAt(m, ahead)) continue;
-        const around = [-1, 1].some((dc) => { const p = { r, c: c.pos.c + dc }; return p.c >= 0 && p.c <= 7 && !blockAt(m, p); });
-        assert.ok(around, `${map}: creep on file ${c.pos.c} would be walled in at row ${r}`);
-      }
+    const creeps = Object.values(m.units).filter((u) => u.kind === 'creep');
+    assert.equal(creeps.length, 8);
+    for (const c of creeps) {
+      assert.ok('abgh'.includes('abcdefgh'[c.pos.c]), `${map}: creep on a centre file`);
+      for (let r = 0; r < 8; r++) assert.equal(blockAt(m, { r, c: c.pos.c }), null, `${map}: terrain in creep lane ${'abcdefgh'[c.pos.c]}`);
     }
   }
+  // terrain still blocks a creep straight ahead (no sidestep, no hop)
+  const s = setup({ 'p1-creep-b': 'c3', 'p1-hasim': 'a1', 'p2-genga': 'h8' }, { blocks: { c4: 'pillar' } });
+  assert.equal(listActions(s).filter((a) => a.unitId === 'p1-creep-b').length, 0);
 });

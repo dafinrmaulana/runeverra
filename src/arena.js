@@ -8,9 +8,10 @@ export const TEAM_NAMES = { p1: 'Ivory', p2: 'Ember' };
 export const ENERGY = { start: 1, perTurn: 1, max: 6 };
 export const ICE_LIMIT = 10;
 // Creeps: pawn-like minions moved by their player (moving one uses the turn's action).
-//   files: starting files on each side's second rank (mirrored for Ember)
+//   files: the flank lanes; both sides' creeps start on these files (second rank) and face each other.
+//   Map terrain never sits on these files, so creeps are only ever blocked by units.
 //   lastHit: energy for eliminating an enemy creep; breach: energy when a creep reaches the far rank
-export const CREEPS = { files: ['a', 'c', 'e', 'g'], lastHit: 1, breach: 2 };
+export const CREEPS = { files: ['a', 'b', 'g', 'h'], lastHit: 1, breach: 2 };
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -89,16 +90,17 @@ export const BEAST = {
 export const CREEP = {
   name: 'Creep', title: 'Minion', cls: 'claw',
   move: [{ kind: 'creep' }],
-  moveText: 'Steps 1 square forward onto an empty square, or captures an enemy diagonally in front. If terrain is straight ahead, it can step diagonally around it or hop over it. Never moves back or sideways.',
+  moveText: 'Steps 1 square forward onto an empty square, or captures an enemy diagonally in front. Never moves back or sideways.',
 };
 export const heroDef = (u) => (u.kind === 'beast' ? BEAST : u.kind === 'creep' ? CREEP : HEROES[u.hero]);
 
 // Maps: obstacles are listed for Ivory's half; the other half is the 180° mirror.
+// Terrain only goes in the four centre files (c-f): the flank files are creep lanes.
 export const MAPS = {
-  oasis: { name: 'Oasis Bazaar', theme: 'desert', blurb: 'Sandstone pillars and a dry well split the market.', blocks: { pillar: ['c4', 'a5'] } },
-  savanna: { name: 'Savanna Crossing', theme: 'savanna', blurb: 'Acacia trees funnel fights through the middle.', blocks: { tree: ['b4', 'e4'] } },
-  jungle: { name: 'Jungle Ruins', theme: 'jungle', blurb: 'Overgrown stones make tight lanes. Great for Backstab.', blocks: { ruin: ['a4', 'c5', 'd3'] } },
-  keep: { name: 'Winter Keep', theme: 'winter', blurb: 'Castle crenels and frozen rocks guard the flanks.', blocks: { rock: ['b5', 'd4'], ice: [] } },
+  oasis: { name: 'Oasis Bazaar', theme: 'desert', blurb: 'Sandstone pillars guard the market square; the flanks are open lanes.', blocks: { pillar: ['c4', 'f3'] } },
+  savanna: { name: 'Savanna Crossing', theme: 'savanna', blurb: 'Acacia trees split the centre into two crossings.', blocks: { tree: ['d4', 'c3'] } },
+  jungle: { name: 'Jungle Ruins', theme: 'jungle', blurb: 'An overgrown fort fills the middle. Great for Backstab.', blocks: { ruin: ['c3', 'e4', 'f3'] } },
+  keep: { name: 'Winter Keep', theme: 'winter', blurb: 'Frozen rocks form a keep in the centre.', blocks: { rock: ['d3', 'f4'] } },
   field: { name: 'Open Field', theme: 'field', blurb: 'No terrain. Pure positioning.', blocks: {} },
 };
 
@@ -114,7 +116,7 @@ const other = (t) => (t === 'p1' ? 'p2' : 'p1');
 const forward = (team) => (team === 'p1' ? -1 : 1);
 
 // ---------- setup ----------
-const SLOTS = { p1: ['b1', 'd1', 'f1'], p2: ['g8', 'e8', 'c8'] };
+export const SLOTS = { p1: ['c1', 'd1', 'f1'], p2: ['f8', 'e8', 'c8'] };
 
 export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } = {}) {
   const teams = { p1: p1 || ['hasim', 'hexor', 'magumba'], p2: p2 || ['genga', 'aqna', 'plantae'] };
@@ -211,17 +213,6 @@ export function moveOptions(s, u) {
       }
       const ahead = { r: u.pos.r + f, c: u.pos.c };
       if (inBounds(ahead) && !blockAt(s, ahead) && !unitAt(s, ahead)) push({ to: ahead, kills: [] });
-      // Terrain straight ahead (pillar, tree, ruin, rock, ice) never stops a creep: it may step
-      // around it diagonally forward, or hop over it to the square just beyond (both onto empty
-      // squares). Units straight ahead still block, as with chess pawns.
-      if (inBounds(ahead) && blockAt(s, ahead)) {
-        for (const dc of [-1, 1]) {
-          const p = { r: u.pos.r + f, c: u.pos.c + dc };
-          if (inBounds(p) && !blockAt(s, p) && !unitAt(s, p)) push({ to: p, kills: [] });
-        }
-        const beyond = { r: u.pos.r + 2 * f, c: u.pos.c };
-        if (inBounds(beyond) && !blockAt(s, beyond) && !unitAt(s, beyond)) push({ to: beyond, kills: [] });
-      }
     } else if (rule.kind === 'backstab') {
       // Any of the 8 directions: straight or diagonal.
       for (const [dr, dc] of KING) {

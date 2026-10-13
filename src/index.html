@@ -491,7 +491,7 @@
           <li><b>Plantae · Aggressive Root</b> (3 energy, range 3, cooldown 3): on your turn, roots an enemy for its next turn. Once per match, on the enemy's turn, when one of their units within 3 acts, you're asked whether to interrupt: the action is negated and their turn ends. Either use puts it on cooldown for 3 of your turns, so no prompts appear while it recharges or after the interrupt is spent.</li>
           <li><b>Hexor · Storm Hammer.</b> When he captures, every unit around the target (allies too) is pushed 1 square away, chaining. An enemy pushed into terrain or off the board is eliminated; an ally that would be pushed there stays put instead.</li>
           <li><b>Aqna · Icy Step.</b> After she eliminates an enemy, she may raise an ice block within 3 squares. Max 10; after that her oldest block moves.</li>
-          <li><b>Creeps.</b> Each side starts with 4 pawns on its second rank. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. If terrain blocks the square straight ahead, a creep may step diagonally forward around it or hop over it to the square just beyond. Eliminating an enemy creep gives +1 energy; a creep that reaches the far rank breaks through for +2 energy. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
+          <li><b>Creeps.</b> Each side starts with 4 pawns on the flank lanes (files a, b, g, h), facing the enemy's creeps. Like chess pawns, you move them yourself (it uses your turn): 1 square forward onto an empty square, or capture an enemy diagonally in front. Map terrain sits only in the four centre files, so it never blocks a lane. Eliminating an enemy creep gives +1 energy; a creep that reaches the far rank breaks through for +2 energy. Creeps don't count for victory. Hexor can push them, Hasim can jump them, Aqna's kills on them raise ice.</li>
           <li><b>Distances</b> count diagonals as 1. Each hero's movement is shown on its card.</li>
           <li><b>Controls.</b> Click a hero, then a marked square. Q or the skill button arms an active skill. Esc cancels.</li>
         </ul>
@@ -504,7 +504,7 @@
 import {
   createMatch, applyAction, validateAction, listActions, moveOptions, skillTargets, getThreats,
   livingHeroes, unitAt, blockAt, squareName, samePos, toMove, heroDef, label,
-  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, skillCooldown,
+  HEROES, MAPS, TEAM_NAMES, BOARD_SIZE, ENERGY, CREEPS, SLOTS, skillCooldown,
 } from './arena.js';
 import { chooseAction, pickTeam, BOT_LEVELS } from './arena-bot.js';
 
@@ -562,10 +562,11 @@ function renderSetup() {
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
       const cls = [(r + c) % 2 ? '' : 'l'];
       if (blocks[`${r},${c}`]) cls.push('b');
-      if (r === 7 && [1, 3, 5].includes(c)) cls.push('u1');
-      if (r === 0 && [6, 4, 2].includes(c)) cls.push('u2');
-      if (setup.creeps && r === 6 && [0, 2, 4, 6].includes(c)) cls.push('c1');
-      if (setup.creeps && r === 1 && [1, 3, 5, 7].includes(c)) cls.push('c2');
+      const at = (n) => n === `${'abcdefgh'[c]}${8 - r}`;
+      if (SLOTS.p1.some(at)) cls.push('u1');
+      if (SLOTS.p2.some(at)) cls.push('u2');
+      if (setup.creeps && r === 6 && CREEPS.files.includes('abcdefgh'[c])) cls.push('c1');
+      if (setup.creeps && r === 1 && CREEPS.files.includes('abcdefgh'[c])) cls.push('c2');
       cellsHtml += `<i class="${cls.join(' ')}"></i>`;
     }
     return `<button type="button" class="maptile" data-map="${id}" aria-pressed="${setup.map === id}">
@@ -579,7 +580,7 @@ function renderSetup() {
     const who = team === 'p1' ? (vsBot() ? 'You' : 'Player 1') : (vsBot() ? 'Bot' : 'Player 2');
     const slots = [0, 1, 2].map((i) => (picks[i]
       ? `<span class="slot filled"><img src="${ICON(picks[i])}" alt="${HEROES[picks[i]].name}"><span class="n">${i + 1}</span></span>`
-      : `<span class="slot">${['b', 'd', 'f'][i]}${team === 'p1' ? 1 : 8}</span>`)).join('');
+      : `<span class="slot">${SLOTS[team][i]}</span>`)).join('');
     return `<button type="button" class="teamtab ${team}" data-team="${team}" aria-pressed="${setup.editing === team}">
       <span class="th"><span class="swatch ${team}"></span>${TEAM_NAMES[team]} · ${who}<small>${picks.length}/3 picked</small></span>
       <span class="slots">${slots}</span>

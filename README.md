@@ -49,9 +49,9 @@ Three more portraits are in the roster as "Coming soon"; they need skill descrip
 
 ## Creeps
 
-Each side starts with 4 pawn-like creeps on its second rank (files a, c, e, g for Ivory; mirrored for Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
+Each side starts with 4 pawn-like creeps on its second rank in the flank lanes (files a, b, g, h), facing the enemy's creeps. Map terrain only sits in the four centre files (c–f), so obstacles never block a lane; heroes start on c, d, f (Ivory) and f, e, c (Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
 
-- You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. If terrain (a map obstacle or Aqna's ice) is straight ahead, the creep may step diagonally forward around it or hop over it to the square just beyond (onto empty squares), so obstacles never trap a creep; units straight ahead still block it. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
+- You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
 - Eliminating an enemy creep gives the killer's side +1 energy (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +2 energy.
 - Creeps don't count for victory, but a creep capture can eliminate a hero and win the match.
 - They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root or interrupt them, Magumba can ward them.
@@ -81,14 +81,14 @@ Plantae without the skill loses 0–5, so its strength was the interrupt itself:
 
 ## Maps
 
-`MAPS` in src/arena.js; obstacles are listed for one half and mirrored 180°.
+`MAPS` in src/arena.js; obstacles are listed for one half and mirrored 180°, and only placed in files c–f so the flank lanes stay clear for creeps.
 
-| Map | Theme | Terrain |
+| Map | Theme | Terrain (centre files only) |
 |---|---|---|
-| Oasis Bazaar | desert, drifting sand | 4 pillars |
-| Savanna Crossing | savanna, dust motes | 4 acacia trees |
-| Jungle Ruins | jungle, falling leaves | 6 overgrown ruins |
-| Winter Keep | snow, snowfall | 4 rocks |
+| Oasis Bazaar | desert, drifting sand | 4 pillars around the market square |
+| Savanna Crossing | savanna, dust motes | 4 acacia trees splitting the centre |
+| Jungle Ruins | jungle, falling leaves | 6 ruins forming a central fort |
+| Winter Keep | snow, snowfall | 4 rocks forming a keep |
 | Open Field | slate | none |
 
 ## Engine API
