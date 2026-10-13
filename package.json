@@ -1,0 +1,12 @@
+{
+  "name": "hero-tactics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chess-based hero tactics prototype: deterministic, hot-seat, no dependencies.",
+  "scripts": {
+    "dev": "node serve.mjs",
+    "test": "node --test test/*.test.js",
+    "build": "node build.mjs"
+  }
+}
