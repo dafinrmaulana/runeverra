@@ -35,8 +35,8 @@ export const CLASSES = {
 export const HEROES = {
   hasim: {
     name: 'Hasim', title: 'Desert Assassin', cls: 'claw', role: 'assassin',
-    move: [{ kind: 'slide', dirs: KING, range: 2 }, { kind: 'backstab' }],
-    moveText: 'Moves up to 2 squares in any direction.',
+    move: [{ kind: 'slide', dirs: KING, range: 1 }, { kind: 'backstab' }],
+    moveText: 'Steps 1 square in any direction.',
     skill: {
       key: 'backstab', name: 'Backstab', type: 'move', cost: 0,
       text: 'Signature move, free (no tokens): jumps in any direction over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',

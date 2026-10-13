@@ -32,7 +32,7 @@ Heroes are data in `HEROES` (src/arena.js): name, class, role, movement rules, s
 | Role | Heroes | Movement |
 |---|---|---|
 | Roam | Ge'nga, Aqna, Hexor | up to 2 squares straight; Hexor's L jump counts as his 2 steps |
-| Assassin | Hasim | up to 2 squares in any direction, plus the Backstab jump (free signature move) |
+| Assassin | Hasim | 1 square in any direction, plus the Backstab jump (free signature move) |
 | Support | Plantae | 1 square straight; skill reaches 3, with a weakness (below) |
 | (none yet) | Magumba | up to 2 squares diagonally |
 

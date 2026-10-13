@@ -40,7 +40,7 @@ test('setup: 4 heroes each, beast beside Ge\'nga, symmetric map blocks, no first
   assert.throws(() => createMatch({ p1: ['hasim', 'hexor', 'aqna'] }));
 });
 
-test('roles: Roam moves 2 straight, Assassin 2 in any direction, Support 1, Hexor is a Roam with an L jump', () => {
+test('roles: Roam moves 2 straight, Assassin 1 in any direction plus Backstab, Support 1, Hexor is a Roam with an L jump', () => {
   assert.equal(HEROES.aqna.role, 'roam');
   assert.equal(HEROES.hexor.role, 'roam');
   assert.equal(HEROES.hasim.role, 'assassin');
@@ -48,7 +48,7 @@ test('roles: Roam moves 2 straight, Assassin 2 in any direction, Support 1, Hexo
   assert.equal(ENERGY.max, 4);
   const s = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'h4', 'p2-plantae': 'h8' });
   const names = (u) => moveOptions(s, s.units[u]).map((o) => 'abcdefgh'[o.to.c] + (8 - o.to.r)).sort();
-  assert.deepEqual(names('p1-hasim'), ['b2', 'b4', 'b6', 'c3', 'c4', 'c5', 'd2', 'd3', 'd5', 'd6', 'e3', 'e4', 'e5', 'f2', 'f4', 'f6']);
+  assert.deepEqual(names('p1-hasim'), ['c3', 'c4', 'c5', 'd3', 'd5', 'e3', 'e4', 'e5']);
   assert.deepEqual(names('p2-aqna'), ['f4', 'g4', 'h2', 'h3', 'h5', 'h6']);
   assert.deepEqual(names('p2-plantae'), ['g8', 'h7']);
 });
@@ -84,10 +84,9 @@ test('Hasim Backstab: free signature move in any direction; kills jumped enemy a
   assert.equal(act(t3, mv('p1-hasim', 'd2')).units['p2-aqna'].alive, false);
   assert.equal(act(t3, mv('p1-hasim', 'b2')).units['p2-plantae'].alive, false);
   assert.equal(act(t3, mv('p1-hasim', 'f4')).units['p2-beast'].alive, false);
-  // over an empty square it is just a 2-square move: nobody dies; never 3 squares
-  const plain = act(t3, mv('p1-hasim', 'f6'));
-  assert.equal(Object.values(plain.units).filter((u) => !u.alive).length, 0);
-  reject(t3, mv('p1-hasim', 'd7'));
+  // never with nothing to jump over
+  reject(t3, mv('p1-hasim', 'f6')); // e5 is empty
+  reject(t3, mv('p1-hasim', 'b6')); // c5 is empty
 });
 
 test('Ge\'nga: the beast follow-up is free; Wild Company (3 tokens) summons a fallen beast', () => {

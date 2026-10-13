@@ -493,7 +493,7 @@
         <ul>
           <li><b>Goal.</b> Eliminate all four enemy heroes. Beasts and creeps don't count.</li>
           <li><b>One action per turn:</b> move one unit, or use an active skill. Moving onto an enemy eliminates it.</li>
-          <li><b>Roles.</b> Roam (Ge'nga, Aqna, Hexor) move up to 2 squares straight; Hexor's L jump counts as his 2 steps. Assassin (Hasim) moves up to 2 squares in any direction. Support (Plantae) steps 1 but reaches 3 with its skill. Magumba slides up to 2 diagonally.</li>
+          <li><b>Roles.</b> Roam (Ge'nga, Aqna, Hexor) move up to 2 squares straight; Hexor's L jump counts as his 2 steps. Assassin (Hasim) steps 1 square in any direction, plus his Backstab jump. Support (Plantae) steps 1 but reaches 3 with its skill. Magumba slides up to 2 diagonally.</li>
           <li><b>Terrain</b> (pillars, trees, ruins, rocks, ice) blocks movement. Only Hasim's Backstab and Hexor's jump go over it; nobody lands on it.</li>
           <li><b>Skill tokens</b> pay for every skill, passive or active. Both sides start with 4 (the max) and they don't refill each turn: you only earn +1 for killing an enemy creep or getting your creep to the far rank. Costs follow impact (Hasim's Backstab and Ge'nga's beast moves are free): ice 1, Empty Grave 2, Storm Hammer 2, summoning the beast 3, Aggressive Root 3 (interrupt 3).</li>
           <li><b>Hasim · Backstab</b> (signature move, free). Jumps in any of the 8 directions over the adjacent unit or terrain, landing 2 squares away. A jumped enemy and an enemy on the landing square are both eliminated. Gold diamonds mark jumps.</li>
@@ -625,7 +625,7 @@ function renderSetup() {
       <span class="body">
         <span class="sk">${sk.name} <em>${costLabel(sk)}</em></span>
         <span class="txt">${sk.text}</span>
-        <span class="mv">${moveDiagram(id)}<span>${h.moveText}${id === 'hasim' ? ' Red squares can also be reached by Backstab, jumping over a unit or terrain.' : ''}</span></span>
+        <span class="mv">${moveDiagram(id)}<span>${h.moveText}${id === 'hasim' ? ' Red squares: Backstab jumps, over a unit or terrain.' : ''}</span></span>
       </span>
     </button>`;
   }).join('') + LOCKED.map((l) => `<div class="card locked" aria-disabled="true">
