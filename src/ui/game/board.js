@@ -25,9 +25,10 @@ export const BEAST_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellip
 /**
  * @param {HTMLElement} host
  * @param {{ onCell: (p: any) => void, onPress?: ((p: any) => ({ id: string, fresh: boolean } | null)) | null,
- *   onDrop?: ((id: string, p: any) => boolean) | null, flip?: boolean }} opts
+ *   onDrop?: ((id: string, p: any) => boolean) | null, flip?: boolean, facing?: boolean }} opts
+ * `facing`: two players sit across one screen, so Ember's pieces are turned to face the top seat.
  */
-export function createBoard(host, { onCell, onPress = null, onDrop = null, flip = false }) {
+export function createBoard(host, { onCell, onPress = null, onDrop = null, flip = false, facing = false }) {
   /** Display position of a board square: turned 180° when this player sits on Ember's side. */
   const V = (p) => (flip ? { r: BOARD_SIZE - 1 - p.r, c: BOARD_SIZE - 1 - p.c } : p);
   host.innerHTML = `<div class="arena"><div class="backdrop"></div><div class="board-wrap"><div class="board">
@@ -35,6 +36,7 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
     <canvas class="fx" aria-hidden="true"></canvas></div></div></div>`;
   const q = (s) => host.querySelector(s);
   const boardEl = q('.board'), terrainEl = q('.terrain'), piecesEl = q('.pieces'), backdrop = q('.backdrop'), marksEl = q('.marks');
+  if (facing) boardEl.classList.add('facing');
   const cells = new Array(BOARD_SIZE * BOARD_SIZE);
   // Cells are laid out in display order; `cells` stays indexed by the real square.
   for (let dr = 0; dr < BOARD_SIZE; dr++) {

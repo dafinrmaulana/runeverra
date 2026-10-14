@@ -229,3 +229,74 @@ input, select, textarea { border-radius: 2px !important; }
 .cursor-setting { display: grid; gap: 8px; }
 .cursor-setting .cursor-opt { padding: 10px 6px; }
 .cursor-setting .cursor-opt svg { width: 32px; height: 32px; }
+
+/* face to face: Ember's pieces face the player sitting at the top */
+.faceoff .piece.p2 .token { rotate: 180deg; }
+.faceoff .piece.p2 .tag { bottom: auto; top: -9%; rotate: 180deg; box-shadow: inset 0 -2px 0 var(--ember); }
+.faceoff .piece.p2 .threat { rotate: 180deg; }
+
+/* controls: skill, undo/redo and menu share one height */
+.controls-row { align-items: center; --ctl-h: 46px; }
+.controls-row .undo-redo, .controls-row > .btn.icon-btn { height: var(--ctl-h); }
+.controls-row .undo-redo .btn { height: 100%; padding-block: 0; }
+.controls-row > .btn.icon-btn { padding-block: 0; }
+.controls-row .undo-redo { border-color: var(--line-hi); border-radius: 3px; }
+.controls-row .skill-sq { width: var(--ctl-h); height: var(--ctl-h); border-radius: 3px; }
+.controls-row .skill-sq img { border-radius: 2px; }
+.skill-sq { background: var(--panel-hi); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-hi); }
+.skill-sq.ready { background: var(--sand); color: #2a1d10; box-shadow: 0 0 0 2px rgba(227, 184, 120, .35), 0 0 16px rgba(227, 184, 120, .45); }
+.skill-sq.ready:hover { transform: translateY(-1px); }
+.skill-sq.armed { background: var(--leaf); color: #10201a; box-shadow: 0 0 0 2px rgba(90, 158, 128, .4), 0 0 18px rgba(90, 158, 128, .55); }
+.skill-sq .glyph { width: 62%; height: 62%; }
+
+/* face to face: Ember's pieces face the top seat, name tag under the portrait from that side */
+.board.facing .piece.p2 .token { rotate: 180deg; }
+.board.facing .piece.p2 .tag { bottom: auto; top: -9%; transform: translateX(-50%) rotate(180deg); box-shadow: inset 0 -2px 0 var(--ember); }
+.board.facing .piece.p2 .threat { top: auto; right: auto; bottom: 2%; left: 2%; rotate: 180deg; }
+
+/* ---------- controls: one height for skill, undo/redo and menu ---------- */
+:root { --ctl: 46px; }
+.controls-row { align-items: center; }
+.undo-redo { height: var(--ctl); border-color: var(--line-hi); border-radius: 3px; }
+.undo-redo .btn { height: 100%; padding: 0 14px; }
+.undo-redo .btn + .btn { border-left-color: var(--line-hi); }
+.btn.icon-btn { height: var(--ctl); padding: 0 14px; border-radius: 3px; }
+.skill-sq, .skill-wrap.inline .skill-sq { width: var(--ctl); height: var(--ctl); border-radius: 3px; }
+.skill-sq { background: var(--panel-hi); border: 1px solid var(--line-hi); color: var(--muted); }
+.skill-sq .glyph { width: 58%; height: 58%; }
+.skill-sq.ready {
+  background: var(--sand); border-color: #f3d39e; color: #2a1d10;
+  box-shadow: 0 0 0 3px rgba(227, 184, 120, .25), 0 0 18px rgba(227, 184, 120, .45);
+  animation: skillglow 2.2s ease-in-out infinite;
+}
+@keyframes skillglow { 50% { box-shadow: 0 0 0 5px rgba(227, 184, 120, .12), 0 0 26px rgba(227, 184, 120, .6); } }
+.skill-sq.armed { background: var(--leaf); border-color: #8fd0b3; color: #10231a; box-shadow: 0 0 0 3px rgba(90, 158, 128, .35), 0 0 20px rgba(90, 158, 128, .55); }
+.skill-sq.blocked { filter: none; cursor: help; }
+.skill-sq.blocked .glyph { opacity: .55; }
+.skill-sq .sq-cost, .skill-sq.ready .sq-cost, .skill-sq.armed .sq-cost {
+  right: -7px; bottom: -7px; top: auto; min-width: 19px; height: 19px; font-size: .66rem; padding: 0 4px; border-radius: 10px;
+  background: var(--ink); color: var(--sand); border: 1px solid var(--sand-dk); box-shadow: none;
+}
+.sq-block {
+  position: absolute; top: -7px; right: -7px; z-index: 3; height: 19px; min-width: 19px; padding: 0 3px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 1px;
+  background: var(--ink); border: 1px solid var(--line-hi); color: var(--muted);
+}
+.sq-block svg { width: 12px; height: 12px; }
+.sq-block b { font: 700 .66rem/1 var(--f-mono); color: var(--bone); }
+.sq-block.cooldown { color: var(--mist); border-color: #7f97a6; }
+.sq-block.tokens { color: var(--blood); border-color: #8f4a3a; }
+.sq-block.target { color: var(--sand); border-color: var(--sand-dk); }
+.skill-pop { background: var(--panel); border-color: var(--line-hi); }
+.skill-pop::before { background: var(--panel); border-color: var(--line-hi); }
+.skill-pop .state { display: flex; gap: 6px; align-items: flex-start; }
+.skill-pop .state.no { color: #e9a58f; }
+.state-ico { flex: none; width: 14px; height: 14px; margin-top: 2px; }
+.state-ico svg { width: 14px; height: 14px; display: block; }
+@media (prefers-reduced-motion: reduce) { .skill-sq.ready { animation: none; } }
+.skill-sq.ready, .skill-sq.armed { overflow: visible; }
+.skill-sq.ready::after, .skill-sq.armed::after { display: none; }
+/* name tags stay inside the board on the edge rows */
+.piece .tag { bottom: -4%; }
+.board.facing .piece.p2 .tag { top: -4%; }
+.skill-wrap.inline .skill-sq { margin: 7px 7px 7px 0; }

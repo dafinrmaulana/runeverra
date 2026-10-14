@@ -68,6 +68,7 @@ export class GameController {
       onPress: (p: Pos) => this.onPress(p),
       onDrop: (id: string, p: Pos) => this.onDrop(id, p),
       flip: this.viewer() === 'p2',
+      facing: this.mode.kind === 'local',
     });
     this.render({});
     if (intro) this.board.intro(this.game);

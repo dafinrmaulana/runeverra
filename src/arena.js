@@ -116,6 +116,10 @@ export const inBounds = (p) => p.r >= 0 && p.r < BOARD_SIZE && p.c >= 0 && p.c <
 export const samePos = (a, b) => a.r === b.r && a.c === b.c;
 export const chebyshev = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
 export const squareName = (p) => `${FILES[p.c]}${BOARD_SIZE - p.r}`;
+// Log helpers: why a skill could be used.
+const tokens = (n) => (n ? `${n} token${n > 1 ? 's' : ''}` : 'free');
+const dist = (a, b) => { const d = chebyshev(a.pos, b.pos); return `${d} square${d === 1 ? '' : 's'} away`; };
+const left = (s, team) => `(${tokens(s.energy[team]).replace('free', 'no tokens')} left)`;
 export const parseSquare = (n) => ({ c: FILES.indexOf(n[0]), r: BOARD_SIZE - Number(n[1]) });
 export const key = (p) => `${p.r},${p.c}`;
 const other = (t) => (t === 'p1' ? 'p2' : 'p1');
@@ -425,7 +429,7 @@ function resolveMove(s, action, lines, last) {
   last.from = from; last.to = { ...opt.to };
   if (opt.backstab) {
     s.energy[u.team] -= opt.cost || 0;
-    lines.push(`${label(u)} backstabs over ${overUnit ? label(overUnit) : 'the terrain'} (${squareName(from)} → ${squareName(opt.to)}).`);
+    lines.push(`${label(u)} backstabs over ${overUnit ? label(overUnit) : 'the terrain'} (${squareName(from)} → ${squareName(opt.to)}). Backstab, free: he was next to ${overUnit ? 'a unit' : 'terrain'} with an open landing square behind it.`);
   } else if (victims.length) {
     lines.push(`${label(u)} strikes ${label(victims[0])} on ${squareName(opt.to)}.`);
   } else {
@@ -451,17 +455,17 @@ function resolveSkill(s, action, lines, last) {
     const b = fallenBeastOf(s, u);
     Object.assign(b, { alive: true, pos: { ...action.to }, rooted: 0, warded: false, cd: 0 });
     last.kind = 'summon'; last.from = { ...u.pos }; last.to = { ...action.to }; last.hits.push({ ...action.to }); last.targetId = b.id;
-    lines.push(`${label(u)} calls the wild: ${label(b)} returns on ${squareName(action.to)}.`);
+    lines.push(`${label(u)} calls the wild: ${label(b)} returns on ${squareName(action.to)}. Wild Company, ${tokens(sk.cost)}: the beast had fallen and ${squareName(action.to)} is next to Ge'nga. ${left(s, u.team)}`);
     return;
   }
   const t = s.units[action.targetId];
   last.kind = sk.key; last.from = { ...u.pos }; last.to = null; last.hits.push({ ...t.pos }); last.targetId = t.id;
   if (sk.key === 'grave') {
     t.warded = true; t.rooted = 0;
-    lines.push(t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`);
+    lines.push(`${t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`} Empty Grave, ${tokens(sk.cost)}: ${t.id === u.id ? 'he targets himself' : `${label(t)} is ${dist(u, t)} within range ${sk.range}`}; enemy attacks on ${t.id === u.id ? 'him' : 'it'} are negated until ${label(u)}'s next turn. ${left(s, u.team)}`);
   } else if (sk.key === 'root') {
     t.rooted = 1;
-    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn.`);
+    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
   }
 }
 
@@ -496,7 +500,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
       // The hole: Plantae roots itself and can't act on its side's next turn.
       plant.rooted = 1;
       last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, phase: 'react' };
-      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated; Plantae is rooted in place.`);
+      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated; Plantae is rooted in place. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} from Plantae, within range ${sk.range}. ${left(s, plant.team)}`);
       pushLog(s, lines, plant.team);
       s.lastAction = last;
       endTurn(s);
@@ -519,7 +523,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
       s.blocks[key(action.to)] = { kind: 'ice', owner: aqna.id };
       mine.push(key(action.to));
       last = { team: aqna.team, unitId: aqna.id, from: { ...aqna.pos }, to: { ...action.to }, hits: [], kind: 'ice', phase: 'ice', movedIce: moved };
-      lines.push(moved ? `${label(aqna)} moves an ice block to ${squareName(action.to)}.` : `${label(aqna)} raises an ice block on ${squareName(action.to)}.`);
+      lines.push(`${moved ? `${label(aqna)} moves an ice block to ${squareName(action.to)}.` : `${label(aqna)} raises an ice block on ${squareName(action.to)}.`} Icy Step, ${tokens(HEROES.aqna.skill.cost)}: she just eliminated an enemy${moved ? `, and with ${ICE_LIMIT} blocks out her oldest one moved` : ''}. ${left(s, aqna.team)}`);
     } else {
       last = { ...state.lastAction, kind: 'skip-ice', phase: 'ice' };
     }
@@ -536,7 +540,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
     if (action.type === 'storm') {
       s.energy[hexor.team] -= HEROES.hexor.skill.cost;
       last = { team: hexor.team, unitId: hexor.id, from: { ...hexor.pos }, to: { ...hexor.pos }, hits: [], kind: 'storm', phase: 'storm', storm: [] };
-      lines.push(`${label(hexor)}'s Storm Hammer shakes the ground.`);
+      lines.push(`${label(hexor)}'s Storm Hammer shakes the ground. Storm Hammer, ${tokens(HEROES.hexor.skill.cost)}: he just eliminated an enemy. ${left(s, hexor.team)}`);
       stormHammer(s, hexor, hexor.pos, lines, last.storm);
       pushLog(s, lines, hexor.team);
       s.lastAction = last;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CursorPicker } from '../cursor';
 import {
   HEROES, MAPS, TEAM_NAMES as TN, ENERGY, CREEPS, ROLES, label, heroDef, livingHeroes, moveOptions, samePos,
-  squareName, skillCooldown, skillActions, getThreats,
+  squareName, skillCooldown, skillActions, getThreats, beastOf,
 } from '../../arena.js';
 import { type GameController } from '../game/controller';
 import { ICON, ART, MAP_ART, SHORT, costLabel, costChip, other, tk, type Team } from '../data';
@@ -235,7 +235,16 @@ const SKILL_ICON: Record<string, string> = {
  * Square skill button for the selected unit. Its cost and effect show in an animated
  * card under it (on hover, focus, or while the skill is armed).
  */
-function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
+// Small marks on the skill button saying why it can't be used right now.
+const BLOCK_ICON: Record<string, string> = {
+  cooldown: '<svg viewBox="0 0 16 16"><path d="M4 2h8M4 14h8M5 2c0 4 6 4 6 6s-6 2-6 6M11 2c0 4-6 4-6 6s6 2 6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  tokens: '<svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  target: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 12L12 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  passive: '<svg viewBox="0 0 16 16"><path d="M4.5 8a2.2 2.2 0 1 1 3.5 1.8L8 8l0 0a2.2 2.2 0 1 1 3.5 0 2.2 2.2 0 0 1-3.5 1.8 2.2 2.2 0 0 1-3.5-1.8z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  wait: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 5v3.2l2 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+};
+
+function skillStatus(c: GameController) {
   const g = c.game;
   const u = c.selectedId ? g.units[c.selectedId] : null;
   const hero = !!u && u.alive && u.kind === 'hero';
@@ -243,24 +252,41 @@ function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
   const sk = hero ? (HEROES as any)[u.hero].skill : null;
   const active = own && sk && sk.type === 'active';
   const cd = active ? skillCooldown(u) : 0;
-  const can = active && skillActions(g, u).length > 0;
+  const can = !!active && skillActions(g, u).length > 0;
   const tokens = hero ? g.energy[u.team] : 0;
-  let state = '';
+  let state = ''; let block = '';
   if (!hero) state = 'Select one of your heroes to see its skill.';
-  else if (!own) state = 'Not your hero, or not your turn.';
-  else if (sk.type !== 'active') state = sk.type === 'move' ? 'Passive: it is part of his moves.' : 'Passive: it triggers on its own after he acts.';
+  else if (!own) { state = u.team !== g.current ? 'That is an enemy hero: its skill is shown for reference.' : 'Wait for your turn to use a skill.'; block = 'wait'; }
+  else if (sk.type !== 'active') {
+    block = 'passive';
+    state = sk.type === 'move' ? `${sk.name} is part of ${(HEROES as any)[u.hero].name}'s moves: tap a square past an adjacent piece.`
+      : `${sk.name} triggers by itself after ${(HEROES as any)[u.hero].name} eliminates an enemy (${tk(sk.cost)}).`;
+  }
   else if (c.armed) state = 'Tap a highlighted target. Tap the button again to cancel.';
-  else if (cd) state = `Recharging: ready in ${cd} turn${cd > 1 ? 's' : ''}.`;
-  else if (tokens < sk.cost) state = `Needs ${tk(sk.cost)}; you have ${tokens}.`;
-  else if (!can) state = 'No valid target in range.';
-  else state = `Ready. Press to choose a target (or Q).`;
+  else if (cd) { block = 'cooldown'; state = `${sk.name} is recharging: ready in ${cd} of your turn${cd > 1 ? 's' : ''}.`; }
+  else if (tokens < sk.cost) { block = 'tokens'; state = `${sk.name} needs ${tk(sk.cost)}; you have ${tokens}. Kill a creep or break through to earn more.`; }
+  else if (!can) {
+    block = 'target';
+    state = sk.key === 'summon' ? (beastOf(g, u) ? 'The beast is still alive: Wild Company only works once it has fallen.' : 'No empty square next to Ge\'nga to summon the beast.')
+      : sk.key === 'grave' ? `No ally within ${sk.range} squares can take Empty Grave.`
+        : sk.key === 'root' ? `No enemy within ${sk.range} squares can be rooted (protected or already rooted ones don't count).`
+          : 'No valid target in range.';
+  }
+  else state = 'Ready. Press to choose a target (or Q).';
+  return { u, hero, sk, active, cd, can, state, block };
+}
+
+function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
+  const { u, sk, active, cd, can, state, block } = skillStatus(c);
+  const usable = can || c.armed;
   return (
     <div className={`skill-wrap${c.armed ? ' armed' : ''}${inline ? ' inline' : ''}`}>
-      <button className={`skill-sq${c.armed ? ' armed' : ''}${can ? ' ready' : ''}`} type="button" disabled={!can && !c.armed}
-        onClick={() => c.armSkill()} aria-label={sk ? `${sk.name}${active ? `, ${tk(sk.cost)}` : ''}` : 'Skill'}>
+      <button className={`skill-sq${c.armed ? ' armed' : ''}${can ? ' ready' : ''}${usable ? '' : ' blocked'}`} type="button" aria-disabled={!usable}
+        onClick={() => (usable ? c.armSkill() : sk && c.say(state, 'err'))}
+        aria-label={sk ? `${sk.name}${active ? `, ${tk(sk.cost)}` : ''}. ${state}` : 'Skill'}>
         <span className="glyph" dangerouslySetInnerHTML={{ __html: SKILL_ICON[sk?.key] || SKILL_ICON.none }} />
         {sk && <span className="sq-cost">{costChip(sk)}</span>}
-        {cd > 0 && <span className="sq-cd">{cd}</span>}
+        {block && sk && <span className={`sq-block ${block}`} dangerouslySetInnerHTML={{ __html: BLOCK_ICON[block] + (block === 'cooldown' ? `<b>${cd}</b>` : '') }} />}
       </button>
       <div className="skill-pop" role="note">
         {sk ? (
@@ -270,7 +296,9 @@ function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
             <span className="impact">{SHORT[u.hero]?.skill}</span>
           </>
         ) : <b>Skill</b>}
-        <span className={`state${can && !c.armed ? ' ok' : ''}`}>{state}</span>
+        <span className={`state${can && !c.armed ? ' ok' : ''}${block && block !== 'passive' && block !== 'wait' ? ' no' : ''}`}>
+          {block && <span className="state-ico" dangerouslySetInnerHTML={{ __html: BLOCK_ICON[block] }} />}{state}
+        </span>
       </div>
     </div>
   );
