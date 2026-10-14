@@ -946,3 +946,19 @@ a.btn { text-decoration: none; display: inline-block; }
   border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 16px 34px rgba(0,0,0,.5); display: grid; }
 .seat-sheet-card { height: auto; max-height: 300px; }
 .dock.local .toast.docked { z-index: 25; }
+
+/* decision toasts stack over what's under them: translucent, with the content below blurred */
+.toast.docked { background: rgba(24,27,35,.66); -webkit-backdrop-filter: blur(7px) saturate(1.1); backdrop-filter: blur(7px) saturate(1.1);
+  border: 1px solid rgba(255,255,255,.14); box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+.toast.docked.react { border-left: 4px solid var(--vine); }
+.toast.docked.phase { border-left: 4px solid var(--brass); }
+.seat .toast.docked { inset: auto; top: 0; left: 0; right: 0; min-height: 100%; height: auto; overflow: visible; z-index: 30; align-content: center; }
+.dock .toast.docked { z-index: 30; }
+/* room above the top seat for its toast to grow into (toward the far edge, never over the board) */
+.seat-slot.top { min-height: 126px; }
+@media (max-width: 560px) {
+  .seat-slot.top { min-height: 158px; }
+  .toast.docked { font-size: .82rem; padding: 8px 10px; gap: 8px; }
+  .toast.docked img { width: 26px; height: 26px; }
+  .toast.docked .row .btn { padding: 6px 10px; }
+}
