@@ -1,5 +1,6 @@
 import { HEROES, CLASSES } from '../../arena.js';
 import { SHORT, costLabel, costChip, roleOf, moveCells } from '../data';
+import { HeroDemo } from './HeroDemo';
 
 export type DescMode = 'short' | 'detail';
 
@@ -22,6 +23,7 @@ export function HeroInfo({ id, mode }: { id: string; mode: DescMode }) {
         <div className="hinfo-head"><b>{h.name}</b><span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span></div>
         <div className="hinfo-move"><MoveDiagram hero={id} size={8} /><span><span className="lbl">Move</span>{s.move}</span></div>
         <p><span className="lbl">{sk.name}</span>{s.skill} <span className="cost">{costChip(sk)}</span></p>
+        <HeroDemo hero={id} />
       </div>
     );
   }
@@ -34,6 +36,7 @@ export function HeroInfo({ id, mode }: { id: string; mode: DescMode }) {
         <span className="meta">{costLabel(sk)}{sk.range ? ` · range ${sk.range}` : ''}{sk.cooldown ? ` · cooldown ${sk.cooldown}` : ''}</span>
         <p>{sk.text}</p>
       </div>
+      <HeroDemo hero={id} />
     </div>
   );
 }

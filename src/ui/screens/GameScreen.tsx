@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CursorPicker } from '../cursor';
+import { HeroDemo } from '../components/HeroDemo';
 import {
   HEROES, MAPS, TEAM_NAMES as TN, ENERGY, CREEPS, ROLES, label, heroDef, livingHeroes, moveOptions, samePos,
   squareName, skillCooldown, skillActions, getThreats, beastOf,
@@ -204,6 +205,7 @@ function SelDetail({ c, u }: { c: GameController; u: any }) {
           {cd > 0 && <p className="cdn-note">Recharging: ready in {cd} turn{cd > 1 ? 's' : ''}.</p>}
         </div>
       )}
+      {hero && <HeroDemo hero={u.hero} compact />}
       {u.kind === 'creep' && <p>Moving a creep uses your turn. Killing an enemy creep gives +{tk(CREEPS.lastHit)}; reaching the far side gives +{tk(CREEPS.breach)}.</p>}
     </div>
   );

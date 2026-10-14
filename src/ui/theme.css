@@ -300,3 +300,55 @@ input, select, textarea { border-radius: 2px !important; }
 /* long-press on a piece: no callout, no image drag, no text selection */
 .board, .board * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .board img { -webkit-user-drag: none; pointer-events: none; }
+
+/* ---------- hero demo clips ---------- */
+.demo { margin: 0; display: grid; gap: 8px; width: 100%; max-width: 300px; }
+.demo.compact { max-width: 220px; }
+.demo-board {
+  position: relative; display: grid; grid-template-columns: repeat(7, 1fr); aspect-ratio: 1; border-radius: 3px; overflow: hidden;
+  box-shadow: 0 0 0 2px var(--line-hi);
+}
+.demo-board > i { background: #e8cf9f; position: relative; }
+.demo-board > i.d { background: #d9b97f; }
+.demo-board > i.m-go::after, .demo-board > i.m-jump::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 30%; height: 30%; border-radius: 50%; transform: translate(-50%, -50%);
+  background: rgba(34, 28, 24, .45); animation: dotin .25s ease-out both;
+}
+.demo-board > i.m-jump::after { background: var(--blood); }
+.demo-board > i.m-target { box-shadow: inset 0 0 0 2px var(--sand); animation: pulse 1.2s ease-in-out infinite; background-color: #f1d9a6; }
+.demo-board > i.m-shield { box-shadow: inset 0 0 0 3px #a693f0; }
+.du {
+  position: absolute; left: 0; top: 0; width: calc(100% / 7); height: calc(100% / 7); display: grid; place-items: center;
+  transition: transform .5s cubic-bezier(.3, .7, .3, 1), opacity .3s;
+}
+.du img, .du b { width: 80%; height: 80%; border-radius: 22%; display: grid; place-items: center; transition: transform .3s; }
+.du img { object-fit: cover; }
+.du.p1 img { box-shadow: 0 0 0 2px var(--ivory), 0 3px 4px rgba(0, 0, 0, .35); }
+.du.p2 img { box-shadow: 0 0 0 2px var(--ember), 0 3px 4px rgba(0, 0, 0, .35); }
+.du.beast b { width: 62%; height: 62%; border-radius: 50%; background: #e9dcc0; color: #5a3a1a; box-shadow: 0 0 0 2px var(--ivory); }
+.du.beast b svg { width: 76%; height: 76%; }
+.du.block::before { content: ""; width: 70%; height: 70%; border-radius: 3px; background: #9b7b52; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .25); }
+.du.ice::before { content: ""; width: 78%; height: 78%; border-radius: 3px; background: #cfe6f2; box-shadow: inset 0 0 0 2px #fff, 0 0 10px rgba(160, 210, 240, .8); }
+.du.gone { opacity: 0; }
+.du.gone img, .du.gone b { transform: scale(.4) rotate(-12deg); }
+.du.enter, .demo-board.restart .du { transition: opacity .35s; }
+.du.fx-ward img { box-shadow: 0 0 0 2px #a693f0, 0 0 12px 3px rgba(166, 147, 240, .85); }
+.du.fx-root img { box-shadow: 0 0 0 3px var(--leaf), 0 0 10px rgba(90, 158, 128, .8); filter: saturate(.7); }
+.du.fx-pulse img, .du.fx-pulse b, .du.fx-pulse::before { animation: demopulse .9s ease-out 1; }
+.du.fx-bump img { animation: demobump .7s ease-in-out 1; }
+@keyframes demopulse { from { transform: scale(.3); } 60% { transform: scale(1.15); } }
+@keyframes demobump { 40% { transform: translateY(42%); } 55% { transform: translateY(30%); } }
+.demo-board .burst {
+  position: absolute; width: 14%; height: 14%; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+  border: 3px solid var(--blood); animation: demoburst .6s ease-out .15s both;
+}
+@keyframes demoburst { from { opacity: 1; transform: translate(-50%, -50%) scale(.4); } to { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } }
+.demo figcaption { display: grid; gap: 6px; }
+.demo-text { min-height: 2.6em; font-size: .88rem; color: var(--bone); line-height: 1.35; animation: fadeIn .3s ease-out; }
+.demo.compact .demo-text { font-size: .8rem; }
+.demo-ctl { display: flex; align-items: center; gap: 6px; }
+.demo-btn { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 3px; border: 1px solid var(--line-hi); background: var(--panel-hi); color: var(--sand); padding: 0; cursor: pointer; }
+.demo-btn svg { width: 12px; height: 12px; fill: currentColor; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.demo-dot { width: 8px; height: 8px; padding: 0; border-radius: 50%; border: 1px solid var(--sand-dk); background: transparent; cursor: pointer; }
+.demo-dot.on { background: var(--sand); border-color: var(--sand); }
+@media (prefers-reduced-motion: reduce) { .du, .demo-board .burst, .du img, .du b { transition: none; animation: none !important; } }
