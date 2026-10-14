@@ -13,7 +13,7 @@ export function Rules() {
       </ul>
       <h3>Roles</h3>
       <ul>
-        <li><b>Roam</b> (Aqna, Hexor): up to 2 squares straight; Hexor's L jump counts as his 2 steps. Ge'nga steps 1 straight, and his beast moves up to 2 squares any way right after him.</li>
+        <li><b>Roam</b> (Aqna, Hexor): up to 2 squares straight; Hexor's L jump counts as his 2 steps. Ge'nga steps 1 straight, and his beast moves up to 2 squares diagonally right after him.</li>
         <li><b>Assassin</b> (Hasim): 1 square any way, plus a free Backstab jump.</li>
         <li><b>Support</b> (Plantae, Magumba): steps 1 (Plantae straight, Magumba diagonally); the skill follows the same lines up to 3 squares.</li>
       </ul>
@@ -29,7 +29,7 @@ export function Rules() {
       <h3>Score (optional)</h3>
       <p>Counts wins for each side across rematches: against the bot per difficulty, face to face Ivory against Ember, online per room. Turn it on or off, or reset it, from the in-game menu.</p>
       <h3>Creeps</h3>
-      <p>Four pawns per side on the flank lanes. Like chess pawns: 1 square forward, capture diagonally forward. Moving one uses your turn.</p>
+      <p>Four pawns per side on the flank lanes. Like chess pawns: 1 square forward (2 on its first move, if both squares are empty), capture diagonally forward. Moving one uses your turn.</p>
     </div>
   );
 }

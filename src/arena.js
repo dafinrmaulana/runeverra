@@ -48,7 +48,7 @@ export const HEROES = {
     moveText: 'Steps 1 square straight.',
     skill: {
       key: 'summon', name: 'Wild Company', type: 'active', cost: 3, range: 1,
-      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also move up to 2 squares in any direction (free; it can capture, but has no special moves). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
+      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also move up to 2 squares diagonally (free; it can capture, but has no special moves). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
     },
   },
   magumba: {
@@ -90,13 +90,13 @@ export const HEROES = {
 };
 export const BEAST = {
   name: 'Beast', title: "Ge'nga's companion", cls: 'claw',
-  move: [{ kind: 'slide', dirs: KING, range: 2 }],
-  moveText: 'Moves up to 2 squares in any direction, right after Ge\'nga acts.',
+  move: [{ kind: 'slide', dirs: DIAG, range: 2 }],
+  moveText: 'Moves up to 2 squares diagonally, right after Ge\'nga acts.',
 };
 export const CREEP = {
   name: 'Creep', title: 'Minion', cls: 'claw',
   move: [{ kind: 'creep' }],
-  moveText: 'Steps 1 square forward onto an empty square, or captures an enemy diagonally in front. Never moves back or sideways.',
+  moveText: 'Steps 1 square forward onto an empty square, or captures an enemy diagonally in front; 2 squares forward on its first move, if both squares are empty. Never moves back or sideways.',
 };
 export const heroDef = (u) => (u.kind === 'beast' ? BEAST : u.kind === 'creep' ? CREEP : HEROES[u.hero]);
 
@@ -227,7 +227,12 @@ export function moveOptions(s, u) {
         if (o && canBeHit(u, o)) push({ to: p, kills: [o.id] });
       }
       const ahead = { r: u.pos.r + f, c: u.pos.c };
-      if (inBounds(ahead) && !blockAt(s, ahead) && !unitAt(s, ahead)) push({ to: ahead, kills: [] });
+      const aheadOpen = inBounds(ahead) && !blockAt(s, ahead) && !unitAt(s, ahead);
+      if (aheadOpen) push({ to: ahead, kills: [] });
+      if (!u.moved && aheadOpen) { // first move only, chess-pawn style: both squares must be empty, never a capture
+        const ahead2 = { r: u.pos.r + f * 2, c: u.pos.c };
+        if (inBounds(ahead2) && !blockAt(s, ahead2) && !unitAt(s, ahead2)) push({ to: ahead2, kills: [] });
+      }
     } else if (rule.kind === 'backstab') {
       // Any of the 8 directions: straight or diagonal.
       for (const [dr, dc] of KING) {
@@ -496,6 +501,7 @@ function resolveMove(s, action, lines, last) {
   }
   for (const v of victims) { last.hits.push({ ...v.pos }); eliminate(s, v, lines, u.team); }
   u.pos = { ...opt.to };
+  if (u.kind === 'creep') u.moved = true;
   if (u.kind === 'creep' && u.pos.r === (u.team === 'p1' ? 0 : BOARD_SIZE - 1)) {
     u.alive = false;
     s.energy[u.team] = Math.min(ENERGY.max, s.energy[u.team] + CREEPS.breach);

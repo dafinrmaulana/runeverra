@@ -91,13 +91,13 @@ test('Hasim Backstab: free signature move in any direction; kills jumped enemy a
 
 test('Ge\'nga: the beast follow-up is free; Wild Company (3 tokens) summons a fallen beast', () => {
   let s = setup({ 'p2-genga': 'd8', 'p2-beast': 'd7', 'p2-plantae': 'h8', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 0 } });
-  assert.match(reject(s, mv('p2-beast', 'd6')), /after Ge'nga/);
+  assert.match(reject(s, mv('p2-beast', 'c6')), /after Ge'nga/);
   assert.match(reject(s, mv('p2-genga', 'b8')), /./, 'Ge\'nga steps only 1 square');
   s = act(s, mv('p2-genga', 'c8'));
   assert.equal(s.phase, 'beast', 'offered with 0 tokens: it is free');
   assert.equal(s.current, 'p2');
   assert.ok(listActions(s).some((a) => a.type === 'skip'));
-  s = act(s, mv('p2-beast', 'd6'));
+  s = act(s, mv('p2-beast', 'c6'));
   assert.equal(s.current, 'p1');
   assert.equal(s.energy.p2, 0);
   // no summon while the beast lives
@@ -342,13 +342,16 @@ test('creeps: start on the flank files and are moved by their player like pawns'
   assert.deepEqual(s.units['p2-creep-h'].pos, sq('h7'));
   assert.deepEqual(s.units['p2-creep-a'].pos, sq('a7'));
   const creepMoves = listActions(s).filter((a) => a.unitId === 'p1-creep-a');
-  assert.deepEqual(creepMoves.map((a) => a.to), [sq('a3')], 'one step forward only');
-  reject(s, mv('p1-creep-a', 'a4'));
+  assert.deepEqual(creepMoves.map((a) => a.to), [sq('a3'), sq('a4')], 'first move: 1 or 2 squares forward, both empty');
+  reject(s, mv('p1-creep-a', 'a5'));
   reject(s, mv('p1-creep-b', 'c2'));
-  s = act(s, mv('p1-creep-a', 'a3'));
+  s = act(s, mv('p1-creep-a', 'a4'));
   assert.equal(s.current, 'p2');
   assert.deepEqual(s.units['p1-creep-b'].pos, sq('b2'), 'other creeps stay put');
   reject(s, mv('p2-creep-h', 'h8'));
+  s = act(s, mv('p2-creep-h', 'h6'));
+  const again = listActions(s).filter((a) => a.unitId === 'p1-creep-a');
+  assert.deepEqual(again.map((a) => a.to), [sq('a5')], 'after its first move, only 1 square forward');
 });
 
 test('creeps: capture diagonally, are blocked straight ahead, break through for tokens', () => {

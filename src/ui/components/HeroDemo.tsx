@@ -41,7 +41,7 @@ const DEMOS: Record<string, Demo> = {
     steps: [
       { text: 'Ge\'nga steps 1 square in a straight line.', show: { live: 'p1-genga' }, ms: 2200 },
       { text: 'He moves first…', act: mv('p1-genga', 'd4'), ms: 1400 },
-      { text: '…then his beast takes a free move, up to 2 squares any way. No jumps, no special moves.', show: { live: 'p1-beast' }, ms: 2200 },
+      { text: '…then his beast takes a free move, up to 2 squares diagonally. No jumps, no special moves.', show: { live: 'p1-beast' }, ms: 2200 },
       { text: 'The beast steps forward.', act: mv('p1-beast', 'e3'), ms: 1500 },
       { text: 'If an enemy brings the beast down…', act: mv('p2-hexor', 'e3'), ms: 2000 },
       { text: 'Wild Company (3 tokens): its reach is every square next to Ge\'nga.', show: { live: 'p1-genga', armed: true }, ms: 2200 },
