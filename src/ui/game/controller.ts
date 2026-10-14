@@ -10,14 +10,13 @@ import { createBoard } from './board.js';
 import { tk, type Team } from '../data';
 
 export type Mode =
-  | { kind: 'bot'; level: 'easy' | 'normal' | 'hard' }
+  | { kind: 'bot'; level: 'easy' | 'normal' | 'hard'; side: Team }
   | { kind: 'local' }
   | { kind: 'online'; side: Team; onLocalMove: (index: number) => void };
 
 export type Source = 'me' | 'bot' | 'remote';
 type Pos = { r: number; c: number };
 
-export const BOT_TEAM: Team = 'p2';
 const BOT_DELAY_MS = 520;
 
 export class GameController {
@@ -52,16 +51,19 @@ export class GameController {
   // ---------- who decides ----------
   humanTeams(): Team[] {
     if (this.mode.kind === 'online') return [this.mode.side];
-    if (this.mode.kind === 'bot') return ['p1'];
+    if (this.mode.kind === 'bot') return [this.mode.side];
     return ['p1', 'p2'];
   }
   decider(): Team | null { return this.game.status === 'playing' ? toMove(this.game) : null; }
   deciderIsHuman() { const d = this.decider(); return !!d && this.humanTeams().includes(d); }
-  deciderIsBot() { return this.mode.kind === 'bot' && this.decider() === BOT_TEAM; }
+  deciderIsBot() { return this.mode.kind === 'bot' && this.decider() === this.botTeam(); }
+  botTeam(): Team | null { return this.mode.kind === 'bot' ? (this.mode.side === 'p1' ? 'p2' : 'p1') : null; }
+  /** The side whose player sits at the bottom of the screen (board turned for Ember). */
+  viewer(): Team { return this.mode.kind === 'local' ? 'p1' : this.mode.side; }
 
   // ---------- board ----------
   attach(host: HTMLElement, intro = true) {
-    this.board = createBoard(host, { onCell: (p: Pos) => this.onCell(p) });
+    this.board = createBoard(host, { onCell: (p: Pos) => this.onCell(p), flip: this.viewer() === 'p2' });
     this.render({});
     if (intro) this.board.intro(this.game);
     this.maybeBot();

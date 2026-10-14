@@ -3,7 +3,7 @@ import {
   HEROES, MAPS, TEAM_NAMES as TN, ENERGY, CREEPS, ROLES, label, heroDef, livingHeroes, moveOptions, samePos,
   squareName, skillCooldown, skillActions, getThreats,
 } from '../../arena.js';
-import { BOT_TEAM, type GameController } from '../game/controller';
+import { type GameController } from '../game/controller';
 import { ICON, ART, MAP_ART, SHORT, costLabel, costChip, other, tk, type Team } from '../data';
 import { BEAST_SVG, CREEP_SVG } from '../game/board.js';
 import { Rules } from '../components/Rules';
@@ -31,7 +31,7 @@ function statusFor(c: GameController, team?: Team) {
   const g = c.game;
   if (g.status !== 'playing') {
     if (c.mode.kind === 'online') return g.status === c.mode.side ? 'You win' : 'You lose';
-    if (c.mode.kind === 'bot') return g.status === BOT_TEAM ? 'The bot wins' : 'You win';
+    if (c.mode.kind === 'bot') return g.status === c.botTeam() ? 'The bot wins' : 'You win';
     return team ? (g.status === team ? 'You win' : 'You lose') : `${TEAM_NAMES[g.status]} wins`;
   }
   const d = c.decider()!;
@@ -389,7 +389,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   const status = statusFor(c);
   const waiting = g.status === 'playing' && !c.deciderIsHuman();
 
-  const me: Team = c.mode.kind === 'online' ? c.mode.side : 'p1';
+  const me: Team = c.viewer();
   const them = other(me);
   const topbar = !local && (
     <div className="statusbar">

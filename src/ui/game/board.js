@@ -22,24 +22,28 @@ export const BEAST_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellip
  * Mount a board into `host`. `onCell(pos)` fires for clicks on squares.
  * Call `render(game, view)` after every change; `animate(before, after)` for effects.
  */
-export function createBoard(host, { onCell }) {
+export function createBoard(host, { onCell, flip = false }) {
+  /** Display position of a board square: turned 180° when this player sits on Ember's side. */
+  const V = (p) => (flip ? { r: BOARD_SIZE - 1 - p.r, c: BOARD_SIZE - 1 - p.c } : p);
   host.innerHTML = `<div class="arena"><div class="backdrop"></div><div class="board-wrap"><div class="board">
     <canvas class="layer ambient" aria-hidden="true"></canvas><div class="layer terrain"></div><div class="layer pieces"></div><svg class="layer marks" viewBox="0 0 800 800" preserveAspectRatio="none" aria-hidden="true"></svg>
     <canvas class="fx" aria-hidden="true"></canvas></div></div></div>`;
   const q = (s) => host.querySelector(s);
   const boardEl = q('.board'), terrainEl = q('.terrain'), piecesEl = q('.pieces'), backdrop = q('.backdrop'), marksEl = q('.marks');
-  const cells = [];
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
+  const cells = new Array(BOARD_SIZE * BOARD_SIZE);
+  // Cells are laid out in display order; `cells` stays indexed by the real square.
+  for (let dr = 0; dr < BOARD_SIZE; dr++) {
+    for (let dc = 0; dc < BOARD_SIZE; dc++) {
+      const { r, c } = V({ r: dr, c: dc });
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'cell' + ((r + c) % 2 ? ' dark' : '');
       b.dataset.r = r; b.dataset.c = c;
-      if (c === 0) b.insertAdjacentHTML('beforeend', `<span class="coord rank">${BOARD_SIZE - r}</span>`);
-      if (r === BOARD_SIZE - 1) b.insertAdjacentHTML('beforeend', `<span class="coord file">${'abcdefgh'[c]}</span>`);
+      if (dc === 0) b.insertAdjacentHTML('beforeend', `<span class="coord rank">${BOARD_SIZE - r}</span>`);
+      if (dr === BOARD_SIZE - 1) b.insertAdjacentHTML('beforeend', `<span class="coord file">${'abcdefgh'[c]}</span>`);
       b.addEventListener('click', () => onCell({ r, c }));
       boardEl.insertBefore(b, q('.ambient'));
-      cells.push(b);
+      cells[r * BOARD_SIZE + c] = b;
     }
   }
   const cellAt = (p) => cells[p.r * BOARD_SIZE + p.c];
@@ -47,7 +51,7 @@ export function createBoard(host, { onCell }) {
   const blockEls = new Map();
   let lastMap = null;
   const ambient = createAmbient(q('.ambient'));
-  const fx = createFX(q('.fx'), q('.board-wrap'), { pieceEl: (id) => pieceEls.get(id) });
+  const fx = createFX(q('.fx'), q('.board-wrap'), { pieceEl: (id) => pieceEls.get(id), V });
 
   function setMap(map) {
     if (map === lastMap) return;
@@ -129,7 +133,7 @@ export function createBoard(host, { onCell }) {
     if (marksEl.dataset.k === k) return;
     marksEl.dataset.k = k;
     if (!k) { marksEl.innerHTML = ''; return; }
-    const ctr = (p) => ({ x: p.c * 100 + 50, y: p.r * 100 + 50 });
+    const ctr = (p) => { const d = V(p); return { x: d.c * 100 + 50, y: d.r * 100 + 50 }; };
     const a = ctr(actor.pos), b = ctr(to);
     const len = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / len, uy = (b.y - a.y) / len;
     const sx = a.x + ux * 38, sy = a.y + uy * 38, ex = b.x - ux * 46, ey = b.y - uy * 46;
@@ -145,7 +149,7 @@ export function createBoard(host, { onCell }) {
     };
     marksEl.innerHTML = `<defs><marker id="mk-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="${col}"/></marker></defs>
-      <rect x="${actor.pos.c * 100 + 4}" y="${actor.pos.r * 100 + 4}" width="92" height="92" rx="14" fill="none" stroke="${col}" stroke-width="5" class="actor-box"/>
+      <rect x="${V(actor.pos).c * 100 + 4}" y="${V(actor.pos).r * 100 + 4}" width="92" height="92" rx="14" fill="none" stroke="${col}" stroke-width="5" class="actor-box"/>
       <line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${col}" stroke-width="9" stroke-linecap="round" marker-end="url(#mk-arrow)" class="flow" />
       ${victims.length ? victims.map((v) => reticle(v.pos)).join('') : `<circle cx="${b.x}" cy="${b.y}" r="30" fill="none" stroke="${col}" stroke-width="5" stroke-dasharray="10 8" class="spin"/>`}`;
   }
@@ -161,7 +165,8 @@ export function createBoard(host, { onCell }) {
         el = document.createElement('div');
         el.className = `block ${b.kind}`;
         el.dataset.kind = b.kind;
-        el.style.transform = `translate(${c * 100}%, ${r * 100}%)`;
+        const d = V({ r, c });
+        el.style.transform = `translate(${d.c * 100}%, ${d.r * 100}%)`;
         el.innerHTML = TERRAIN_SVG[b.kind] || TERRAIN_SVG.rock;
         if (b.kind === 'ice' && game.lastAction?.kind === 'ice') el.classList.add('grow');
         terrainEl.appendChild(el);
@@ -195,7 +200,8 @@ export function createBoard(host, { onCell }) {
         piecesEl.appendChild(el);
         pieceEls.set(u.id, el);
       }
-      el.style.transform = `translate(${u.pos.c * 100}%, ${u.pos.r * 100}%)`;
+      const d = V(u.pos);
+      el.style.transform = `translate(${d.c * 100}%, ${d.r * 100}%)`;
       el.classList.toggle('warded', u.warded);
       el.classList.toggle('rooted', u.rooted > 0);
       el.classList.toggle('selected', !!live && live.id === u.id);
@@ -284,7 +290,7 @@ function createFX(canvas, wrap, view) {
   const rnd = (a, b) => a + Math.random() * (b - a); // cosmetic only
   const at = (ms, fn) => { timers.push(setTimeout(fn, ms)); };
   function resize() { const r = canvas.getBoundingClientRect(); dpr = Math.min(devicePixelRatio || 1, 2); W = r.width; H = r.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
-  const C = (p) => ({ x: (p.c + 0.5) * W / 8, y: (p.r + 0.5) * H / 8 });
+  const C = (q) => { const p = view.V ? view.V(q) : q; return { x: (p.c + 0.5) * W / 8, y: (p.r + 0.5) * H / 8 }; };
   const S = () => W / 8;
 
   function burst(p, color, n, o = {}) {
@@ -445,7 +451,7 @@ function createFX(canvas, wrap, view) {
       ring(at2, COL.bolt, { to: 2.2, w: 2, life: 620 });
       shake(1.6);
       for (const pu of la.storm || []) {
-        const dir = Math.atan2(pu.to.r - pu.from.r, pu.to.c - pu.from.c);
+        const a = C(pu.from), b = C(pu.to); const dir = Math.atan2(b.y - a.y, b.x - a.x);
         burst(pu.from, COL.dust, 8, { shape: 'smoke', dir, spread: 0.6, min: 0.6, max: 1.8, life: [300, 520], size: [4, 7] });
         if (pu.blocked) text(pu.from, 'HELD', COL.spirit);
       }

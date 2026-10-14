@@ -30,6 +30,7 @@ export function App() {
   const [kind, setKind] = useState<ModeKind>('bot');
   const [level, setLevel] = useState<Level>(pref('level', 'normal'));
   const [botTeam, setBotTeam] = useState<BotTeam>(pref('botTeam', 'hidden'));
+  const [side, setSide] = useState<Team>(pref('side', 'p1'));
   const [seed, setSeed] = useState(() => 1 + (Date.now() % 997));
   const [picks, setPicks] = useState<Record<Team, HeroId[]>>({ p1: [], p2: [] });
   const [map, setMap] = useState<string>(pref('map', 'oasis'));
@@ -40,7 +41,7 @@ export function App() {
   const r = useRoom();
 
   useEffect(() => { setPref('desc', desc); }, [desc]);
-  useEffect(() => { setPref('level', level); setPref('botTeam', botTeam); }, [level, botTeam]);
+  useEffect(() => { setPref('level', level); setPref('botTeam', botTeam); setPref('side', side); }, [level, botTeam, side]);
   useEffect(() => { setPref('map', map); setPref('creeps', creeps); }, [map, creeps]);
 
   // Online: check the room capability once; a reloaded tab rejoins its room.
@@ -60,14 +61,24 @@ export function App() {
   }, []);
 
   const bot = useMemo(() => pickTeam(seed) as HeroId[], [seed]);
-  const p2Picks = kind === 'bot' && botTeam !== 'manual' ? bot : picks.p2;
+  // Against the bot the player may take either side; picks stay keyed by team.
+  const youT: Team = kind === 'bot' ? side : 'p1';
+  const botT: Team = youT === 'p1' ? 'p2' : 'p1';
+  const botPicks = kind === 'bot' && botTeam !== 'manual' ? bot : picks[botT];
+  const teamOf = (t: Team) => (kind === 'bot' && t === botT ? botPicks : picks[t]);
+  const p2Picks = teamOf('p2');
+  function chooseSide(t: Team) {
+    if (t === side) return;
+    setPicks({ p1: picks.p2, p2: picks.p1 }); // your team comes with you
+    setSide(t);
+  }
 
   function startLocal() {
-    const game = matchFromConfig({ p1: picks.p1, p2: p2Picks, map, creeps });
-    const mode: Mode = kind === 'bot' ? { kind: 'bot', level } : { kind: 'local' };
+    const game = matchFromConfig({ p1: teamOf('p1'), p2: teamOf('p2'), map, creeps });
+    const mode: Mode = kind === 'bot' ? { kind: 'bot', level, side } : { kind: 'local' };
     ctrl?.destroy();
     const c = new GameController(mode, game);
-    c.say(kind === 'bot' ? `You play Ivory against the ${BOT_LEVELS[level].label} bot. Tap a hero to begin.` : 'Ivory moves first. Tap a hero to begin.', 'ok');
+    c.say(kind === 'bot' ? `You play ${TEAM_NAMES[side]} against the ${BOT_LEVELS[level].label} bot. ${side === 'p1' ? 'You move first: tap a hero to begin.' : 'Ivory (the bot) moves first.'}` : 'Ivory moves first. Tap a hero to begin.', 'ok');
     setCtrl(c);
     setScreen('game');
   }
@@ -149,16 +160,25 @@ export function App() {
         <Step title="Choose heroes" step={1} onBack={() => setScreen(kind === 'bot' ? 'level' : kind === 'online' ? 'room' : 'home')}
           next={{
             label: 'Next: battlefield',
-            disabled: kind === 'online' ? r.picks.length !== 4 : picks.p1.length !== 4 || p2Picks.length !== 4,
-            hint: heroHint(kind, picks, p2Picks, r),
+            disabled: kind === 'online' ? r.picks.length !== 4 : teamOf('p1').length !== 4 || p2Picks.length !== 4,
+            hint: heroHint(kind, kind === 'bot' ? picks[youT] : picks.p1, kind === 'bot' ? botPicks : p2Picks, r),
             onClick: () => setScreen('map'),
           }}>
           {kind === 'bot' && (
             <div className="pick-stack">
-              <HeroPicker team="p1" title="Your team" picks={picks.p1} onChange={(p) => setPicks({ ...picks, p1: p })} mode={desc} onMode={setDesc} />
-              <div className="bot-team">
+              <div className="side-pick" role="radiogroup" aria-label="Play as">
+                <span className="side-pick-label">Play as</span>
+                {(['p1', 'p2'] as Team[]).map((t) => (
+                  <button key={t} type="button" role="radio" aria-checked={side === t} className={`side-opt ${t}`} onClick={() => chooseSide(t)}>
+                    <span className={`team-badge ${t}`}>{TEAM_NAMES[t]}</span>
+                    <small>{t === 'p1' ? 'Moves first' : 'Moves second · board turned to your side'}</small>
+                  </button>
+                ))}
+              </div>
+              <HeroPicker team={youT} title="Your team" picks={picks[youT]} onChange={(p) => setPicks({ ...picks, [youT]: p })} mode={desc} onMode={setDesc} />
+              <div className={`bot-team ${botT}`}>
                 <div className="bot-team-head">
-                  <span className="team-badge p2">Ember</span><h3>Bot team</h3>
+                  <span className={`team-badge ${botT}`}>{TEAM_NAMES[botT]}</span><h3>Bot team</h3>
                   <div className="seg" role="group" aria-label="Bot team">
                     <button type="button" aria-pressed={botTeam === 'hidden'} onClick={() => setBotTeam('hidden')}>Blind</button>
                     <button type="button" aria-pressed={botTeam === 'shuffle'} onClick={() => setBotTeam('shuffle')}>Shuffle</button>
@@ -167,20 +187,20 @@ export function App() {
                 </div>
                 {botTeam === 'hidden' && (
                   <>
-                    <div className="slots-row p2">{[0, 1, 2, 3].map((i) => <span key={i} className="slot hidden-slot"><span className="n">{i + 1}</span><span className="q">?</span></span>)}</div>
+                    <div className={`slots-row ${botT}`}>{[0, 1, 2, 3].map((i) => <span key={i} className="slot hidden-slot"><span className="n">{i + 1}</span><span className="q">?</span></span>)}</div>
                     <p className="note">The bot picks in secret. You'll see its heroes when the match starts.</p>
                   </>
                 )}
                 {botTeam === 'shuffle' && (
                   <>
-                    <div className="slots-row p2">
+                    <div className={`slots-row ${botT}`}>
                       {bot.map((h, i) => <span key={h} className="slot filled"><img src={ICON(h)} alt="" /><span className="n">{i + 1}</span><span className="nm">{(HEROES as any)[h].name}</span></span>)}
                     </div>
                     <button type="button" className="btn ghost small-btn" onClick={() => setSeed(seed + 7)}>↻ Shuffle again</button>
                   </>
                 )}
                 {botTeam === 'manual' && (
-                  <HeroPicker team="p2" title="Bot's team" picks={picks.p2} onChange={(p) => setPicks({ ...picks, p2: p })} mode={desc} onMode={setDesc} />
+                  <HeroPicker team={botT} title="Bot's team" picks={picks[botT]} onChange={(p) => setPicks({ ...picks, [botT]: p })} mode={desc} onMode={setDesc} />
                 )}
               </div>
             </div>
@@ -228,9 +248,9 @@ export function App() {
   );
 }
 
-function heroHint(kind: ModeKind, picks: Record<Team, HeroId[]>, p2: HeroId[], r: typeof room) {
+function heroHint(kind: ModeKind, first: HeroId[], p2: HeroId[], r: typeof room) {
   if (kind === 'online') return r.picks.length < 4 ? `Pick ${4 - r.picks.length} more.` : 'Team set.';
-  if (picks.p1.length < 4) return `${kind === 'bot' ? 'You need' : 'Player 1 needs'} ${4 - picks.p1.length} more.`;
+  if (first.length < 4) return `${kind === 'bot' ? 'You need' : 'Player 1 needs'} ${4 - first.length} more.`;
   if (p2.length < 4) return `${kind === 'bot' ? 'The bot needs' : 'Player 2 needs'} ${4 - p2.length} more.`;
   return 'Both teams set.';
 }
