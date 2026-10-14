@@ -9,8 +9,10 @@ import { MapPicker } from './components/MapPicker';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
 import { Modal, Steps } from './components/ui';
-import { ICON, pref, setPref, type HeroId, type Team } from './data';
+import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
 import type { DescMode } from './components/HeroInfo';
+
+const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 type ModeKind = 'bot' | 'local' | 'online';
 type Screen = 'home' | 'level' | 'room' | 'heroes' | 'map' | 'game';
@@ -114,25 +116,30 @@ export function App() {
     <div className="app" key={screen}>
       {screen === 'home' && (
         <div className="home page">
-          <div className="home-hero">
-            <div className="home-faces">{['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'].map((h) => <img key={h} src={ICON(h)} alt="" />)}</div>
-            <h1 className="logo">Hero Gambit</h1>
-            <p className="tagline">Pick four heroes. Outthink one opponent. No dice, no luck.</p>
+          <div className="home-wall" aria-hidden="true">
+            {HOME_WALL.map((h) => <div key={h} className="wall-col" style={{ backgroundImage: `url(${ART(h)})` }} />)}
           </div>
-          <div className="mode-list">
-            <button type="button" className="mode-card" onClick={() => choose('bot')}>
-              <span className="mi">⚔</span><span><b>Play vs Bot</b><small>Pick a difficulty and fight the computer.</small></span>
-            </button>
-            <button type="button" className="mode-card" onClick={() => choose('local')}>
-              <span className="mi">⇅</span><span><b>Offline · face to face</b><small>Two players on one screen, seated across from each other.</small></span>
-            </button>
-            <button type="button" className="mode-card" onClick={() => choose('online')} disabled={r.available === false}>
-              <span className="mi">⌁</span><span><b>Online · room code</b>
-                <small>{r.available === false ? 'Available on the published page only.' : 'Create a room or join a friend with a 5-letter code.'}</small></span>
-            </button>
-          </div>
-          <div className="home-foot">
-            <button type="button" className="btn ghost" onClick={() => setRules(true)}>How to play</button>
+          <div className="home-front">
+            <div className="home-hero">
+              <h1 className="logo">Runeverra</h1>
+              <span className="rune-rule" aria-hidden="true" />
+              <p className="tagline">Pick four heroes. Outthink one opponent. No dice, no luck.</p>
+            </div>
+            <div className="mode-list">
+              <button type="button" className="mode-card primary" onClick={() => choose('bot')}>
+                <b>Play vs Bot</b><small>Easy, Normal or Hard</small>
+              </button>
+              <button type="button" className="mode-card" onClick={() => choose('local')}>
+                <b>Face to face</b><small>Two players, one screen</small>
+              </button>
+              <button type="button" className="mode-card" onClick={() => choose('online')} disabled={r.available === false}>
+                <b>Online room</b>
+                <small>{r.available === false ? 'Available on the published page only' : 'Play a friend with a room code'}</small>
+              </button>
+            </div>
+            <div className="home-foot">
+              <button type="button" className="btn ghost" onClick={() => setRules(true)}>How to play</button>
+            </div>
           </div>
         </div>
       )}

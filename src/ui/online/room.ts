@@ -10,7 +10,7 @@ import { other, type Team, type HeroId } from '../data';
 import type { GameController } from '../game/controller';
 
 const TEAM_SIZE = 4;
-const STORE = 'hero-gambit-online'; // per tab (sessionStorage): a reload rejoins, another tab is another player
+const STORE = 'runeverra-online'; // per tab (sessionStorage): a reload rejoins, another tab is another player
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export type Presence = {

@@ -1,4 +1,4 @@
-// Hero Gambit — Arena rules engine (character roster edition).
+// Runeverra — Arena rules engine (character roster edition).
 // Pure, deterministic functions over one game state. No DOM, no randomness.
 // Every mutator returns a NEW state and never changes its input.
 

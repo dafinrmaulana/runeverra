@@ -1,4 +1,4 @@
-# Hero Gambit
+# Runeverra
 
 A playable prototype of a deterministic hero tactics game on an 8×8 board. Pick four heroes, choose a battlefield, and play against a bot (Easy / Normal / Hard) or a friend on the same screen. No dice, no HP: positions, movement and skills decide everything.
 
