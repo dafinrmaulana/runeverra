@@ -486,3 +486,15 @@ test('Replay: createMatch(setup) plus the trail reproduces the match exactly', (
   assert.equal(r.turn, g.turn);
   assert.deepEqual(r.log, g.log);
 });
+
+test('Ge\'nga steps 1 in a + pattern; his beast steps 1 in any direction, like Hasim', () => {
+  const s = setup({ 'p1-hasim': 'a1', 'p2-genga': 'd5', 'p2-beast': 'f5', 'p2-aqna': 'h8' }, { current: 'p2', p2: ['genga', 'aqna', 'plantae', 'hasim'] });
+  const g = moveOptions(s, s.units['p2-genga']).map((o) => o.to).sort((a, b) => a.r - b.r || a.c - b.c);
+  assert.deepEqual(g, [sq('d6'), sq('c5'), sq('e5'), sq('d4')]);
+  const after = act(s, mv('p2-genga', 'd4'));
+  assert.equal(after.phase, 'beast');
+  const b = moveOptions(after, after.units['p2-beast']).map((o) => o.to);
+  assert.equal(b.length, 8, 'all 8 neighbours');
+  assert.match(reject(after, mv('p2-beast', 'h7')), /can't reach/);
+  act(after, mv('p2-beast', 'g6'));
+});
