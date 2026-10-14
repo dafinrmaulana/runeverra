@@ -55,6 +55,8 @@
   .btn.primary { background: var(--brass); color: #1b140a; border-color: var(--brass); font-weight: 700; }
   .btn.primary:hover { filter: brightness(1.08); }
   .btn.primary:disabled { filter: grayscale(.6); }
+  .slam-btn { display: inline-flex; align-items: center; gap: 6px; }
+  .slam-ico { flex: none; }
   .toggle { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); cursor: pointer; }
   .sel { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
   .sel select { background: var(--panel); color: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; font: inherit; font-size: .82rem; }

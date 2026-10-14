@@ -15,6 +15,20 @@ import { Modal, Switch, Accordion } from '../components/ui';
 
 const TEAM_NAMES = TN as Record<string, string>;
 
+/** Storm Hammer pattern icon: Hexor in the middle, four arrows pushing outward (straight or diagonal). */
+function SlamIcon({ pattern }: { pattern: 'plus' | 'x' }) {
+  const angles = pattern === 'x' ? [45, 135, 225, 315] : [0, 90, 180, 270];
+  return (
+    <svg className="slam-ico" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <circle cx="12" cy="12" r="2.4" fill="currentColor" />
+      {angles.map((a) => (
+        <path key={a} transform={`rotate(${a} 12 12)`} d="M12 8.2V2.6M9.3 5.3 12 2.6l2.7 2.7"
+          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      ))}
+    </svg>
+  );
+}
+
 type Props = {
   ctrl: GameController;
   roomCode?: string | null;
@@ -103,8 +117,8 @@ function Toast({ c, mirror }: { c: GameController; mirror?: boolean }) {
       <>
         <span className="pt">{text}</span>
         <span className="row">
-          {g.phase === 'storm' && <button className="btn primary" type="button" onClick={() => c.slam('plus')} title="Push straight: up, down, left, right">Slam +</button>}
-          {g.phase === 'storm' && <button className="btn primary" type="button" onClick={() => c.slam('x')} title="Push diagonally">Slam X</button>}
+          {g.phase === 'storm' && <button className="btn primary slam-btn" type="button" onClick={() => c.slam('plus')} title="Slam straight: push up, down, left and right" aria-label="Slam straight: push up, down, left and right"><SlamIcon pattern="plus" />Slam</button>}
+          {g.phase === 'storm' && <button className="btn primary slam-btn" type="button" onClick={() => c.slam('x')} title="Slam diagonally: push the four corners" aria-label="Slam diagonally: push the four corners"><SlamIcon pattern="x" />Slam</button>}
           <button className="btn" type="button" onClick={() => c.skip()}>Skip</button>
         </span>
       </>
