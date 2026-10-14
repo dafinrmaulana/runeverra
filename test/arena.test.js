@@ -92,7 +92,8 @@ test('Hasim Backstab: free signature move in any direction; kills jumped enemy a
 test('Ge\'nga: the beast follow-up is free; Wild Company (3 tokens) summons a fallen beast', () => {
   let s = setup({ 'p2-genga': 'd8', 'p2-beast': 'd7', 'p2-plantae': 'h8', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 0 } });
   assert.match(reject(s, mv('p2-beast', 'd6')), /after Ge'nga/);
-  s = act(s, mv('p2-genga', 'b8'));
+  assert.match(reject(s, mv('p2-genga', 'b8')), /./, 'Ge\'nga steps only 1 square');
+  s = act(s, mv('p2-genga', 'c8'));
   assert.equal(s.phase, 'beast', 'offered with 0 tokens: it is free');
   assert.equal(s.current, 'p2');
   assert.ok(listActions(s).some((a) => a.type === 'skip'));
@@ -151,29 +152,47 @@ test('Plantae Aggressive Root: 3 tokens, roots a target for its next turn', () =
   act(s, mv('p1-hexor', 'e6'));
 });
 
-test('Plantae interrupt: 3 tokens, negates the action, then Plantae is rooted on its next turn (the hole)', () => {
+test('Plantae interrupt: 3 tokens, negates an action on her lines; she is not rooted, it recharges', () => {
   const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } });
   const s = act(base, mv('p1-hexor', 'e6'));
   assert.equal(s.phase, 'react');
   assert.equal(toMove(s), 'p2');
   assert.deepEqual(s.units['p1-hexor'].pos, sq('d4'), 'action is on hold');
-  let used = act(s, { type: 'react', use: true });
+  const used = act(s, { type: 'react', use: true });
   assert.deepEqual(used.units['p1-hexor'].pos, sq('d4'));
   assert.equal(used.current, 'p2', 'Ivory\'s turn is over; Ember plays normally');
   assert.equal(used.energy.p2, 0, '3 spent, no refill on the new turn');
-  assert.equal(used.units['p2-plantae'].rooted, 1);
-  assert.ok(!listActions(used).some((a) => a.unitId === 'p2-plantae'), 'Plantae is stuck this turn');
-  assert.match(reject(used, mv('p2-plantae', 'd6')), /roots/);
-  assert.ok(used.log.some((l) => /rooted in place/.test(l.text)));
-  used = act(used, mv('p2-aqna', 'h7'));
-  assert.equal(used.units['p2-plantae'].rooted, 0, 'free again afterwards');
+  assert.equal(used.units['p2-plantae'].rooted, 0, 'no self-root any more');
+  assert.equal(used.units['p2-plantae'].cd, 2, 'recharging: 3 of her turns, one already ticking');
+  assert.ok(listActions(used).some((a) => a.unitId === 'p2-plantae'), 'Plantae can act right away');
   const declined = act(s, { type: 'react', use: false });
   assert.deepEqual(declined.units['p1-hexor'].pos, sq('e6'));
-  // out of range or not enough tokens: no prompt
+  // only on her straight lines: a diagonal neighbour, a unit behind another one, or a far one gets no prompt
+  const diag = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'e6', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'g5'));
+  assert.equal(diag.phase, 'main');
+  const behind = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'd6', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'e6'));
+  assert.equal(behind.phase, 'main', 'Aqna blocks the line');
   const far = act(setup({ 'p2-plantae': 'h8', 'p2-aqna': 'a8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'e6'));
   assert.equal(far.phase, 'main');
   const poor = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 2 } }), mv('p1-hexor', 'e6'));
   assert.equal(poor.phase, 'main');
+});
+
+test('Supports reach along their movement lines: Root straight, Empty Grave diagonal, 3 squares, blocked', () => {
+  // Plantae d4: e5 is diagonal (no), d6 is straight (yes), d8 behind d6 (no)
+  const r = setup({ 'p1-plantae': 'd4', 'p1-hasim': 'a1', 'p2-hasim': 'e5', 'p2-aqna': 'd6', 'p2-genga': 'd8' }, { energy: { p1: 3, p2: 0 } });
+  const roots = listActions(r).filter((a) => a.type === 'skill').map((a) => a.targetId);
+  assert.deepEqual(roots, ['p2-aqna']);
+  assert.match(reject(r, { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-hasim' }), /straight lines/);
+  // Magumba d4: steps 1 diagonally; shields himself, f6 (diagonal, 2) yes, d6 (straight) no, g7 behind f6 no
+  const g = setup({ 'p1-magumba': 'd4', 'p1-hasim': 'f6', 'p1-hexor': 'd6', 'p1-plantae': 'g7', 'p2-aqna': 'h8' }, { energy: { p1: 2, p2: 0 } });
+  const moves = listActions(g).filter((a) => a.type === 'move' && a.unitId === 'p1-magumba').map((a) => a.to);
+  assert.equal(moves.length, 4, 'one diagonal step each way');
+  const shields = listActions(g).filter((a) => a.type === 'skill').map((a) => a.targetId).sort();
+  assert.deepEqual(shields, ['p1-hasim', 'p1-magumba']);
+  // terrain blocks the line too
+  const t = setup({ 'p1-magumba': 'd4', 'p1-hasim': 'f6', 'p2-aqna': 'h8' }, { blocks: { e5: 'rock' }, energy: { p1: 2, p2: 0 } });
+  assert.deepEqual(listActions(t).filter((a) => a.type === 'skill').map((a) => a.targetId), ['p1-magumba']);
 });
 
 test('Hexor Storm Hammer: optional 2-token slam after a capture; pushes, chains, kills on terrain/edge, spares warded', () => {

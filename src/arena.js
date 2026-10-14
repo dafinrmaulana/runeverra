@@ -44,20 +44,20 @@ export const HEROES = {
   },
   genga: {
     name: "Ge'nga", title: 'Beast Master', cls: 'claw', role: 'roam',
-    move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
-    moveText: 'Moves up to 2 squares straight.',
+    move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
+    moveText: 'Steps 1 square straight.',
     skill: {
       key: 'summon', name: 'Wild Company', type: 'active', cost: 3, range: 1,
-      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also move (free). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
+      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also step 1 square in any direction (free; it can capture, but has no special moves). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
     },
   },
   magumba: {
-    name: 'Magumba', title: 'Shadow Shaman', cls: 'leaf',
-    move: [{ kind: 'slide', dirs: DIAG, range: 2 }],
-    moveText: 'Moves up to 2 squares diagonally.',
+    name: 'Magumba', title: 'Shadow Shaman', cls: 'leaf', role: 'support',
+    move: [{ kind: 'slide', dirs: DIAG, range: 1 }],
+    moveText: 'Steps 1 square diagonally.',
     skill: {
-      key: 'grave', name: 'Empty Grave', type: 'active', cost: 2, range: 3,
-      text: 'Targets one ally (or himself) up to 3 squares away. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
+      key: 'grave', name: 'Empty Grave', type: 'active', cost: 2, range: 3, reach: { dirs: DIAG, ray: true },
+      text: 'Targets himself or one ally along his diagonals, up to 3 squares away; terrain or another unit in between blocks the line. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
     },
   },
   plantae: {
@@ -65,8 +65,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
     moveText: 'Steps 1 square straight.',
     skill: {
-      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reaction: true, reactionCost: 3, cooldown: 3,
-      text: 'Roots an enemy up to 3 squares away in any direction, diagonals included: it can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy within 3 squares acts: that action is negated, but Plantae is rooted itself on your next turn. After either use, it recharges for 3 of your turns.',
+      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reach: { dirs: ORTHO, ray: true }, reaction: true, reactionCost: 3, cooldown: 3,
+      text: 'Roots an enemy in a straight line from Plantae, up to 3 squares away; terrain or another unit in between blocks the line. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy on those lines acts: that action is negated. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {
@@ -248,14 +248,43 @@ export function moveOptions(s, u) {
 /** Turns until a hero's active skill is ready again (0 = ready). */
 export const skillCooldown = (u) => u.cd || 0;
 
+/**
+ * The squares a hero's skill reaches from where it stands. A skill with `reach.ray` follows its
+ * directions square by square, up to `range`, stopping at terrain and at the first unit (which it
+ * reaches); any other skill with a `range` covers every square within that many steps.
+ */
+export function skillReach(s, u, sk = HEROES[u.hero]?.skill) {
+  if (!sk?.range) return [];
+  const out = [];
+  if (sk.reach?.ray) {
+    for (const [dr, dc] of sk.reach.dirs) {
+      for (let k = 1; k <= sk.range; k++) {
+        const p = { r: u.pos.r + dr * k, c: u.pos.c + dc * k };
+        if (!inBounds(p) || blockAt(s, p)) break;
+        out.push(p);
+        if (unitAt(s, p)) break;
+      }
+    }
+    return out;
+  }
+  for (let r = u.pos.r - sk.range; r <= u.pos.r + sk.range; r++) {
+    for (let c = u.pos.c - sk.range; c <= u.pos.c + sk.range; c++) {
+      const p = { r, c };
+      if (inBounds(p) && !samePos(p, u.pos)) out.push(p);
+    }
+  }
+  return out;
+}
+export const inSkillReach = (s, u, pos) => skillReach(s, u).some((p) => samePos(p, pos));
+
 export function skillTargets(s, u) {
   const sk = HEROES[u.hero]?.skill;
   if (!sk || sk.type !== 'active' || skillCooldown(u) > 0) return [];
   if (sk.key === 'grave') {
-    return livingUnits(s, u.team).filter((a) => chebyshev(a.pos, u.pos) <= sk.range && !a.warded).map((a) => a.id);
+    return livingUnits(s, u.team).filter((a) => (a.id === u.id || inSkillReach(s, u, a.pos)) && !a.warded).map((a) => a.id);
   }
   if (sk.key === 'root') {
-    return livingUnits(s, other(u.team)).filter((e) => chebyshev(e.pos, u.pos) <= sk.range && !e.warded && !e.rooted).map((e) => e.id);
+    return livingUnits(s, other(u.team)).filter((e) => inSkillReach(s, u, e.pos) && !e.warded && !e.rooted).map((e) => e.id);
   }
   return [];
 }
@@ -359,7 +388,11 @@ function explain(s, a) {
     }
     const t = s.units[a.targetId];
     if (!t || !t.alive) return 'Choose a living target.';
-    if (chebyshev(t.pos, u.pos) > sk.range) return `Target is out of range (${sk.range} squares).`;
+    if (t.id !== u.id && !inSkillReach(s, u, t.pos)) {
+      return sk.reach?.ray
+        ? `${label(t)} is not on ${HEROES[u.hero].name}'s ${sk.reach.dirs === DIAG ? 'diagonals' : 'straight lines'} within ${sk.range} squares, or something blocks the line.`
+        : `Target is out of range (${sk.range} squares).`;
+    }
     if (t.warded) return `${label(t)} is protected by Empty Grave.`;
     if (sk.key === 'grave') return 'Empty Grave only works on your own units.';
     if (t.rooted) return `${label(t)} is already rooted.`;
@@ -462,10 +495,10 @@ function resolveSkill(s, action, lines, last) {
   last.kind = sk.key; last.from = { ...u.pos }; last.to = null; last.hits.push({ ...t.pos }); last.targetId = t.id;
   if (sk.key === 'grave') {
     t.warded = true; t.rooted = 0;
-    lines.push(`${t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`} Empty Grave, ${tokens(sk.cost)}: ${t.id === u.id ? 'he targets himself' : `${label(t)} is ${dist(u, t)} within range ${sk.range}`}; enemy attacks on ${t.id === u.id ? 'him' : 'it'} are negated until ${label(u)}'s next turn. ${left(s, u.team)}`);
+    lines.push(`${t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`} Empty Grave, ${tokens(sk.cost)}: ${t.id === u.id ? 'he targets himself' : `${label(t)} is ${dist(u, t)} on his diagonal, within range ${sk.range}`}; enemy attacks on ${t.id === u.id ? 'him' : 'it'} are negated until ${label(u)}'s next turn. ${left(s, u.team)}`);
   } else if (sk.key === 'root') {
     t.rooted = 1;
-    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
+    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} in a straight line, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
   }
 }
 
@@ -497,10 +530,9 @@ export function applyAction(state, action, { trusted = false } = {}) {
       s.energy[plant.team] -= sk.reactionCost ?? sk.cost;
       plant.cd = sk.cooldown || 0;
       plant.reacts = (plant.reacts || 0) + 1;
-      // The hole: Plantae roots itself and can't act on its side's next turn.
-      plant.rooted = 1;
-      last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, phase: 'react' };
-      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated; Plantae is rooted in place. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} from Plantae, within range ${sk.range}. ${left(s, plant.team)}`);
+      const toward = pend.to || s.units[pend.targetId]?.pos || null; // where the negated action was going
+      last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, toward: toward && { ...toward }, phase: 'react' };
+      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} from Plantae, on her line within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, plant.team)}`);
       pushLog(s, lines, plant.team);
       s.lastAction = last;
       endTurn(s);
@@ -629,7 +661,7 @@ function canReact(s, action) {
   if (sk.maxReactions != null && (plant.reacts || 0) >= sk.maxReactions) return false;
   if (s.energy[team] < (sk.reactionCost ?? sk.cost)) return false;
   if (actor.warded) return false;
-  return chebyshev(plant.pos, actor.pos) <= HEROES.plantae.skill.range;
+  return inSkillReach(s, plant, actor.pos);
 }
 
 function pushLog(s, lines, team) {

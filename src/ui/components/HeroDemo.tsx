@@ -39,38 +39,38 @@ const DEMOS: Record<string, Demo> = {
   genga: {
     setup: () => scene('savanna', [U('p1', 'genga', 'd3'), BEAST('p1', 'd2'), U('p2', 'hexor', 'f5'), KEEP], {}, { energy: { p1: 4, p2: 0 } }), // Hexor can't afford a storm here
     steps: [
-      { text: 'Ge\'nga moves up to 2 squares in a straight line.', show: { live: 'p1-genga' }, ms: 2200 },
-      { text: 'He moves first…', act: mv('p1-genga', 'd5'), ms: 1400 },
-      { text: '…then his beast takes a free step, 1 square any way.', show: { live: 'p1-beast' }, ms: 1800 },
+      { text: 'Ge\'nga steps 1 square in a straight line.', show: { live: 'p1-genga' }, ms: 2200 },
+      { text: 'He moves first…', act: mv('p1-genga', 'd4'), ms: 1400 },
+      { text: '…then his beast takes a free step, 1 square any way. No jumps, no special moves.', show: { live: 'p1-beast' }, ms: 2200 },
       { text: 'The beast steps forward.', act: mv('p1-beast', 'e3'), ms: 1500 },
       { text: 'If an enemy brings the beast down…', act: mv('p2-hexor', 'e3'), ms: 2000 },
       { text: 'Wild Company (3 tokens): its reach is every square next to Ge\'nga.', show: { live: 'p1-genga', armed: true }, ms: 2200 },
-      { text: 'The beast is summoned back.', act: sk('p1-genga', { skill: 'summon', to: sq('c5') }), ms: 2400 },
+      { text: 'The beast is summoned back.', act: sk('p1-genga', { skill: 'summon', to: sq('c4') }), ms: 2400 },
     ],
   },
   magumba: {
     setup: () => scene('savanna', [U('p1', 'magumba', 'c3'), U('p1', 'hasim', 'e5'), U('p2', 'aqna', 'e7'), KEEP]),
     steps: [
-      { text: 'Magumba moves up to 2 squares diagonally.', show: { live: 'p1-magumba' }, ms: 2200 },
-      { text: 'Empty Grave (2 tokens) reaches every square within 3, in any direction.', show: { live: 'p1-magumba', armed: true }, ms: 2400 },
+      { text: 'Magumba steps 1 square diagonally.', show: { live: 'p1-magumba' }, ms: 2200 },
+      { text: 'Empty Grave (2 tokens) follows his diagonals, up to 3 squares. The first unit or terrain stops the line.', show: { live: 'p1-magumba', armed: true }, ms: 2800 },
       { text: 'He shields Hasim until his next turn.', act: sk('p1-magumba', { skill: 'grave', targetId: 'p1-hasim' }), ms: 2200 },
       { text: 'Aqna goes for Hasim…', show: { live: 'p2-aqna' }, ms: 1500 },
       { text: '…and the shield throws her back. Attacks on Hasim are negated until Magumba\'s next turn.', bounce: { by: 'p2-aqna', target: 'p1-hasim' }, ms: 3000 },
     ],
   },
   plantae: {
-    setup: () => scene('jungle', [U('p1', 'plantae', 'd3'), U('p2', 'hexor', 'f5'), KEEP]),
+    setup: () => scene('jungle', [U('p1', 'plantae', 'd3'), U('p2', 'hexor', 'd6'), U('p2', 'aqna', 'f5'), KEEP]),
     steps: [
-      { text: 'Plantae steps 1 square straight. The green area is her reach: 3 squares, any direction.', show: { live: 'p1-plantae' }, ms: 2600 },
-      { text: 'Aggressive Root (3 tokens): pick an enemy inside it.', show: { live: 'p1-plantae', armed: true }, ms: 2000 },
+      { text: 'Plantae steps 1 square straight. The green lines are her reach: 3 squares, stopped by the first unit or terrain.', show: { live: 'p1-plantae' }, ms: 2800 },
+      { text: 'Aggressive Root (3 tokens): Hexor is on her line. Aqna, off the lines, can\'t be targeted.', show: { live: 'p1-plantae', armed: true }, ms: 2600 },
       { text: 'Hexor is rooted: he can\'t act on his next turn.', act: sk('p1-plantae', { skill: 'root', targetId: 'p2-hexor' }), ms: 2400 },
       {
         text: 'On the enemy turn it works as an interrupt…',
-        state: () => scene('jungle', [U('p1', 'plantae', 'd3'), U('p2', 'genga', 'b6'), BEAST('p2', 'b7'), KEEP], {}, { current: 'p2', turn: 2 }),
+        state: () => scene('jungle', [U('p1', 'plantae', 'd3'), U('p2', 'genga', 'b3'), BEAST('p2', 'a3'), KEEP], {}, { current: 'p2', turn: 2 }),
         ms: 1500,
       },
-      { text: 'Ge\'nga acts inside her reach: Plantae may answer.', act: mv('p2-genga', 'b4'), ms: 2400 },
-      { text: 'Interrupt (3 tokens): the action is negated, but Plantae is rooted on her next turn.', act: { type: 'react', use: true }, ms: 2800 },
+      { text: 'Ge\'nga acts on her line: Plantae may answer.', act: mv('p2-genga', 'b4'), ms: 2400 },
+      { text: 'Interrupt (3 tokens): the action is negated. Then the skill recharges for 3 turns.', act: { type: 'react', use: true }, ms: 2800 },
     ],
   },
   hexor: {

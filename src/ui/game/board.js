@@ -3,7 +3,7 @@
 // Cosmetic only: it reads game states and never changes them.
 import {
   BOARD_SIZE, HEROES, MAPS, CREEPS, unitAt, blockAt, squareName, samePos, label, heroDef, livingHeroes,
-  moveOptions, chebyshev,
+  moveOptions, chebyshev, skillReach,
 } from '../../arena.js';
 import { ICON, ART, MAP_ART, tk } from '../data';
 
@@ -18,16 +18,34 @@ export const CREEP_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><circl
 export const BEAST_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellipse cx="12" cy="15.5" rx="5" ry="4.2"/><circle cx="6.2" cy="10" r="2.1"/><circle cx="9.6" cy="6.6" r="2.1"/><circle cx="14.4" cy="6.6" r="2.1"/><circle cx="17.8" cy="10" r="2.1"/></g></svg>';
 
 
-/** Where the skill in play reaches: { center, range, key } or null. */
+/**
+ * Throw a piece toward a square and bring it back: it covers `reach` of the way (0..1), holds,
+ * then snaps home with a small overshoot. `a`, `b` are display squares. Returns ms to impact.
+ */
+export function lungeBack(el, a, b, { reach = 0.62, dur = 640, back = 0.22, hold = 0.3 } = {}) {
+  const dc = b.c - a.c, dr = b.r - a.r;
+  const T = (k) => `translate(${(a.c + dc * k) * 100}%, ${(a.r + dr * k) * 100}%)`;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (!el || reduce || !el.animate) return 0;
+  el.animate([
+    { transform: T(0) }, { transform: T(reach), offset: hold, easing: 'cubic-bezier(.5,0,.9,.6)' },
+    { transform: T(reach * 0.92), offset: hold + 0.12 },
+    { transform: T(-back), offset: 0.78, easing: 'cubic-bezier(.2,.8,.3,1)' }, { transform: T(0) },
+  ], { duration: dur });
+  return Math.round(dur * hold);
+}
+
+/** Where the skill in play reaches: { cells: Set of "r,c", key } or null. The shape comes from the
+ *  engine (`skillReach`): lines for supports, a square area for the others. */
 export function skillZone(game, live, armed) {
-  const at = (u, key) => (u ? { center: u.pos, range: HEROES[u.hero].skill.range, key } : null);
+  const at = (u, key) => (u ? { cells: new Set(skillReach(game, u).map((p) => `${p.r},${p.c}`)), key } : null);
   if (game.phase === 'react') return at(game.units[game.pending.plantId], 'root');
   if (game.phase === 'ice') return at(game.units[game.pending.unitId], 'icy');
   if (game.phase === 'storm') return at(game.units[game.pending.unitId], 'storm');
   if (!live || live.kind !== 'hero') return null;
   const sk = HEROES[live.hero].skill;
   if (armed && sk.range) return at(live, sk.key);
-  if (live.hero === 'plantae') return at(live, 'root'); // its interrupt can fire on the enemy turn
+  if (live.hero === 'plantae') return at(live, 'root'); // her interrupt can fire on the enemy turn
   return null;
 }
 
@@ -193,7 +211,7 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
       el.classList.toggle('grave', tgt && skKey === 'grave');
       el.classList.toggle('root', tgt && skKey === 'root');
       el.classList.toggle('icespot', iceActs.some((a) => samePos(a.to, p)));
-      const inZone = !!zone && chebyshev(zone.center, p) <= zone.range && !samePos(zone.center, p);
+      const inZone = !!zone && zone.cells.has(`${p.r},${p.c}`);
       el.classList.toggle('range', inZone);
       if (inZone) el.dataset.zone = zone.key; else delete el.dataset.zone;
       el.classList.toggle('pending', !!pendActor && samePos(pendActor.pos, p));
@@ -313,27 +331,22 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
    */
   function shieldBounce(attackerId, from, targetId, to, lunge = true) {
     const el = pieceEls.get(attackerId), tgt = pieceEls.get(targetId);
-    const a = V(from), b = V(to);
-    const dc = b.c - a.c, dr = b.r - a.r;
-    const T = (k) => `translate(${(a.c + dc * k) * 100}%, ${(a.r + dr * k) * 100}%)`;
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const impact = lunge ? 190 : 0;
-    if (el && lunge && !reduce && el.animate) {
-      el.animate([
-        { transform: T(0) }, { transform: T(0.62), offset: 0.3, easing: 'cubic-bezier(.5,0,.9,.6)' },
-        { transform: T(-0.22), offset: 0.62, easing: 'cubic-bezier(.2,.8,.3,1)' }, { transform: T(0) },
-      ], { duration: 640 });
-    }
+    const impact = lunge ? lungeBack(el, V(from), V(to)) || 0 : 0;
     setTimeout(() => {
       fx.shieldHit(to, from);
       if (tgt) { tgt.classList.remove('ward-hit'); void tgt.offsetWidth; tgt.classList.add('ward-hit'); }
     }, impact);
   }
+  /** A rooted unit tries to move: it strains toward the square and the roots drag it back. */
+  function rootTug(id, from, to, lunge = true) {
+    const impact = lunge ? lungeBack(pieceEls.get(id), V(from), V(to), { reach: 0.55, dur: 760, hold: 0.32, back: 0.12 }) : 0;
+    fx.rootTug(from, to, impact);
+  }
 
   function destroy() { drag = null; window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onCancel); ambient.stop(); fx.destroy(); host.innerHTML = ''; }
 
   return {
-    render, reset, hop, destroy, shieldBounce,
+    render, reset, hop, destroy, shieldBounce, rootTug,
     plan: fx.plan, run: fx.run, intro: (game) => fx.intro(game), victory: (game, w) => fx.victory(game, w), clearFx: fx.clear,
   };
 }
@@ -572,6 +585,11 @@ function createFX(canvas, wrap, view) {
       return;
     }
     if (la.kind === 'interrupt') {
+      if (la.toward && view.V) {
+        const el = view.pieceEl(la.targetId);
+        const impact = lungeBack(el, view.V(tgt), view.V(la.toward), { reach: 0.6, dur: 820, hold: 0.34, back: 0.12 });
+        rootTug(tgt, la.toward, impact, ''); // the INTERRUPTED label below says it
+      }
       flash(la.from, COL.vine, 0.9, 300);
       line(la.from, tgt, COL.vine, { wave: 0.18, life: 640, w: 3.5, grow: 2.5 });
       line(la.from, tgt, COL.leaf, { wave: -0.14, life: 640, w: 2.5, grow: 2.2 });
@@ -672,6 +690,19 @@ function createFX(canvas, wrap, view) {
     const heroes = livingHeroes(game, winner);
     for (let i = 0; i < 5; i++) at(250 + i * 260, () => heroes.forEach((u) => burst(u.pos, [COL[winner], COL.brass, COL.white], 14, { shape: 'dot', dir: -Math.PI / 2, spread: 0.9, min: 2.5, max: 5.5, g: 0.6, drag: 0.97, life: [700, 1200], size: [1.4, 2.8] })));
   }
+  /** Roots burst from the square under `from` and haul back a unit straining toward `to`. */
+  function rootTug(from, to, impact = 0, label = 'ROOTED') {
+    if (reduce) return;
+    resize();
+    const reachPt = { r: from.r + (to.r - from.r) * 0.5, c: from.c + (to.c - from.c) * 0.5 };
+    at(Math.max(0, impact - 120), () => {
+      burst(from, [COL.leaf, COL.vine, COL.dust], 12, { shape: 'leaf', min: 0.6, max: 1.8, life: [400, 800], size: [2, 3] });
+      line(from, reachPt, COL.vine, { wave: 0.22, life: 520, w: 4, grow: 3 });
+      line(from, reachPt, COL.leaf, { wave: -0.18, life: 520, w: 2.6, grow: 2.6 });
+    });
+    at(impact + 60, () => { ring(from, COL.vine, { from: 0.85, to: 0.3, life: 460, w: 4 }); if (label) text(from, label, COL.vine); shake(0.4); });
+  }
+
   /** An attack meeting Empty Grave: the shield flares and throws the attacker back. */
   function shieldHit(p, from) {
     if (reduce) return;
@@ -690,6 +721,6 @@ function createFX(canvas, wrap, view) {
   const onResize = () => { if (raf) resize(); };
   window.addEventListener('resize', onResize);
   function destroy() { clear(); if (raf) cancelAnimationFrame(raf); raf = 0; window.removeEventListener('resize', onResize); }
-  return { plan, run, intro, victory, clear, destroy, shieldHit };
+  return { plan, run, intro, victory, clear, destroy, shieldHit, rootTug };
 }
 

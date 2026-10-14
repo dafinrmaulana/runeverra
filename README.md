@@ -52,10 +52,9 @@ Heroes are data in `HEROES` (src/arena.js): name, class, role, movement rules, s
 
 | Role | Heroes | Movement |
 |---|---|---|
-| Roam | Ge'nga, Aqna, Hexor | up to 2 squares straight; Hexor's L jump counts as his 2 steps |
+| Roam | Aqna, Hexor, Ge'nga | Aqna up to 2 squares straight; Hexor's L jump counts as his 2 steps; Ge'nga 1 square straight (his beast adds a free step) |
 | Assassin | Hasim | 1 square in any direction, plus the Backstab jump (free signature move) |
-| Support | Plantae | 1 square straight; skill reaches 3, with a weakness (below) |
-| (none yet) | Magumba | up to 2 squares diagonally |
+| Support | Plantae, Magumba | 1 square (Plantae straight, Magumba diagonally); the skill follows the same lines up to 3 squares, stopped by terrain or the first unit |
 
 ### Skill tokens
 
@@ -64,12 +63,12 @@ Each team has 4 heroes and at most 4 tokens. Both sides start full (4) and token
 | Hero | Skill | Type | Cost | What it does |
 |---|---|---|---|---|
 | Hasim | Backstab | signature move | free | jumps in any of the 8 directions over an adjacent unit or terrain; a jumped enemy and an enemy on the landing square are both eliminated |
-| Ge'nga | Wild Company | active | 3 | after Ge'nga acts, the beast may also move (always free); once the beast has fallen, pay to summon it again on an empty square next to him (uses the turn); it flees if he falls |
+| Ge'nga | Wild Company | active | 3 | after Ge'nga acts, the beast may also step 1 square in any direction (always free, no special moves); once the beast has fallen, pay to summon it again on an empty square next to him (uses the turn); it flees if he falls |
 | Aqna | Icy Step | follow-up | 1 | after a kill, raise an ice block within 3; max 10, then her oldest block moves |
-| Magumba | Empty Grave | active, range 3 | 2 | an ally can't be captured, rooted, pushed or harmed until your next turn; clears Root |
+| Magumba | Empty Grave | active, diagonals up to 3 | 2 | himself or an ally on those lines can't be captured, rooted, pushed or harmed until your next turn; clears Root |
 | Hexor | Storm Hammer | follow-up | 2 | after Hexor captures, slam: every unit around him is pushed 1 square away, chaining; enemies pushed into terrain or off the board die, allies there stay put |
-| Plantae | Aggressive Root | active, range 3, cooldown 3 | 3 | roots an enemy for its next turn |
-| Plantae | Root interrupt | reaction | 3 | on the enemy's turn, negates an action by a unit within 3; their turn ends. **The hole:** Plantae roots itself and can't act on your next turn |
+| Plantae | Aggressive Root | active, straight lines up to 3, cooldown 3 | 3 | roots an enemy for its next turn |
+| Plantae | Root interrupt | reaction | 3 | on the enemy's turn, negates an action by a unit on her straight lines (up to 3); their turn ends. Shares the 3-turn recharge |
 
 Paid follow-ups (ice, Storm Hammer) are offered only when you can afford them, and skipping is free. Three more portraits are in the roster as "Coming soon"; they need skill descriptions.
 
@@ -78,7 +77,6 @@ Paid follow-ups (ice, Storm Hammer) are offered only when you can afford them, a
 - Moving onto an enemy eliminates it (capture), for every hero, the beast and creeps.
 - Board edges and terrain count as "terrain" for Storm Hammer.
 - Empty Grave lasts until the caster's next turn. An interrupted unit isn't also rooted.
-- Magumba has no role yet; he keeps his diagonal move.
 
 ## Creeps
 

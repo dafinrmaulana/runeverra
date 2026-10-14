@@ -2,7 +2,7 @@
 // board. React subscribes to it for the panels. Rules stay in src/arena.js.
 import {
   applyAction, validateAction, listActions, getThreats, unitAt, samePos, toMove, label,
-  HEROES, beastOf, skillActions, moveOptions,
+  HEROES, beastOf, skillActions, moveOptions, squareName,
 } from '../../arena.js';
 import { chooseAction } from '../../arena-bot.js';
 import { actionIndex } from '../../online.js';
@@ -175,6 +175,11 @@ export class GameController {
       this.commit({ type: 'move', unitId: sel.id, to: pos }); return;
     }
     if (sel && occupant && this.shieldBlocks(sel, occupant)) { this.bounce(sel, occupant, true); return; }
+    if (sel && sel.rooted && sel.team === g.current && g.phase === 'main' && moveOptions(g, sel).some((o: any) => samePos(o.to, pos))) {
+      this.board?.rootTug(sel.id, sel.pos, pos);
+      this.say(`${label(sel)} strains toward ${squareName(pos)}, but the roots drag it back: it can't act this turn.`, 'err');
+      this.render({}); return;
+    }
     if (occupant) {
       if (this.selectedId === occupant.id) { this.clearSel(); this.say(''); this.render({}); return; }
       this.select(occupant.id); return;

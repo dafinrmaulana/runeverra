@@ -40,9 +40,9 @@ export const roleOf = (id: string) => {
 /** One-glance summaries for the short description mode. */
 export const SHORT: Record<string, { move: string; skill: string }> = {
   hasim: { move: 'Steps 1 square any way.', skill: 'Free jump over the unit next to him: kills what he jumps and what he lands on.' },
-  genga: { move: 'Moves up to 2 straight.', skill: 'His beast moves free right after him. 3 tokens: summon it back once it falls.' },
-  magumba: { move: 'Moves up to 2 diagonally.', skill: '2 tokens: one ally within 3 can\'t be touched until your next turn.' },
-  plantae: { move: 'Steps 1 straight.', skill: '3 tokens: root an enemy within 3, or cancel an enemy action on their turn (then Plantae is stuck a turn).' },
+  genga: { move: 'Steps 1 straight.', skill: 'His beast steps 1 any way, free, right after him. 3 tokens: summon it back once it falls.' },
+  magumba: { move: 'Steps 1 diagonally.', skill: '2 tokens: himself or an ally on his diagonals (up to 3) can\'t be touched until your next turn.' },
+  plantae: { move: 'Steps 1 straight.', skill: '3 tokens: root an enemy on her straight lines (up to 3), or cancel an enemy action there on their turn.' },
   hexor: { move: 'Jumps in an L, like a knight.', skill: 'After a kill, 2 tokens: slam everything around him 1 square back; enemies hitting terrain die.' },
   aqna: { move: 'Moves up to 2 straight.', skill: 'After a kill, 1 token: raise an ice block within 3 that nobody can pass.' },
 };
