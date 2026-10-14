@@ -86,8 +86,8 @@ const DEMOS: Record<string, Demo> = {
     setup: () => scene('keep', [U('p1', 'aqna', 'd3'), U('p2', 'hasim', 'd5'), KEEP]),
     steps: [
       { text: 'Aqna moves up to 2 squares in a straight line.', show: { live: 'p1-aqna' }, ms: 2200 },
-      { text: 'She eliminates Hasim…', act: mv('p1-aqna', 'd5'), ms: 1600 },
-      { text: 'Icy Step (1 token) reaches every square within 3 of her.', ms: 2000 },
+      { text: 'She eliminates Hasim and stores an ice charge — never more than one at a time.', act: mv('p1-aqna', 'd5'), ms: 2000 },
+      { text: 'Spend it whenever you like, even turns later: Icy Step (1 token) then reaches every square within 3 of her.', ms: 2400 },
       { text: 'An ice block rises. Nobody can enter it, not even her.', act: { type: 'ice', to: sq('f4') }, ms: 2600 },
     ],
   },

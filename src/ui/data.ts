@@ -44,7 +44,7 @@ export const SHORT: Record<string, { move: string; skill: string }> = {
   magumba: { move: 'Steps 1 diagonally.', skill: '2 tokens: himself or an ally on his diagonals (up to 3) can\'t be touched until your next turn.' },
   plantae: { move: 'Steps 1 straight.', skill: '3 tokens: root an enemy on her straight lines (up to 3), or cancel an enemy action there on their turn.' },
   hexor: { move: 'Jumps in an L, like a knight.', skill: 'After a kill, 2 tokens: slam everything around him 1 square back; enemies hitting terrain die.' },
-  aqna: { move: 'Moves up to 2 straight.', skill: 'After a kill, 1 token: raise an ice block within 3 that nobody can pass.' },
+  aqna: { move: 'Moves up to 2 straight.', skill: 'A kill stores an ice charge (never stacks). Spend it anytime, 1 token: raise a block within 3 that nobody can pass.' },
 };
 
 /** 7×7 movement preview cells computed from the engine: 'me' | 'go' | 'jump' | ''. */

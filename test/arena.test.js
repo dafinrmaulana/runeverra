@@ -258,6 +258,36 @@ test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest m
   assert.equal(u.energy.p1, 1);
 });
 
+test('Aqna Icy Step: the charge is storable (not immediate) and never stacks', () => {
+  const pos = { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-plantae': 'a5', 'p2-genga': 'h8', 'p2-hasim': 'b5' };
+  // skip the immediate ice prompt; she keeps the charge for a later turn of her choosing
+  let s = setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } });
+  s = act(s, mv('p1-aqna', 'a5')); // kills p2-plantae, enters the 'ice' prompt
+  assert.equal(s.phase, 'ice');
+  assert.equal(s.units['p1-aqna'].iceCharge, 1);
+  s = act(s, { type: 'skip' });
+  assert.equal(s.phase, 'main');
+  assert.equal(s.units['p1-aqna'].iceCharge, 1, 'charge persists after skipping the immediate prompt');
+  // it is not spent by other units' turns, and shows up as a skill action whenever she acts
+  s = act(s, mv('p2-hasim', 'b4'));
+  const acts = listActions(s).filter((a) => a.type === 'skill' && a.unitId === 'p1-aqna');
+  assert.ok(acts.length > 0, 'Icy Step is listed as a skill action while the charge is held');
+  s = act(s, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('c5') });
+  assert.equal(blockAt(s, sq('c5')).kind, 'ice');
+  assert.equal(s.units['p1-aqna'].iceCharge, 0, 'charge is spent');
+  assert.equal(s.energy.p1, 0, '1 token spent on her own turn, not the kill\'s turn');
+
+  // charges never stack: a second kill while one is already held still leaves exactly one
+  let t = setup({ 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-plantae': 'a5', 'p2-hasim': 'a7', 'p2-genga': 'h8' },
+    { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } });
+  t = act(t, mv('p1-aqna', 'a5')); // first kill, charge = 1
+  t = act(t, { type: 'skip' });
+  assert.equal(t.units['p1-aqna'].iceCharge, 1);
+  t = act(t, mv('p2-hasim', 'a6'));
+  t = act(t, mv('p1-aqna', 'a6')); // second kill while already holding a charge
+  assert.equal(t.units['p1-aqna'].iceCharge, 1, 'still just one charge, never two');
+});
+
 test('tokens: start full at 4, never refill per turn, only creeps give more (capped at 4)', () => {
   let s = createMatch({ map: 'field' });
   assert.deepEqual(s.energy, { p1: 4, p2: 4 });
@@ -416,3 +446,16 @@ test('creeps: lanes are the flank files and no map puts terrain in them', () => 
   assert.equal(listActions(s).filter((a) => a.unitId === 'p1-creep-b').length, 0);
 });
 
+
+test('Replay: createMatch(setup) plus the trail reproduces the match exactly', () => {
+  let g = createMatch({ map: 'jungle' });
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let n = 0; n < 80 && g.status === 'playing'; n++) { const L = listActions(g); g = act(g, L[Math.floor(rnd() * L.length)]); }
+  assert.ok(g.trail.length > 0);
+  let r = createMatch(g.setup);
+  for (const a of g.trail) r = act(r, a);
+  assert.deepEqual(r.units, g.units);
+  assert.deepEqual(r.blocks, g.blocks);
+  assert.equal(r.turn, g.turn);
+  assert.deepEqual(r.log, g.log);
+});

@@ -22,6 +22,7 @@ export function Rules() {
         <li>Each side starts with 4 tokens (the maximum). They don't refill each turn.</li>
         <li>+1 token for killing an enemy creep, +1 when your creep reaches the far side.</li>
         <li>Costs: ice 1 · Empty Grave 2 · Storm Hammer 2 · summon beast 3 · Aggressive Root 3 (interrupt 3). Backstab and beast moves are free.</li>
+        <li>Aqna's kills store an ice charge instead of using it right away — never more than one at a time. Spend it whenever you like, on any later turn, for 1 token.</li>
       </ul>
       <h3>Interrupt</h3>
       <p>When an enemy unit on your Plantae's straight lines (up to 3 squares, nothing in between) acts, you may cancel that action for 3 tokens. The skill then recharges for 3 turns.</p>

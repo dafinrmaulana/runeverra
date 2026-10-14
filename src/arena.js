@@ -83,8 +83,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
     moveText: 'Moves up to 2 squares straight.',
     skill: {
-      key: 'icy', name: 'Icy Step', type: 'follow', cost: 1, range: 3,
-      text: `When she eliminates an enemy she may spend a token to raise an ice block up to 3 squares away. Nobody can enter ice, including her. Up to ${ICE_LIMIT} blocks; after that her oldest block moves to the new spot.`,
+      key: 'icy', name: 'Icy Step', type: 'active', cost: 1, range: 3, charge: true,
+      text: `When she eliminates an enemy she gains an ice charge (one at most; charges don't stack). Spend it with 1 token to raise an ice block up to 3 squares away: right after the kill, or later as her action on any turn you like. Nobody can enter ice, including her. Up to ${ICE_LIMIT} blocks; after that her oldest block moves to the new spot.`,
     },
   },
 };
@@ -165,7 +165,7 @@ export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } =
   }
   return {
     size: BOARD_SIZE, turn: 1, current: 'p1', status: 'playing', phase: 'main', pending: null,
-    map, teams, seed,
+    map, teams, seed, setup: { p1: teams.p1, p2: teams.p2, map, seed, creeps }, trail: [],
     energy: { p1: ENERGY.start, p2: ENERGY.start },
     units, blocks, iceBy: {},
     log: [{ turn: 0, team: null, text: `Match begins on ${m.name}. Ivory moves first.` }],
@@ -178,7 +178,12 @@ function makeUnit(id, team, hero, kind, pos) {
 }
 
 // The log is append-only and its entries are never mutated, so it is shared, not deep-copied.
-const clone = (s) => { const c = structuredClone({ ...s, log: null }); c.log = s.log.slice(); return c; };
+// The log and the trail are append-only and their entries are never mutated, so they are shared.
+const clone = (s) => {
+  const c = structuredClone({ ...s, log: null, trail: null });
+  c.log = s.log.slice(); c.trail = (s.trail || []).slice();
+  return c;
+};
 export const livingUnits = (s, team) => Object.values(s.units).filter((u) => u.alive && (!team || u.team === team));
 export const livingHeroes = (s, team) => livingUnits(s, team).filter((u) => u.kind === 'hero');
 export const unitAt = (s, p) => Object.values(s.units).find((u) => u.alive && samePos(u.pos, p)) || null;
@@ -309,7 +314,29 @@ export function skillActions(s, u) {
   const sk = u.kind === 'hero' ? HEROES[u.hero].skill : null;
   if (!sk || sk.type !== 'active' || u.rooted || skillCooldown(u) > 0 || s.energy[u.team] < sk.cost) return [];
   if (sk.key === 'summon') return summonSpots(s, u).map((to) => ({ type: 'skill', unitId: u.id, skill: sk.key, to }));
+  if (sk.key === 'icy') return u.iceCharge ? iceSpots(s, u).map((to) => ({ type: 'skill', unitId: u.id, skill: sk.key, to })) : [];
   return skillTargets(s, u).map((t) => ({ type: 'skill', unitId: u.id, skill: sk.key, targetId: t }));
+}
+
+/** Empty squares within Icy Step's range of Aqna. */
+function iceSpots(s, aqna) {
+  const out = [];
+  for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) {
+    const p = { r, c };
+    if (chebyshev(p, aqna.pos) <= HEROES.aqna.skill.range && !unitAt(s, p) && !blockAt(s, p)) out.push(p);
+  }
+  return out;
+}
+
+/** Put one of Aqna's ice blocks on `to`, spending her charge; returns the square her oldest block left, if any. */
+function raiseIce(s, aqna, to) {
+  const mine = s.iceBy[aqna.id] || (s.iceBy[aqna.id] = []);
+  let moved = null;
+  if (mine.length >= ICE_LIMIT) { moved = mine.shift(); delete s.blocks[moved]; }
+  s.blocks[key(to)] = { kind: 'ice', owner: aqna.id };
+  mine.push(key(to));
+  aqna.iceCharge = 0;
+  return moved;
 }
 
 // ---------- action listing (the single source of legality) ----------
@@ -321,12 +348,7 @@ export function listActions(s) {
   if (s.phase === 'react') return [{ type: 'react', use: true }, { type: 'react', use: false }];
   if (s.phase === 'storm') return [{ type: 'storm' }, { type: 'skip' }];
   if (s.phase === 'ice') {
-    const aqna = s.units[s.pending.unitId];
-    const out = [];
-    for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) {
-      const p = { r, c };
-      if (chebyshev(p, aqna.pos) <= HEROES.aqna.skill.range && !unitAt(s, p) && !blockAt(s, p)) out.push({ type: 'ice', to: p });
-    }
+    const out = iceSpots(s, s.units[s.pending.unitId]).map((to) => ({ type: 'ice', to }));
     out.push({ type: 'skip' });
     return out;
   }
@@ -382,6 +404,10 @@ function explain(s, a) {
     if (sk.type !== 'active') return `${sk.name} is passive; it triggers on its own.`;
     if (skillCooldown(u) > 0) return `${sk.name} is recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.`;
     if (s.energy[u.team] < sk.cost) return `${sk.name} needs ${sk.cost} tokens; you have ${s.energy[u.team]}.`;
+    if (sk.key === 'icy') {
+      if (!u.iceCharge) return 'Icy Step needs an ice charge: Aqna stores one when she eliminates an enemy (one at a time).';
+      return 'Ice must go on an empty square within 3 of Aqna.';
+    }
     if (sk.key === 'summon') {
       if (beastOf(s, u)) return 'The beast is still alive. Wild Company can only summon it after it falls.';
       return 'Summon the beast on an empty square next to Ge\'nga.';
@@ -491,6 +517,12 @@ function resolveSkill(s, action, lines, last) {
     lines.push(`${label(u)} calls the wild: ${label(b)} returns on ${squareName(action.to)}. Wild Company, ${tokens(sk.cost)}: the beast had fallen and ${squareName(action.to)} is next to Ge'nga. ${left(s, u.team)}`);
     return;
   }
+  if (sk.key === 'icy') {
+    const moved = raiseIce(s, u, action.to);
+    last.kind = 'ice'; last.from = { ...u.pos }; last.to = { ...action.to }; last.movedIce = moved;
+    lines.push(`${moved ? `${label(u)} moves an ice block to ${squareName(action.to)}.` : `${label(u)} raises an ice block on ${squareName(action.to)}.`} Icy Step, ${tokens(sk.cost)}: she spends the ice charge she stored from an earlier kill. ${left(s, u.team)}`);
+    return;
+  }
   const t = s.units[action.targetId];
   last.kind = sk.key; last.from = { ...u.pos }; last.to = null; last.hits.push({ ...t.pos }); last.targetId = t.id;
   if (sk.key === 'grave') {
@@ -516,6 +548,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
     if (!v.ok) return { ok: false, reason: v.reason, state };
   }
   const s = clone(state);
+  s.trail.push(structuredClone(action)); // every decision, for replays: createMatch(setup) + trail
   const lines = [];
   let last = newLast(s, action);
   let actingTeam = toMove(s);
@@ -549,15 +582,12 @@ export function applyAction(state, action, { trusted = false } = {}) {
     s.phase = 'main'; s.pending = null;
     if (action.type === 'ice') {
       s.energy[aqna.team] -= HEROES.aqna.skill.cost;
-      const mine = s.iceBy[aqna.id] || (s.iceBy[aqna.id] = []);
-      let moved = null;
-      if (mine.length >= ICE_LIMIT) { moved = mine.shift(); delete s.blocks[moved]; }
-      s.blocks[key(action.to)] = { kind: 'ice', owner: aqna.id };
-      mine.push(key(action.to));
+      const moved = raiseIce(s, aqna, action.to);
       last = { team: aqna.team, unitId: aqna.id, from: { ...aqna.pos }, to: { ...action.to }, hits: [], kind: 'ice', phase: 'ice', movedIce: moved };
       lines.push(`${moved ? `${label(aqna)} moves an ice block to ${squareName(action.to)}.` : `${label(aqna)} raises an ice block on ${squareName(action.to)}.`} Icy Step, ${tokens(HEROES.aqna.skill.cost)}: she just eliminated an enemy${moved ? `, and with ${ICE_LIMIT} blocks out her oldest one moved` : ''}. ${left(s, aqna.team)}`);
     } else {
       last = { ...state.lastAction, kind: 'skip-ice', phase: 'ice' };
+      lines.push(`${label(aqna)} keeps her ice charge for a later turn.`);
     }
     pushLog(s, lines, actingTeam);
     s.lastAction = last;
@@ -627,6 +657,7 @@ function finishUnitAction(s, action, last, lines) {
 /** Follow-ups after a unit action: Aqna's ice (costs a token), Ge'nga's beast (free). */
 function continueTurn(s, { actorId, wasBeast, killed }) {
   const actor = s.units[actorId];
+  if (!wasBeast && actor.alive && actor.hero === 'aqna' && actor.kind === 'hero' && killed > 0) actor.iceCharge = 1; // never more than one
   if (!wasBeast && actor.alive && actor.hero === 'aqna' && killed > 0 && hasIceSpot(s, actor)
       && s.energy[actor.team] >= HEROES.aqna.skill.cost) {
     s.phase = 'ice'; s.pending = { type: 'ice', unitId: actor.id };

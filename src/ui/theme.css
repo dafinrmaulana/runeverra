@@ -268,6 +268,7 @@ input, select, textarea { border-radius: 2px !important; }
 .sq-block.cooldown { color: var(--mist); border-color: #7f97a6; }
 .sq-block.tokens { color: var(--blood); border-color: #8f4a3a; }
 .sq-block.target { color: var(--sand); border-color: var(--sand-dk); }
+.sq-block.charge { color: #cfe6f2; border-color: rgb(var(--z-icy)); }
 .skill-pop { background: var(--panel); border-color: var(--line-hi); }
 .skill-pop::before { background: var(--panel); border-color: var(--line-hi); }
 .skill-pop .state { display: flex; gap: 6px; align-items: flex-start; }

@@ -265,6 +265,7 @@ const BLOCK_ICON: Record<string, string> = {
   target: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 12L12 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
   passive: '<svg viewBox="0 0 16 16"><path d="M4.5 8a2.2 2.2 0 1 1 3.5 1.8L8 8l0 0a2.2 2.2 0 1 1 3.5 0 2.2 2.2 0 0 1-3.5 1.8 2.2 2.2 0 0 1-3.5-1.8z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
   wait: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 5v3.2l2 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  charge: '<svg viewBox="0 0 16 16"><path d="M8 2v12M3.5 4.5l9 7M12.5 4.5l-9 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
 };
 
 function skillStatus(c: GameController) {
@@ -289,12 +290,14 @@ function skillStatus(c: GameController) {
   else if (cd) { block = 'cooldown'; state = `${sk.name} is recharging: ready in ${cd} of your turn${cd > 1 ? 's' : ''}.`; }
   else if (tokens < sk.cost) { block = 'tokens'; state = `${sk.name} needs ${tk(sk.cost)}; you have ${tokens}. Kill a creep or break through to earn more.`; }
   else if (!can) {
-    block = 'target';
-    state = sk.key === 'summon' ? (beastOf(g, u) ? 'The beast is still alive: Wild Company only works once it has fallen.' : 'No empty square next to Ge\'nga to summon the beast.')
-      : sk.key === 'grave' ? `No ally within ${sk.range} squares can take Empty Grave.`
-        : sk.key === 'root' ? `No enemy within ${sk.range} squares can be rooted (protected or already rooted ones don't count).`
-          : 'No valid target in range.';
+    block = sk.key === 'icy' && !u.iceCharge ? 'charge' : 'target';
+    state = sk.key === 'icy' ? (u.iceCharge ? `No empty square within ${sk.range} squares for the ice block.` : 'No ice charge yet: eliminate an enemy with her to store one (it keeps until spent, and never stacks).')
+      : sk.key === 'summon' ? (beastOf(g, u) ? 'The beast is still alive: Wild Company only works once it has fallen.' : 'No empty square next to Ge\'nga to summon the beast.')
+        : sk.key === 'grave' ? `No ally within ${sk.range} squares can take Empty Grave.`
+          : sk.key === 'root' ? `No enemy within ${sk.range} squares can be rooted (protected or already rooted ones don't count).`
+            : 'No valid target in range.';
   }
+  else if (sk.key === 'icy') state = 'Ice charge ready. Press to choose where to raise it (or Q) — or save it for a later turn.';
   else state = 'Ready. Press to choose a target (or Q).';
   return { u, hero, sk, active, cd, can, state, block };
 }
