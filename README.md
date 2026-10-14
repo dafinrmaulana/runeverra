@@ -11,7 +11,7 @@ npm install
 npm run dev     # Vite dev server, http://localhost:5173
 npm test        # rules engine, bot and online helpers (node:test)
 npm run build   # type-check, then dist/index.html (single file, JS/CSS inlined) + dist/assets,
-                # dist/artifact.html (same page without the document skeleton), dist/classic.html
+                # dist/artifact.html (same page without the document skeleton)
 ```
 
 ## Stack
@@ -32,12 +32,11 @@ src/ui/game/controller.ts Match state, selection, bot turns, undo; drives the bo
 src/ui/game/board.js      Board DOM, terrain, pieces, effects (canvas), ambient particles
 src/ui/online/room.ts     Room client over the platform room capability
 public/assets/            Character portraits and card art
-src/classic.html          The earlier Assassin/Mage/Guardian version (src/engine.js, src/bot.js)
 ```
 
 ## Screens
 
-1. **Home:** Play vs Bot, Offline · face to face, Online · room code. How to play, Classic mode.
+1. **Home:** Play vs Bot, Offline · face to face, Online · room code. How to play.
 2. **Bot:** pick Easy / Normal / Hard. **Online:** create a room or join with a code.
 3. **Heroes:** teams start empty. Heroes are listed in two columns; the ⓘ button opens its description full screen (Short or Detail, both with the move pattern); hovering shows nothing. Tap a hero to add it, tap a slot to remove it, or use Random / Clear. Against the bot you choose your side (**Ivory** moves first, **Ember** second; playing Ember turns the board so your side is at the bottom), and its team can be **Blind** (picked in secret, revealed when the match starts), **Shuffle** (random, visible) or **Pick manually**. Face to face, Player 2's picker is turned 180° for the player across the table.
 4. **Battlefield:** map and creeps. Online, the host picks and both press Ready.
@@ -161,7 +160,7 @@ Bot Normal, random maps, 300-action limit, run several at a time on 2 cores (sha
 
 ## Tests
 
-- `npm test`: 53 tests (classic 28, arena engine 21, arena bot 4): roles and movement, every skill's token cost, follow-up phases offered only when affordable, the Plantae hole, Storm Hammer chains and edge kills, ice limit, token cap, win condition, random-play invariants, bot legality.
+- `npm test`: 29 tests (engine 21, bot 4, online 4): roles and movement, every skill's token cost, follow-up phases offered only when affordable, the Plantae hole, Storm Hammer chains and edge kills, ice limit, token cap, win condition, random-play invariants, bot legality.
 - Browser click-through: 4-pick setup with role and cost labels, Storm Hammer slam prompt, interrupt then Plantae rooted, no Backstab without tokens, phone width without horizontal scroll.
 
 ## Known limitations

@@ -133,7 +133,6 @@ export function App() {
           </div>
           <div className="home-foot">
             <button type="button" className="btn ghost" onClick={() => setRules(true)}>How to play</button>
-            <a className="btn ghost" href="classic.html">Classic mode</a>
           </div>
         </div>
       )}
