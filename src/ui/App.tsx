@@ -8,6 +8,7 @@ import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
+import { ReplaysScreen } from './screens/ReplaysScreen';
 import { Modal, Steps } from './components/ui';
 import { CursorPicker } from './cursor';
 import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
@@ -16,7 +17,7 @@ import type { DescMode } from './components/HeroInfo';
 const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 type ModeKind = 'bot' | 'local' | 'online';
-type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game';
+type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays';
 type Level = 'easy' | 'normal' | 'hard';
 type BotTeam = 'hidden' | 'shuffle' | 'manual';
 
@@ -117,7 +118,8 @@ export function App() {
         <GameScreen ctrl={ctrl} roomCode={online ? r.code : null} rematch={rematch}
           onRematch={() => (online ? r.setReady(true) : startLocal())}
           onChangeHeroes={() => { ctrl.destroy(); setCtrl(null); room.controller = null; if (online) r.setReady(false); setScreen('heroes'); }}
-          onHome={goHome} />
+          onHome={goHome}
+          onReplays={() => { ctrl.destroy(); setCtrl(null); room.controller = null; if (online) r.setReady(false); setScreen('replays'); }} />
       </div>
     );
   }
@@ -149,10 +151,17 @@ export function App() {
             </div>
             <div className="home-foot">
               <button type="button" className="btn ghost" onClick={() => setRules(true)}>How to play</button>
+              <button type="button" className="btn ghost" onClick={() => setScreen('replays')}>Match review</button>
               <button type="button" className="btn ghost" onClick={() => setSettings(true)}>Settings</button>
             </div>
           </div>
         </div>
+      )}
+
+      {screen === 'replays' && (
+        <Setup title="Match review" onBack={() => setScreen('home')}>
+          <div className="setup-body page" key="replays"><ReplaysScreen /></div>
+        </Setup>
       )}
 
       {screen === 'room' && (

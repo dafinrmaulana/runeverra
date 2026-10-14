@@ -9,6 +9,7 @@ import { actionIndex } from '../../online.js';
 import { createBoard } from './board.js';
 import { tk, pref, setPref, type Team } from '../data';
 import { addResult, getTally, resetTally, sideA } from '../record';
+import { saveReplay } from '../replays';
 
 export type Mode =
   | { kind: 'bot'; level: 'easy' | 'normal' | 'hard'; side: Team }
@@ -122,9 +123,14 @@ export class GameController {
       this.board.run(plan);
       if (before.status === 'playing' && g.status !== 'playing') this.board.victory(g, g.status);
     }
-    if (before.status === 'playing' && g.status !== 'playing' && this.series && !this.recorded) {
+    if (before.status === 'playing' && g.status !== 'playing' && !this.recorded) {
       this.recorded = true; // an undo and a second finish don't count twice
-      addResult(this.series, g.status === sideA(this.mode.kind, this.viewer()));
+      if (this.series) addResult(this.series, g.status === sideA(this.mode.kind, this.viewer()));
+      const m = this.mode;
+      saveReplay({
+        kind: m.kind, viewer: this.viewer(), winner: g.status, setup: g.setup, trail: g.trail,
+        label: m.kind === 'bot' ? `vs Bot · ${m.level[0].toUpperCase()}${m.level.slice(1)}` : m.kind === 'local' ? 'Face to face' : 'Online',
+      });
     }
     return true;
   }

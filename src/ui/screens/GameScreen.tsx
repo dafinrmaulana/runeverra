@@ -23,6 +23,7 @@ type Props = {
   onRematch: () => void;
   onChangeHeroes: () => void;
   onHome: () => void;
+  onReplays?: () => void;
 };
 
 function useCtrl(ctrl: GameController) {
@@ -431,7 +432,7 @@ function SeatPanel({ c, team, threats }: { c: GameController; team: Team; threat
   );
 }
 
-export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes, onHome }: Props) {
+export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes, onHome, onReplays }: Props) {
   const c = useCtrl(ctrl);
   useEffect(() => { (window as any).__hgCtrl = ctrl; }, [ctrl]); // test hook: inspect/drive the match from devtools
   const host = useRef<HTMLDivElement>(null);
@@ -489,6 +490,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
         <div className="row">
           <button className="btn primary" type="button" disabled={rematch.disabled} onClick={onRematch}>{rematch.label}</button>
           <button className="btn" type="button" onClick={onChangeHeroes}>Change heroes</button>
+          {onReplays && <button className="btn" type="button" onClick={onReplays}>Watch replay</button>}
           <button className="btn" type="button" onClick={onHome}>Home</button>
         </div>
       </div>
