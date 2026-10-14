@@ -888,7 +888,11 @@ a.btn { text-decoration: none; display: inline-block; }
 @media (max-width: 560px) {
   .statusbar { gap: 6px; }
   .tokens { padding: 3px 7px; gap: 4px; }
-  .tokens .energy { display: none; }
-  .tokens .tn::before { content: "◆ "; }
+  .tokens .tn { display: none; }
   .turn-banner { font-size: .78rem; padding: 5px 12px; letter-spacing: .05em; }
 }
+
+/* token pips: always four, lit when available, dimmed once spent */
+.tokens .energy i { transition: background .3s, box-shadow .3s, opacity .3s, transform .3s; }
+.tokens .energy i:not(.on) { opacity: .35; transform: rotate(45deg) scale(.85); }
+.tokens .energy i.on { transform: rotate(45deg) scale(1); }
