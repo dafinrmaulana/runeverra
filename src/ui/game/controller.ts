@@ -2,7 +2,7 @@
 // board. React subscribes to it for the panels. Rules stay in src/arena.js.
 import {
   applyAction, validateAction, listActions, getThreats, unitAt, samePos, toMove, label,
-  HEROES, beastOf, skillActions,
+  HEROES, beastOf, skillActions, moveOptions,
 } from '../../arena.js';
 import { chooseAction } from '../../arena-bot.js';
 import { actionIndex } from '../../online.js';
@@ -174,6 +174,7 @@ export class GameController {
     if (sel && sel.team === g.current && acts.some((x: any) => x.type === 'move' && x.unitId === sel.id && samePos(x.to, pos))) {
       this.commit({ type: 'move', unitId: sel.id, to: pos }); return;
     }
+    if (sel && occupant && this.shieldBlocks(sel, occupant)) { this.bounce(sel, occupant, true); return; }
     if (occupant) {
       if (this.selectedId === occupant.id) { this.clearSel(); this.say(''); this.render({}); return; }
       this.select(occupant.id); return;
@@ -183,6 +184,20 @@ export class GameController {
       this.render({}); return;
     }
     this.clearSel(); this.say(''); this.render({});
+  }
+
+  /** Would `u` capture `target` here if Empty Grave weren't protecting it? */
+  shieldBlocks(u: any, target: any): boolean {
+    const g = this.game;
+    if (!target.warded || target.team === u.team || u.team !== g.current || g.phase !== 'main') return false;
+    const open = { ...g, units: { ...g.units, [target.id]: { ...target, warded: false } } };
+    return moveOptions(open, u).some((o: any) => samePos(o.to, target.pos) && o.kills.includes(target.id));
+  }
+  /** The attack bounces off the shield: an effect and a message, the turn is not used. */
+  bounce(u: any, target: any, lunge: boolean) {
+    this.board?.shieldBounce(u.id, u.pos, target.id, target.pos, lunge);
+    this.say(`${label(target)} is shielded by Empty Grave: ${label(u)} is thrown back. The shield lasts until its caster's next turn.`, 'err');
+    this.render({});
   }
 
   /** A press on a piece that can move now: lift it (select, showing its squares). */
@@ -202,6 +217,8 @@ export class GameController {
     const g = this.game;
     const a = listActions(g).find((x: any) => x.type === 'move' && x.unitId === id && samePos(x.to, pos));
     if (a) return this.commit(a);
+    const occ = unitAt(g, pos);
+    if (occ && this.shieldBlocks(g.units[id], occ)) { this.bounce(g.units[id], occ, false); return false; }
     this.say(validateAction(g, { type: 'move', unitId: id, to: pos }).reason || 'That square is out of reach.', 'err');
     this.render({});
     return false;

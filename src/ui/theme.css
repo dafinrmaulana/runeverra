@@ -383,3 +383,28 @@ input, select, textarea { border-radius: 2px !important; }
   box-shadow: inset 0 0 0 1px rgba(var(--z, var(--z-root)), .7);
 }
 :root { --z-root: 120, 230, 160; }
+
+/* ---------- Empty Grave: a rune shield orbiting the protected unit ---------- */
+.piece.warded::before, .piece.warded::after { content: ""; position: absolute; pointer-events: none; z-index: 2; border-radius: 50%; }
+.piece.warded::before {
+  inset: 2%;
+  background: conic-gradient(from 0deg, transparent 0 6%, rgba(190, 175, 255, .95) 6% 16%, transparent 16% 31%, rgba(190, 175, 255, .95) 31% 41%,
+    transparent 41% 56%, rgba(190, 175, 255, .95) 56% 66%, transparent 66% 81%, rgba(190, 175, 255, .95) 81% 91%, transparent 91%);
+  -webkit-mask: radial-gradient(circle, transparent 63%, #000 64%, #000 70%, transparent 71%);
+  mask: radial-gradient(circle, transparent 63%, #000 64%, #000 70%, transparent 71%);
+  filter: drop-shadow(0 0 4px rgba(166, 147, 240, .95));
+  animation: orbit 3.2s linear infinite;
+}
+.piece.warded::after {
+  /* two glowing motes circling the other way */
+  left: 50%; top: 4%; width: 9%; height: 9%; margin-left: -4.5%;
+  background: #efeaff; box-shadow: 0 0 6px 2px rgba(166, 147, 240, .95);
+  transform-origin: 50% 511%;
+  animation: orbit 2.1s linear infinite reverse;
+}
+@keyframes orbit { to { rotate: 360deg; } }
+.piece.ward-hit::before { animation: orbit 3.2s linear infinite, wardflare .55s ease-out; }
+@keyframes wardflare { 0% { scale: 1; filter: drop-shadow(0 0 4px rgba(166, 147, 240, .95)); } 30% { scale: 1.22; filter: drop-shadow(0 0 14px #fff) brightness(1.6); } 100% { scale: 1; } }
+.piece.ward-hit .token { animation: wardjolt .4s ease-out; }
+@keyframes wardjolt { 25% { scale: .92; } 60% { scale: 1.05; } }
+@media (prefers-reduced-motion: reduce) { .piece.warded::before, .piece.warded::after { animation: none; } }

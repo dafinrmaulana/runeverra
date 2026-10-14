@@ -306,10 +306,34 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
     if (el) { el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); }
   }
 
+  /**
+   * A move into a shielded unit: the attacker lunges, the shield flares, the attacker is knocked
+   * back to its square. Nothing changes in the game. `lunge` false when the piece was dragged there
+   * (it glides back by itself).
+   */
+  function shieldBounce(attackerId, from, targetId, to, lunge = true) {
+    const el = pieceEls.get(attackerId), tgt = pieceEls.get(targetId);
+    const a = V(from), b = V(to);
+    const dc = b.c - a.c, dr = b.r - a.r;
+    const T = (k) => `translate(${(a.c + dc * k) * 100}%, ${(a.r + dr * k) * 100}%)`;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const impact = lunge ? 190 : 0;
+    if (el && lunge && !reduce && el.animate) {
+      el.animate([
+        { transform: T(0) }, { transform: T(0.62), offset: 0.3, easing: 'cubic-bezier(.5,0,.9,.6)' },
+        { transform: T(-0.22), offset: 0.62, easing: 'cubic-bezier(.2,.8,.3,1)' }, { transform: T(0) },
+      ], { duration: 640 });
+    }
+    setTimeout(() => {
+      fx.shieldHit(to, from);
+      if (tgt) { tgt.classList.remove('ward-hit'); void tgt.offsetWidth; tgt.classList.add('ward-hit'); }
+    }, impact);
+  }
+
   function destroy() { drag = null; window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onCancel); ambient.stop(); fx.destroy(); host.innerHTML = ''; }
 
   return {
-    render, reset, hop, destroy,
+    render, reset, hop, destroy, shieldBounce,
     plan: fx.plan, run: fx.run, intro: (game) => fx.intro(game), victory: (game, w) => fx.victory(game, w), clearFx: fx.clear,
   };
 }
@@ -648,10 +672,24 @@ function createFX(canvas, wrap, view) {
     const heroes = livingHeroes(game, winner);
     for (let i = 0; i < 5; i++) at(250 + i * 260, () => heroes.forEach((u) => burst(u.pos, [COL[winner], COL.brass, COL.white], 14, { shape: 'dot', dir: -Math.PI / 2, spread: 0.9, min: 2.5, max: 5.5, g: 0.6, drag: 0.97, life: [700, 1200], size: [1.4, 2.8] })));
   }
+  /** An attack meeting Empty Grave: the shield flares and throws the attacker back. */
+  function shieldHit(p, from) {
+    if (reduce) return;
+    resize();
+    const c = C(p), f = C(from);
+    const away = Math.atan2(f.y - c.y, f.x - c.x);
+    flash(p, COL.spirit, 1, 300);
+    ring(p, COL.spirit, { from: 0.35, to: 1.25, w: 5, life: 560 });
+    ring(p, COL.spirit2, { from: 0.25, to: 0.85, w: 2.5, life: 420, dots: COL.white });
+    burst(p, [COL.spirit, COL.white, COL.spirit2], 22, { shape: 'spark', dir: away, spread: 0.9, min: 2, max: 5, life: [300, 620], size: [1.6, 3] });
+    burst(p, [COL.spirit, COL.spirit2], 10, { shape: 'shard', min: 0.8, max: 2.4, life: [380, 700], size: [2, 3.6] });
+    text(p, 'SHIELDED', '#cdbfff');
+    shake(0.7);
+  }
   function clear() { timers.forEach(clearTimeout); timers = []; parts = []; rings = []; lines = []; flashes = []; bolts = []; texts = []; }
   const onResize = () => { if (raf) resize(); };
   window.addEventListener('resize', onResize);
   function destroy() { clear(); if (raf) cancelAnimationFrame(raf); raf = 0; window.removeEventListener('resize', onResize); }
-  return { plan, run, intro, victory, clear, destroy };
+  return { plan, run, intro, victory, clear, destroy, shieldHit };
 }
 

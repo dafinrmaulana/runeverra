@@ -5,7 +5,7 @@ import { createMatch, applyAction, listActions, parseSquare } from '../../arena.
 import { createBoard } from '../game/board.js';
 
 type Game = any;
-type Step = { text: string; ms?: number; show?: { live: string; armed?: boolean }; act?: any; state?: () => Game };
+type Step = { text: string; ms?: number; show?: { live: string; armed?: boolean }; act?: any; state?: () => Game; bounce?: { by: string; target: string } };
 type Demo = { setup: () => Game; steps: Step[] };
 
 const sq = (n: string) => parseSquare(n);
@@ -54,7 +54,8 @@ const DEMOS: Record<string, Demo> = {
       { text: 'Magumba moves up to 2 squares diagonally.', show: { live: 'p1-magumba' }, ms: 2200 },
       { text: 'Empty Grave (2 tokens) reaches every square within 3, in any direction.', show: { live: 'p1-magumba', armed: true }, ms: 2400 },
       { text: 'He shields Hasim until his next turn.', act: sk('p1-magumba', { skill: 'grave', targetId: 'p1-hasim' }), ms: 2200 },
-      { text: 'Aqna could have taken Hasim. Now she can\'t touch him: the square is not on her list.', show: { live: 'p2-aqna' }, ms: 3000 },
+      { text: 'Aqna goes for Hasim…', show: { live: 'p2-aqna' }, ms: 1500 },
+      { text: '…and the shield throws her back. Attacks on Hasim are negated until Magumba\'s next turn.', bounce: { by: 'p2-aqna', target: 'p1-hasim' }, ms: 3000 },
     ],
   },
   plantae: {
@@ -155,6 +156,10 @@ export function HeroDemo({ hero, compact }: { hero: string; compact?: boolean })
       const hits = g.lastAction && g.lastAction !== before.lastAction ? g.lastAction.hits || [] : [];
       b.render(g, { acts: [], live: null, threats: new Set(), deathDelay: plan.deathDelay, hits: fx ? hits : [] });
       if (fx) { if ((plan as any).hop) b.hop((plan as any).hop); b.run(plan); }
+    } else if (st.bounce) {
+      const by = g.units[st.bounce.by], t = g.units[st.bounce.target];
+      b.render(g, { acts: [], live: by, threats: new Set() });
+      if (fx) b.shieldBounce(by.id, by.pos, t.id, t.pos, true);
     } else {
       const live = st.show ? g.units[st.show.live] : null;
       b.render(g, { acts: listActions(g), live, armed: !!st.show?.armed, threats: new Set() });
