@@ -9,7 +9,7 @@ import { type GameController } from '../game/controller';
 import { ICON, ART, MAP_ART, SHORT, costLabel, costChip, other, tk, type Team } from '../data';
 import { BEAST_SVG, CREEP_SVG } from '../game/board.js';
 import { Rules } from '../components/Rules';
-import { MoveDiagram } from '../components/HeroInfo';
+import { MoveDiagram, RangeDiagram } from '../components/HeroInfo';
 import { Modal, Switch, Accordion } from '../components/ui';
 
 const TEAM_NAMES = TN as Record<string, string>;
@@ -200,6 +200,7 @@ function SelDetail({ c, u }: { c: GameController; u: any }) {
       <div className="sel-move">{hero ? <MoveDiagram hero={u.hero} size={8} /> : null}<span>{d.moveText}</span></div>
       {hero && (
         <div className="sel-skill">
+          {sk.range ? <RangeDiagram hero={u.hero} size={7} /> : null}
           <b>{sk.name}</b> <span className="meta">{costLabel(sk)}{sk.range ? ` · range ${sk.range}` : ''}{sk.cooldown ? ` · cooldown ${sk.cooldown}` : ''}</span>
           <p>{sk.text}</p>
           {cd > 0 && <p className="cdn-note">Recharging: ready in {cd} turn{cd > 1 ? 's' : ''}.</p>}

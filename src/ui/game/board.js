@@ -18,6 +18,19 @@ export const CREEP_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><circl
 export const BEAST_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellipse cx="12" cy="15.5" rx="5" ry="4.2"/><circle cx="6.2" cy="10" r="2.1"/><circle cx="9.6" cy="6.6" r="2.1"/><circle cx="14.4" cy="6.6" r="2.1"/><circle cx="17.8" cy="10" r="2.1"/></g></svg>';
 
 
+/** Where the skill in play reaches: { center, range, key } or null. */
+export function skillZone(game, live, armed) {
+  const at = (u, key) => (u ? { center: u.pos, range: HEROES[u.hero].skill.range, key } : null);
+  if (game.phase === 'react') return at(game.units[game.pending.plantId], 'root');
+  if (game.phase === 'ice') return at(game.units[game.pending.unitId], 'icy');
+  if (game.phase === 'storm') return at(game.units[game.pending.unitId], 'storm');
+  if (!live || live.kind !== 'hero') return null;
+  const sk = HEROES[live.hero].skill;
+  if (armed && sk.range) return at(live, sk.key);
+  if (live.hero === 'plantae') return at(live, 'root'); // its interrupt can fire on the enemy turn
+  return null;
+}
+
 /**
  * Mount a board into `host`. `onCell(pos)` fires for clicks on squares.
  * Call `render(game, view)` after every change; `animate(before, after)` for effects.
@@ -160,9 +173,9 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
     const pend = game.phase === 'react' ? game.pending.action : null;
     const pendActor = pend && game.units[pend.unitId];
     const pendTo = pend ? (pend.to || game.units[pend.targetId]?.pos) : null;
-    const rangeOf = game.phase === 'react' ? game.units[game.pending.plantId]
-      : live && live.kind === 'hero' && live.hero === 'plantae' ? live : null;
-    const rootRange = HEROES.plantae.skill.range;
+    // The reach of the skill in play, tinted square by square in the skill's colour: any skill with a
+    // `range` gets this, so a new hero's area shows the same way without extra code.
+    const zone = skillZone(game, live, armed);
     const la = game.lastAction;
     const movers = new Set(acts.filter((a) => a.type === 'move').map((a) => a.unitId));
     for (const el of cells) {
@@ -180,7 +193,9 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
       el.classList.toggle('grave', tgt && skKey === 'grave');
       el.classList.toggle('root', tgt && skKey === 'root');
       el.classList.toggle('icespot', iceActs.some((a) => samePos(a.to, p)));
-      el.classList.toggle('range', !!rangeOf && chebyshev(rangeOf.pos, p) <= rootRange && !samePos(rangeOf.pos, p));
+      const inZone = !!zone && chebyshev(zone.center, p) <= zone.range && !samePos(zone.center, p);
+      el.classList.toggle('range', inZone);
+      if (inZone) el.dataset.zone = zone.key; else delete el.dataset.zone;
       el.classList.toggle('pending', !!pendActor && samePos(pendActor.pos, p));
       el.classList.toggle('pending-to', !!pendTo && samePos(pendTo, p));
       el.classList.toggle('last', !!la && [la.from, la.to].some((x) => x && samePos(x, p)));

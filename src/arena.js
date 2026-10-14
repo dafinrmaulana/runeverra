@@ -74,7 +74,7 @@ export const HEROES = {
     move: [{ kind: 'leap', deltas: KNIGHT }],
     moveText: 'Jumps in an L, like a chess knight.',
     skill: {
-      key: 'storm', name: 'Storm Hammer', type: 'follow', cost: 2,
+      key: 'storm', name: 'Storm Hammer', type: 'follow', cost: 2, range: 1,
       text: 'After Hexor eliminates an enemy, you may spend tokens to slam: every unit around him is pushed 1 square away, pushing any unit behind it too. An enemy pushed into terrain or off the board is eliminated; an ally there just stays put.',
     },
   },
@@ -83,7 +83,7 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
     moveText: 'Moves up to 2 squares straight.',
     skill: {
-      key: 'icy', name: 'Icy Step', type: 'follow', cost: 1,
+      key: 'icy', name: 'Icy Step', type: 'follow', cost: 1, range: 3,
       text: `When she eliminates an enemy she may spend a token to raise an ice block up to 3 squares away. Nobody can enter ice, including her. Up to ${ICE_LIMIT} blocks; after that her oldest block moves to the new spot.`,
     },
   },
@@ -296,7 +296,7 @@ export function listActions(s) {
     const out = [];
     for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) {
       const p = { r, c };
-      if (chebyshev(p, aqna.pos) <= 3 && !unitAt(s, p) && !blockAt(s, p)) out.push({ type: 'ice', to: p });
+      if (chebyshev(p, aqna.pos) <= HEROES.aqna.skill.range && !unitAt(s, p) && !blockAt(s, p)) out.push({ type: 'ice', to: p });
     }
     out.push({ type: 'skip' });
     return out;
@@ -614,7 +614,7 @@ function continueTurn(s, { actorId, wasBeast, killed }) {
 function hasIceSpot(s, aqna) {
   for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) {
     const p = { r, c };
-    if (chebyshev(p, aqna.pos) <= 3 && !unitAt(s, p) && !blockAt(s, p)) return true;
+    if (chebyshev(p, aqna.pos) <= HEROES.aqna.skill.range && !unitAt(s, p) && !blockAt(s, p)) return true;
   }
   return false;
 }

@@ -352,3 +352,34 @@ input, select, textarea { border-radius: 2px !important; }
 .demo-dot { width: 8px; height: 8px; padding: 0; border-radius: 50%; border: 1px solid var(--sand-dk); background: transparent; cursor: pointer; }
 .demo-dot.on { background: var(--sand); border-color: var(--sand); }
 @media (prefers-reduced-motion: reduce) { .du, .demo-board .burst, .du img, .du b { transition: none; animation: none !important; } }
+
+/* ---------- skill reach: every square in range tinted in the skill's colour ---------- */
+:root { --z-root: 90, 158, 128; --z-grave: 166, 147, 240; --z-icy: 150, 205, 235; --z-summon: 227, 184, 120; --z-storm: 245, 200, 80; }
+.cell.range::after { background: rgba(var(--z, var(--z-root)), .2); box-shadow: inset 0 0 0 1px rgba(var(--z, var(--z-root)), .38); }
+.cell[data-zone="root"] { --z: var(--z-root); }
+.cell[data-zone="grave"] { --z: var(--z-grave); }
+.cell[data-zone="icy"] { --z: var(--z-icy); }
+.cell[data-zone="summon"] { --z: var(--z-summon); }
+.cell[data-zone="storm"] { --z: var(--z-storm); }
+.zone-diag { --z: var(--z-root); }
+.zone-diag[data-zone="grave"] { --z: var(--z-grave); }
+.zone-diag[data-zone="icy"] { --z: var(--z-icy); }
+.zone-diag[data-zone="summon"] { --z: var(--z-summon); }
+.zone-diag[data-zone="storm"] { --z: var(--z-storm); }
+.zone-diag i.zone { background: rgba(var(--z), .55); box-shadow: inset 0 0 0 1px rgba(var(--z), .9); }
+.hinfo-skill .zone-diag, .sel-skill .zone-diag { float: left; margin: 2px 12px 6px 0; }
+.range-note { color: var(--muted); }
+
+/* demos run on the real board */
+.demo-stage { width: 100%; pointer-events: none; }
+.demo-stage .arena { padding: 6px; border-radius: 3px; }
+.demo-stage .board-wrap { width: 100%; }
+.demo-stage .coord { display: none; }
+.demo { max-width: 340px; }
+.demo.compact { max-width: 260px; }
+/* hatched so the reach reads on every map, even a green one under a green skill */
+.cell.range::after {
+  background: repeating-linear-gradient(45deg, rgba(var(--z, var(--z-root)), .42) 0 3px, rgba(var(--z, var(--z-root)), .14) 3px 8px);
+  box-shadow: inset 0 0 0 1px rgba(var(--z, var(--z-root)), .7);
+}
+:root { --z-root: 120, 230, 160; }
