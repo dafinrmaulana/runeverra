@@ -425,3 +425,8 @@ input, select, textarea { border-radius: 2px !important; }
   .tokens .energy i { width: 8px; height: 8px; }
   .turn-banner { padding-inline: 10px; letter-spacing: .04em; }
 }
+.score-n { display: inline-flex; align-items: center; gap: 3px; color: var(--sand); }
+.score-n svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+.score-setting { display: flex; align-items: center; gap: 10px; }
+.score-setting > :first-child { flex: 1; min-width: 0; }
+.final-score { font: 700 1.1rem var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sand); }

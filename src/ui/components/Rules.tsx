@@ -26,7 +26,7 @@ export function Rules() {
       <h3>Interrupt</h3>
       <p>When an enemy unit on your Plantae's straight lines (up to 3 squares, nothing in between) acts, you may cancel that action for 3 tokens. The skill then recharges for 3 turns.</p>
       <h3>Score (optional)</h3>
-      <p>Turn it on or off from the in-game menu. Hero takedown 300 · beast 100 · creep 50 · creep breakthrough 150 · Root 50 · interrupt 100 · win 500. The score is just for bragging: the match is still won by taking down every enemy hero.</p>
+      <p>Counts wins for each side across rematches: against the bot per difficulty, face to face Ivory against Ember, online per room. Turn it on or off, or reset it, from the in-game menu.</p>
       <h3>Creeps</h3>
       <p>Four pawns per side on the flank lanes. Like chess pawns: 1 square forward, capture diagonally forward. Moving one uses your turn.</p>
     </div>

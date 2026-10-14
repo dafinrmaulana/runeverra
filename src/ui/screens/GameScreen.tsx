@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CursorPicker } from '../cursor';
+import { sideA } from '../record';
 import { HeroDemo } from '../components/HeroDemo';
 import {
   HEROES, MAPS, TEAM_NAMES as TN, ENERGY, CREEPS, ROLES, label, heroDef, livingHeroes, moveOptions, samePos,
@@ -103,9 +104,22 @@ function Pips({ n }: { n: number }) {
   return <span className="energy" title={`${n} of ${ENERGY.max} skill tokens`}>{Array.from({ length: ENERGY.max }, (_, i) => <i key={i} className={i < n ? 'on' : ''} />)}</span>;
 }
 
-/** A side's score; it pops when it changes. */
-function Score({ n }: { n: number }) {
-  return <span className="score-n" key={n} title="Score">{n.toLocaleString('en-US')}</span>;
+/** "You 3 – 1 Bot", "Ivory 2 – 2 Ember", "You 1 – 0 Opponent". */
+function seriesLine(c: GameController) {
+  const t = c.tally(), k = c.mode.kind;
+  const [a, b] = k === 'local' ? [TEAM_NAMES.p1, TEAM_NAMES.p2] : ['You', k === 'bot' ? 'Bot' : 'Opponent'];
+  return `${a} ${t.a} – ${t.b} ${b}`;
+}
+
+/** Matches this side has won in the current series. */
+function winsOf(c: GameController, team: Team) {
+  const t = c.tally();
+  return team === sideA(c.mode.kind, c.viewer()) ? t.a : t.b;
+}
+const TROPHY = <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2h7v3.2a3.5 3.5 0 0 1-7 0zM4.5 3.2H2.4v1.1a2.4 2.4 0 0 0 2.3 2.4M11.5 3.2h2.1v1.1a2.4 2.4 0 0 1-2.3 2.4M8 8.7v2.6M5.4 13.8h5.2l-.6-2.5H6z" /></svg>;
+/** A side's wins; the number pops when it changes. */
+function Wins({ n }: { n: number }) {
+  return <span className="score-n" key={n} title={`${n} win${n === 1 ? '' : 's'} in this series`}>{TROPHY}{n}</span>;
 }
 
 /** A side's skill tokens, labelled. */
@@ -115,7 +129,7 @@ function Tokens({ c, team, who, active }: { c: GameController; team: Team; who: 
     <span className={`tokens ${team}${active ? ' active' : ''}`}>
       <span className={`team-dot ${team}`} /><span className="who">{who}</span>
       <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span>
-      {c.showScore && <Score n={c.game.score?.[team] ?? 0} />}
+      {c.showScore && <Wins n={winsOf(c, team)} />}
     </span>
   );
 }
@@ -446,12 +460,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
       <div>
         <h2>{local ? `${TEAM_NAMES[g.status]} wins` : status}</h2>
         <p>{TEAM_NAMES[loser!]} has no heroes left · {livingHeroes(g, g.status).map((u: any) => (HEROES as any)[u.hero].name).join(', ')} still standing</p>
-        {c.showScore && (
-          <p className="final-score">
-            <span className="p1">{TEAM_NAMES.p1} <b>{(g.score?.p1 ?? 0).toLocaleString('en-US')}</b></span>
-            <span className="p2">{TEAM_NAMES.p2} <b>{(g.score?.p2 ?? 0).toLocaleString('en-US')}</b></span>
-          </p>
-        )}
+        {c.showScore && <p className="final-score">{seriesLine(c)}</p>}
         <div className="row">
           <button className="btn primary" type="button" disabled={rematch.disabled} onClick={onRematch}>{rematch.label}</button>
           <button className="btn" type="button" onClick={onChangeHeroes}>Change heroes</button>
@@ -504,7 +513,10 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
         <h2>Paused</h2>
         <button className="btn primary big" type="button" onClick={() => setMenu(false)}>Resume</button>
         <div className="menu-setting"><Switch checked={c.showThreats} onChange={(v) => c.setThreats(v)} label={<><b>Show threats</b><small>Mark units an enemy can capture next turn</small></>} /></div>
-        <div className="menu-setting"><Switch checked={c.showScore} onChange={(v) => c.setScore(v)} label={<><b>Show score</b><small>Points for takedowns, roots, interrupts, breakthroughs and the win</small></>} /></div>
+        <div className="menu-setting score-setting">
+          <Switch checked={c.showScore} onChange={(v) => c.setScore(v)} label={<><b>Show score</b><small>Wins for each side across rematches: {seriesLine(c)}</small></>} />
+          <button className="btn ghost" type="button" onClick={() => c.resetScore()} disabled={!c.tally().a && !c.tally().b}>Reset</button>
+        </div>
         <div className="menu-setting cursor-setting"><b>Mouse cursor</b><CursorPicker /></div>
         <button className="btn big" type="button" onClick={() => { setMenu(false); setRules(true); }}>How to play</button>
         {c.mode.kind !== 'online' && <button className="btn big" type="button" onClick={() => { setMenu(false); onRematch(); }}>Restart match</button>}

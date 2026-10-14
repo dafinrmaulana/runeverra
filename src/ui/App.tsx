@@ -56,6 +56,7 @@ export function App() {
         old?.destroy();
         const c = new GameController({ kind: 'online', side: room.side!, onLocalMove: (i) => room.localMove(i) }, game);
         c.say(`Online match in room ${room.code}. You play ${TEAM_NAMES[room.side!]}; Ivory moves first.`, 'ok');
+        c.series = `room-${room.code}`;
         room.controller = c;
         if (!fresh) c.say('Back in the match.', 'ok');
         return c;
@@ -83,6 +84,7 @@ export function App() {
     const mode: Mode = kind === 'bot' ? { kind: 'bot', level, side } : { kind: 'local' };
     ctrl?.destroy();
     const c = new GameController(mode, game);
+    c.series = kind === 'bot' ? `bot-${level}` : 'local';
     c.say(kind === 'bot' ? `You play ${TEAM_NAMES[side]} against the ${BOT_LEVELS[level].label} bot. ${side === 'p1' ? 'You move first: tap a hero to begin.' : 'Ivory (the bot) moves first.'}` : 'Ivory moves first. Tap a hero to begin.', 'ok');
     setCtrl(c);
     setScreen('game');
