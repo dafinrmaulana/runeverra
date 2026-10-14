@@ -896,3 +896,28 @@ a.btn { text-decoration: none; display: inline-block; }
 .tokens .energy i { transition: background .3s, box-shadow .3s, opacity .3s, transform .3s; }
 .tokens .energy i:not(.on) { opacity: .35; transform: rotate(45deg) scale(.85); }
 .tokens .energy i.on { transform: rotate(45deg) scale(1); }
+
+/* face to face: no sideways scrolling; the details sheet keeps its header visible */
+.seat, .seat-body, .seat-sel, .seat-sel-btn, .seat-sheet-card { min-width: 0; max-width: 100%; }
+.seat-body { overflow-x: hidden; }
+.seat-sel-btn { overflow: hidden; }
+.seat-sel-btn .sel-text { min-width: 0; overflow: hidden; }
+.seat-sel-btn .sel-name { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+.seat-sel-btn .sel-name .sub { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.seat-sel-btn .sel-name .chip, .seat-sel-btn .sel-name .fx-pill, .seat-sel-btn .sel-name .cost { flex: none; }
+.seat-sel-btn .sel-short { white-space: nowrap; text-overflow: ellipsis; display: block; }
+.seat-sheet { padding: 0; overflow: hidden; }
+.seat-sheet-card { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; height: 100%; overflow: hidden; }
+.seat-sheet-head { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer; padding: 8px 12px;
+  background: var(--panel); border: 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.seat-sheet-head .sel-trigger { flex: 1; min-width: 0; }
+.seat-sheet-head .sel-name { flex-wrap: wrap; }
+.seat-sheet-head .sel-short, .seat-sheet-head .sel-fx { display: none; }
+.seat-sheet-head .sel-trigger > img { width: 28px; height: 28px; }
+.sheet-close { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line); color: var(--bone); font-size: .8rem; }
+.seat-sheet-head:hover .sheet-close { border-color: var(--brass); color: var(--brass); }
+.seat-sheet-body { overflow-y: auto; overflow-x: hidden; padding: 8px 12px 10px; min-height: 0; }
+.seat-sheet-body .sel-detail { padding: 0; }
+.seat-sheet-body p { overflow-wrap: anywhere; }
+.seat-sheet { background: var(--panel); }
+.seat-sheet-card, .seat-sheet-body { background: var(--panel); }

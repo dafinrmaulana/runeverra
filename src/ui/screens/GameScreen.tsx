@@ -340,9 +340,14 @@ function SeatPanel({ c, team, threats }: { c: GameController; team: Team; threat
       {sheet && (
         <div className="seat-sheet" onClick={() => setSheet(null)}>
           <div className="seat-sheet-card" onClick={(e) => e.stopPropagation()}>
-            {sheet === 'roster' ? <><TeamHead c={c} team={team} /><TeamRoster c={c} team={team} threats={threats} /></>
-              : sel && sel.alive ? <><SelTrigger c={c} u={sel} threats={threats} /><SelDetail c={c} u={sel} /></> : null}
-            <button type="button" className="btn tiny" onClick={() => setSheet(null)}>Close</button>
+            {/* the header stays put while the details scroll; tapping it collapses the sheet */}
+            <button type="button" className="seat-sheet-head" onClick={() => setSheet(null)} aria-expanded="true" aria-label="Collapse">
+              {sheet === 'roster' ? <TeamHead c={c} team={team} /> : sel && sel.alive ? <SelTrigger c={c} u={sel} threats={threats} /> : null}
+              <span className="sheet-close" aria-hidden="true">✕</span>
+            </button>
+            <div className="seat-sheet-body">
+              {sheet === 'roster' ? <TeamRoster c={c} team={team} threats={threats} /> : sel && sel.alive ? <SelDetail c={c} u={sel} /> : null}
+            </div>
           </div>
         </div>
       )}
