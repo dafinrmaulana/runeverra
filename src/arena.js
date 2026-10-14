@@ -167,7 +167,7 @@ export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } =
     size: BOARD_SIZE, turn: 1, current: 'p1', status: 'playing', phase: 'main', pending: null,
     map, teams, seed,
     energy: { p1: ENERGY.start, p2: ENERGY.start },
-    units, blocks, iceBy: {},
+    units, blocks, iceBy: {}, score: { p1: 0, p2: 0 },
     log: [{ turn: 0, team: null, text: `Match begins on ${m.name}. Ivory moves first.` }],
     lastAction: null,
   };
@@ -402,9 +402,19 @@ function explain(s, a) {
 }
 
 // ---------- resolution ----------
+/** Points for the optional score display. Deterministic and part of the state, so both screens of an
+ *  online match agree. It never affects play. */
+export const SCORE = { hero: 300, beast: 100, creep: 50, breach: 150, root: 50, interrupt: 100, win: 500 };
+function addScore(s, team, pts) {
+  if (!team || !pts) return;
+  s.score = s.score || { p1: 0, p2: 0 };
+  s.score[team] = (s.score[team] || 0) + pts;
+}
+
 function eliminate(s, u, lines, by = null) {
   if (!u.alive) return;
   u.alive = false; u.rooted = 0; u.warded = false;
+  if (by && by !== u.team) addScore(s, by, SCORE[u.kind] || 0);
   lines.push(`${label(u)} is eliminated on ${squareName(u.pos)}.`);
   if (u.kind === 'creep' && by && by !== u.team) {
     s.energy[by] = Math.min(ENERGY.max, s.energy[by] + CREEPS.lastHit);
@@ -474,6 +484,7 @@ function resolveMove(s, action, lines, last) {
     u.alive = false;
     s.energy[u.team] = Math.min(ENERGY.max, s.energy[u.team] + CREEPS.breach);
     last.breach = true;
+    addScore(s, u.team, SCORE.breach);
     lines.push(`${label(u)} breaks through on ${squareName(u.pos)}: +${CREEPS.breach} tokens.`);
   }
   return { killed: victims.length };
@@ -498,6 +509,7 @@ function resolveSkill(s, action, lines, last) {
     lines.push(`${t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`} Empty Grave, ${tokens(sk.cost)}: ${t.id === u.id ? 'he targets himself' : `${label(t)} is ${dist(u, t)} on his diagonal, within range ${sk.range}`}; enemy attacks on ${t.id === u.id ? 'him' : 'it'} are negated until ${label(u)}'s next turn. ${left(s, u.team)}`);
   } else if (sk.key === 'root') {
     t.rooted = 1;
+    addScore(s, u.team, SCORE.root);
     lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} in a straight line, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
   }
 }
@@ -530,6 +542,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
       s.energy[plant.team] -= sk.reactionCost ?? sk.cost;
       plant.cd = sk.cooldown || 0;
       plant.reacts = (plant.reacts || 0) + 1;
+      addScore(s, plant.team, SCORE.interrupt);
       const toward = pend.to || s.units[pend.targetId]?.pos || null; // where the negated action was going
       last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, toward: toward && { ...toward }, phase: 'react' };
       lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} from Plantae, on her line within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, plant.team)}`);
@@ -673,6 +686,7 @@ function checkWinner(s) {
     if (livingHeroes(s, team).length === 0) {
       s.status = other(team);
       s.phase = 'main'; s.pending = null;
+      addScore(s, s.status, SCORE.win);
       s.log.push({ turn: s.turn, team: s.status, text: `${TEAM_NAMES[s.status]} wins — every enemy hero is down.` });
       return;
     }

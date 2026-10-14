@@ -7,7 +7,7 @@ import {
 import { chooseAction } from '../../arena-bot.js';
 import { actionIndex } from '../../online.js';
 import { createBoard } from './board.js';
-import { tk, type Team } from '../data';
+import { tk, pref, setPref, type Team } from '../data';
 
 export type Mode =
   | { kind: 'bot'; level: 'easy' | 'normal' | 'hard'; side: Team }
@@ -27,6 +27,7 @@ export class GameController {
   msg = '';
   msgKind: '' | 'ok' | 'err' = '';
   showThreats = true;
+  showScore: boolean = pref('showScore', true);
   history: any[] = [];
   future: any[] = [];
   version = 0;
@@ -115,6 +116,7 @@ export class GameController {
     if (this.board) {
       if (plan.hop) this.board.hop(plan.hop);
       this.board.run(plan);
+      if (this.showScore) this.scorePops(before, g);
       if (before.status === 'playing' && g.status !== 'playing') this.board.victory(g, g.status);
     }
     return true;
@@ -189,6 +191,19 @@ export class GameController {
       this.render({}); return;
     }
     this.clearSel(); this.say(''); this.render({});
+  }
+
+  /** "+300" over the board where points were made. */
+  private scorePops(before: any, g: any) {
+    const la = g.lastAction;
+    if (!la || la === before.lastAction) return;
+    const at = la.hits?.[0] || la.to || la.from;
+    if (!at) return;
+    let k = 0;
+    for (const t of ['p1', 'p2'] as Team[]) {
+      const d = (g.score?.[t] || 0) - (before.score?.[t] || 0);
+      if (d > 0) this.board?.popText({ r: at.r - 0.35 - 0.35 * k++, c: at.c }, `+${d}`, t === 'p1' ? '#ffe3a6' : '#ffb08f', 520);
+    }
   }
 
   /** Would `u` capture `target` here if Empty Grave weren't protecting it? */
@@ -283,4 +298,5 @@ export class GameController {
   }
 
   setThreats(on: boolean) { this.showThreats = on; this.render({}); }
+  setScore(on: boolean) { this.showScore = on; setPref('showScore', on); this.changed(); }
 }

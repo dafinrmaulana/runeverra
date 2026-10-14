@@ -103,6 +103,11 @@ function Pips({ n }: { n: number }) {
   return <span className="energy" title={`${n} of ${ENERGY.max} skill tokens`}>{Array.from({ length: ENERGY.max }, (_, i) => <i key={i} className={i < n ? 'on' : ''} />)}</span>;
 }
 
+/** A side's score; it pops when it changes. */
+function Score({ n }: { n: number }) {
+  return <span className="score-n" key={n} title="Score">{n.toLocaleString('en-US')}</span>;
+}
+
 /** A side's skill tokens, labelled. */
 function Tokens({ c, team, who, active }: { c: GameController; team: Team; who: string; active?: boolean }) {
   const n = c.game.energy[team];
@@ -110,6 +115,7 @@ function Tokens({ c, team, who, active }: { c: GameController; team: Team; who: 
     <span className={`tokens ${team}${active ? ' active' : ''}`}>
       <span className={`team-dot ${team}`} /><span className="who">{who}</span>
       <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span>
+      {c.showScore && <Score n={c.game.score?.[team] ?? 0} />}
     </span>
   );
 }
@@ -440,6 +446,12 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
       <div>
         <h2>{local ? `${TEAM_NAMES[g.status]} wins` : status}</h2>
         <p>{TEAM_NAMES[loser!]} has no heroes left · {livingHeroes(g, g.status).map((u: any) => (HEROES as any)[u.hero].name).join(', ')} still standing</p>
+        {c.showScore && (
+          <p className="final-score">
+            <span className="p1">{TEAM_NAMES.p1} <b>{(g.score?.p1 ?? 0).toLocaleString('en-US')}</b></span>
+            <span className="p2">{TEAM_NAMES.p2} <b>{(g.score?.p2 ?? 0).toLocaleString('en-US')}</b></span>
+          </p>
+        )}
         <div className="row">
           <button className="btn primary" type="button" disabled={rematch.disabled} onClick={onRematch}>{rematch.label}</button>
           <button className="btn" type="button" onClick={onChangeHeroes}>Change heroes</button>
@@ -492,6 +504,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
         <h2>Paused</h2>
         <button className="btn primary big" type="button" onClick={() => setMenu(false)}>Resume</button>
         <div className="menu-setting"><Switch checked={c.showThreats} onChange={(v) => c.setThreats(v)} label={<><b>Show threats</b><small>Mark units an enemy can capture next turn</small></>} /></div>
+        <div className="menu-setting"><Switch checked={c.showScore} onChange={(v) => c.setScore(v)} label={<><b>Show score</b><small>Points for takedowns, roots, interrupts, breakthroughs and the win</small></>} /></div>
         <div className="menu-setting cursor-setting"><b>Mouse cursor</b><CursorPicker /></div>
         <button className="btn big" type="button" onClick={() => { setMenu(false); setRules(true); }}>How to play</button>
         {c.mode.kind !== 'online' && <button className="btn big" type="button" onClick={() => { setMenu(false); onRematch(); }}>Restart match</button>}

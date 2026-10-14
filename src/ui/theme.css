@@ -408,3 +408,20 @@ input, select, textarea { border-radius: 2px !important; }
 .piece.ward-hit .token { animation: wardjolt .4s ease-out; }
 @keyframes wardjolt { 25% { scale: .92; } 60% { scale: 1.05; } }
 @media (prefers-reduced-motion: reduce) { .piece.warded::before, .piece.warded::after { animation: none; } }
+
+/* ---------- score ---------- */
+.score-n {
+  font: 700 .82rem/1 var(--f-mono); color: var(--bone); letter-spacing: .04em; font-variant-numeric: tabular-nums;
+  padding-left: 7px; margin-left: 1px; border-left: 1px solid var(--line-hi); animation: scorepop .45s ease-out;
+}
+@keyframes scorepop { 0% { color: #ffe3a6; scale: 1.35; } 100% { scale: 1; } }
+.final-score { display: flex; gap: 18px; justify-content: center; font: 600 .95rem var(--f-mono); letter-spacing: .06em; text-transform: uppercase; }
+.final-score b { font-size: 1.25rem; color: var(--sand); margin-left: 4px; }
+@media (max-width: 560px) { .score-n { padding-left: 5px; font-size: .76rem; } }
+@media (prefers-reduced-motion: reduce) { .score-n { animation: none; } }
+@media (max-width: 420px) {
+  .tokens { gap: 4px; padding-inline: 6px; }
+  .tokens .energy { gap: 3px; }
+  .tokens .energy i { width: 8px; height: 8px; }
+  .turn-banner { padding-inline: 10px; letter-spacing: .04em; }
+}

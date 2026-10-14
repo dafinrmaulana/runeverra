@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CREEPS,
+  CREEPS, SCORE,
   createMatch, applyAction, listActions, moveOptions, livingHeroes, unitAt, blockAt, parseSquare as sq,
   getThreats, toMove, HEROES, MAPS, key, ENERGY, TEAM_SIZE,
 } from '../src/arena.js';
@@ -414,4 +414,17 @@ test('creeps: lanes are the flank files and no map puts terrain in them', () => 
   // terrain still blocks a creep straight ahead (no sidestep, no hop)
   const s = setup({ 'p1-creep-b': 'c3', 'p1-hasim': 'a1', 'p2-genga': 'h8' }, { blocks: { c4: 'pillar' } });
   assert.equal(listActions(s).filter((a) => a.unitId === 'p1-creep-b').length, 0);
+});
+
+test('Score: hero and creep takedowns, roots and the win are counted for the side that made them', () => {
+  let s = setup({ 'p1-hexor': 'd4', 'p1-hasim': 'a1', 'p2-aqna': 'e6', 'p2-genga': 'h8' });
+  assert.deepEqual(s.score, { p1: 0, p2: 0 });
+  s = act(s, mv('p1-hexor', 'e6'));
+  assert.equal(s.score.p1, SCORE.hero);
+  assert.equal(s.score.p2, 0);
+  const w = act(setup({ 'p1-hexor': 'd4', 'p1-hasim': 'a1', 'p2-aqna': 'e6' }), mv('p1-hexor', 'e6'));
+  assert.equal(w.status, 'p1');
+  assert.equal(w.score.p1, SCORE.hero + SCORE.win);
+  const r = act(setup({ 'p1-plantae': 'd4', 'p1-hasim': 'a1', 'p2-aqna': 'd6', 'p2-genga': 'h8' }, { energy: { p1: 3, p2: 0 } }), { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-aqna' });
+  assert.equal(r.score.p1, SCORE.root);
 });

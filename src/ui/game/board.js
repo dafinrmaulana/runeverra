@@ -346,7 +346,7 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
   function destroy() { drag = null; window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onCancel); ambient.stop(); fx.destroy(); host.innerHTML = ''; }
 
   return {
-    render, reset, hop, destroy, shieldBounce, rootTug,
+    render, reset, hop, destroy, shieldBounce, rootTug, popText: fx.popText,
     plan: fx.plan, run: fx.run, intro: (game) => fx.intro(game), victory: (game, w) => fx.victory(game, w), clearFx: fx.clear,
   };
 }
@@ -690,6 +690,9 @@ function createFX(canvas, wrap, view) {
     const heroes = livingHeroes(game, winner);
     for (let i = 0; i < 5; i++) at(250 + i * 260, () => heroes.forEach((u) => burst(u.pos, [COL[winner], COL.brass, COL.white], 14, { shape: 'dot', dir: -Math.PI / 2, spread: 0.9, min: 2.5, max: 5.5, g: 0.6, drag: 0.97, life: [700, 1200], size: [1.4, 2.8] })));
   }
+  /** Floating text over a square after `delay` ms (score popups). */
+  function popText(p, str, color, delay = 0) { if (reduce) return; at(delay, () => { resize(); text(p, str, color); }); }
+
   /** Roots burst from the square under `from` and haul back a unit straining toward `to`. */
   function rootTug(from, to, impact = 0, label = 'ROOTED') {
     if (reduce) return;
@@ -721,6 +724,6 @@ function createFX(canvas, wrap, view) {
   const onResize = () => { if (raf) resize(); };
   window.addEventListener('resize', onResize);
   function destroy() { clear(); if (raf) cancelAnimationFrame(raf); raf = 0; window.removeEventListener('resize', onResize); }
-  return { plan, run, intro, victory, clear, destroy, shieldHit, rootTug };
+  return { plan, run, intro, victory, clear, destroy, shieldHit, rootTug, popText };
 }
 
