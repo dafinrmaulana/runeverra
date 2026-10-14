@@ -104,22 +104,41 @@ function Pips({ n }: { n: number }) {
   return <span className="energy" title={`${n} of ${ENERGY.max} skill tokens`}>{Array.from({ length: ENERGY.max }, (_, i) => <i key={i} className={i < n ? 'on' : ''} />)}</span>;
 }
 
+/** Who's who for the score: ['You', 'Bot'] or ['Ivory', 'Ember'], in a's-then-b's order. */
+function sideNames(c: GameController) {
+  const k = c.mode.kind;
+  return k === 'local' ? [TEAM_NAMES.p1, TEAM_NAMES.p2] : ['You', k === 'bot' ? 'Bot' : 'Opponent'];
+}
 /** "You 3 – 1 Bot", "Ivory 2 – 2 Ember", "You 1 – 0 Opponent". */
 function seriesLine(c: GameController) {
-  const t = c.tally(), k = c.mode.kind;
-  const [a, b] = k === 'local' ? [TEAM_NAMES.p1, TEAM_NAMES.p2] : ['You', k === 'bot' ? 'Bot' : 'Opponent'];
+  const t = c.tally(); const [a, b] = sideNames(c);
   return `${a} ${t.a} – ${t.b} ${b}`;
 }
 
-/** Matches this side has won in the current series. */
-function winsOf(c: GameController, team: Team) {
-  const t = c.tally();
-  return team === sideA(c.mode.kind, c.viewer()) ? t.a : t.b;
-}
 const TROPHY = <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2h7v3.2a3.5 3.5 0 0 1-7 0zM4.5 3.2H2.4v1.1a2.4 2.4 0 0 0 2.3 2.4M11.5 3.2h2.1v1.1a2.4 2.4 0 0 1-2.3 2.4M8 8.7v2.6M5.4 13.8h5.2l-.6-2.5H6z" /></svg>;
-/** A side's wins; the number pops when it changes. */
-function Wins({ n }: { n: number }) {
-  return <span className="score-n" key={n} title={`${n} win${n === 1 ? '' : 's'} in this series`}>{TROPHY}{n}</span>;
+
+/** A clear, standalone readout of the series score: both sides' wins, side by side. */
+function ScoreStrip({ c }: { c: GameController }) {
+  const t = c.tally(); const [a, b] = sideNames(c);
+  const aTeam = sideA(c.mode.kind, c.viewer()); const bTeam = other(aTeam);
+  return (
+    <div className="score-strip" role="status" aria-label={`Series score: ${seriesLine(c)}`}>
+      <span className={`score-side ${aTeam}`}><span className="who">{a}</span><b key={t.a}>{t.a}</b></span>
+      <span className="score-glyph" aria-hidden="true">{TROPHY}</span>
+      <span className={`score-side ${bTeam}`}><b key={t.b}>{t.b}</b><span className="who">{b}</span></span>
+    </div>
+  );
+}
+
+/** A seat's own score badge: wins it has – wins the other side has, in its own seat's orientation. */
+function SeatScore({ c, team }: { c: GameController; team: Team }) {
+  const t = c.tally(); const aTeam = sideA(c.mode.kind, c.viewer());
+  const mine = team === aTeam ? t.a : t.b; const theirs = team === aTeam ? t.b : t.a;
+  return (
+    <span className="seat-score" title={`${mine} win${mine === 1 ? '' : 's'} – ${theirs} win${theirs === 1 ? '' : 's'} this series`}>
+      {TROPHY}<b key={mine}>{mine}</b><span className="dash">–</span>{theirs}
+    </span>
+  );
 }
 
 /** A side's skill tokens, labelled. */
@@ -129,7 +148,6 @@ function Tokens({ c, team, who, active }: { c: GameController; team: Team; who: 
     <span className={`tokens ${team}${active ? ' active' : ''}`}>
       <span className={`team-dot ${team}`} /><span className="who">{who}</span>
       <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span>
-      {c.showScore && <Wins n={winsOf(c, team)} />}
     </span>
   );
 }
@@ -377,6 +395,7 @@ function SeatPanel({ c, team, threats }: { c: GameController; team: Team; threat
     <div className={`seat ${team}${team === 'p2' ? ' mirrored' : ''}${mine ? ' active' : ''}`}>
       <div className="seat-top">
         <span className={`team-badge ${team}`}>{TEAM_NAMES[team]}</span>
+        {c.showScore && <SeatScore c={c} team={team} />}
         <Tokens c={c} team={team} who="Tokens" />
         <span className="count">{heroes} heroes</span>
         <span className="grow" />
@@ -447,15 +466,18 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   const me: Team = c.viewer();
   const them = other(me);
   const topbar = !local && (
-    <div className="statusbar">
-      <span className="sb-side left"><Tokens c={c} team={me} who="You" active={!over && c.decider() === me} /></span>
-      <span key={`${over ? g.status : c.decider()}-${over}`}
-        className={`turn-banner ${over ? g.status : c.decider()}${waiting ? ' waiting' : ''}${over ? ' over' : ''}${!over && g.phase === 'react' && c.deciderIsHuman() ? ' react-ask' : ''}`}>
-        {!over && <span className={`turn-arrow ${c.decider() === me ? 'to-left' : 'to-right'}`} aria-hidden="true">{c.decider() === me ? '◂' : '▸'}</span>}
-        <span className={`turn-text${waiting ? ' thinking' : ''}`}>{status}</span>
-      </span>
-      <span className="sb-side right"><Tokens c={c} team={them} who={c.mode.kind === 'bot' ? 'Bot' : 'Opponent'} active={!over && c.decider() === them} /></span>
-    </div>
+    <>
+      <div className="statusbar">
+        <span className="sb-side left"><Tokens c={c} team={me} who="You" active={!over && c.decider() === me} /></span>
+        <span key={`${over ? g.status : c.decider()}-${over}`}
+          className={`turn-banner ${over ? g.status : c.decider()}${waiting ? ' waiting' : ''}${over ? ' over' : ''}${!over && g.phase === 'react' && c.deciderIsHuman() ? ' react-ask' : ''}`}>
+          {!over && <span className={`turn-arrow ${c.decider() === me ? 'to-left' : 'to-right'}`} aria-hidden="true">{c.decider() === me ? '◂' : '▸'}</span>}
+          <span className={`turn-text${waiting ? ' thinking' : ''}`}>{status}</span>
+        </span>
+        <span className="sb-side right"><Tokens c={c} team={them} who={c.mode.kind === 'bot' ? 'Bot' : 'Opponent'} active={!over && c.decider() === them} /></span>
+      </div>
+      {c.showScore && <ScoreStrip c={c} />}
+    </>
   );
 
   const overlay = over && (
