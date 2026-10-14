@@ -78,8 +78,8 @@ const DEMOS: Record<string, Demo> = {
     steps: [
       { text: 'Hexor jumps in an L, like a chess knight, over anything.', show: { live: 'p1-hexor' }, ms: 2400 },
       { text: 'He captures Aqna…', act: mv('p1-hexor', 'e7'), ms: 1600 },
-      { text: 'Storm Hammer (2 tokens) reaches every square around him.', ms: 1800 },
-      { text: 'Everything is pushed 1 square: enemies hitting rock or the edge are eliminated, allies just move.', act: { type: 'storm' }, ms: 3200 },
+      { text: 'Storm Hammer (2 tokens): pick a pattern, + or X.', ms: 1800 },
+      { text: 'Slam +: the 4 straight squares around him are pushed 1 square. Hitting rock or the edge, a unit just holds its ground — never eliminated.', act: { type: 'storm', pattern: 'plus' }, ms: 3200 },
     ],
   },
   aqna: {

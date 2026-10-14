@@ -20,6 +20,14 @@ const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 const KING = [...ORTHO, ...DIAG];
 const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
 
+// Fixed skill shapes, as [depth, side] pairs relative to the caster: depth counts forward steps
+// (flipped per team by `forward`, below), side is columns left(-)/right(+), the same for both
+// teams. Unlike a move or a line-of-sight skill, these aren't blocked by what's in between.
+// Plantae's Aggressive Root: 2 squares straight ahead, and 2 squares to either side. Never behind her.
+const ROOT_PATTERN = [[1, 0], [2, 0], [0, -1], [0, -2], [0, 1], [0, 2]];
+// Magumba's Empty Grave: a fan widening as it reaches out, 2 squares deep.
+const SHIELD_FAN = [[1, -1], [1, 0], [1, 1], [2, -2], [2, -1], [2, 0], [2, 1], [2, 2]];
+
 // Roles describe how a hero moves: Roam and Assassin move 2 (Hexor's L counts as 2 steps),
 // Support moves 1 but reaches 3 with its skill.
 export const ROLES = { roam: 'Roam', assassin: 'Assassin', support: 'Support' };
@@ -56,8 +64,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: DIAG, range: 1 }],
     moveText: 'Steps 1 square diagonally.',
     skill: {
-      key: 'grave', name: 'Empty Grave', type: 'active', cost: 2, range: 3, reach: { dirs: DIAG, ray: true },
-      text: 'Targets himself or one ally along his diagonals, up to 3 squares away; terrain or another unit in between blocks the line. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
+      key: 'grave', name: 'Empty Grave', type: 'active', cost: 2, range: 2, reach: { cells: SHIELD_FAN },
+      text: 'Targets himself or one ally in a fan ahead of him, up to 2 squares deep, widening as it goes — nothing in between blocks it. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
     },
   },
   plantae: {
@@ -65,8 +73,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
     moveText: 'Steps 1 square straight.',
     skill: {
-      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reach: { dirs: ORTHO, ray: true }, reaction: true, reactionCost: 3, cooldown: 3,
-      text: 'Roots an enemy in a straight line from Plantae, up to 3 squares away; terrain or another unit in between blocks the line. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy on those lines acts: that action is negated. After either use, it recharges for 3 of your turns.',
+      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 2, reach: { cells: ROOT_PATTERN }, reaction: true, reactionCost: 3, cooldown: 3,
+      text: 'Roots an enemy 2 squares ahead of her, or 2 squares to either side — never behind her, and nothing in between blocks it. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy in that pattern acts: that action is negated. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {
@@ -75,7 +83,7 @@ export const HEROES = {
     moveText: 'Jumps in an L, like a chess knight.',
     skill: {
       key: 'storm', name: 'Storm Hammer', type: 'follow', cost: 2, range: 1,
-      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: every unit around him is pushed 1 square away, pushing any unit behind it too. An enemy pushed into terrain or off the board is eliminated; an ally there just stays put.',
+      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: pick a pattern, + (straight) or X (diagonal), and every unit on those 4 squares around him is pushed 1 square away, pushing any unit behind it too. Nobody is ever eliminated by the slam itself: pushed into terrain or off the board, a unit just holds its ground.',
     },
   },
   aqna: {
@@ -266,6 +274,17 @@ export const skillCooldown = (u) => u.cd || 0;
 export function skillReach(s, u, sk = HEROES[u.hero]?.skill) {
   if (!sk?.range) return [];
   const out = [];
+  if (sk.reach?.cells) {
+    // A fixed set of squares relative to the caster, given as [depth, side] (depth: steps toward
+    // the enemy side, flipped per team; side: columns left(-)/right(+), the same for both teams).
+    // Nothing in between blocks it — it's not a line of sight, it's a shape stamped on the board.
+    const f = forward(u.team);
+    for (const [depth, side] of sk.reach.cells) {
+      const p = { r: u.pos.r + f * depth, c: u.pos.c + side };
+      if (inBounds(p)) out.push(p);
+    }
+    return out;
+  }
   if (sk.reach?.ray) {
     for (const [dr, dc] of sk.reach.dirs) {
       for (let k = 1; k <= sk.range; k++) {
@@ -351,7 +370,7 @@ const mainActors = (s) => livingUnits(s, s.current).filter((u) => u.kind !== 'be
 export function listActions(s) {
   if (s.status !== 'playing') return [];
   if (s.phase === 'react') return [{ type: 'react', use: true }, { type: 'react', use: false }];
-  if (s.phase === 'storm') return [{ type: 'storm' }, { type: 'skip' }];
+  if (s.phase === 'storm') return [{ type: 'storm', pattern: 'plus' }, { type: 'storm', pattern: 'x' }, { type: 'skip' }];
   if (s.phase === 'ice') {
     const out = iceSpots(s, s.units[s.pending.unitId]).map((to) => ({ type: 'ice', to }));
     out.push({ type: 'skip' });
@@ -373,7 +392,7 @@ export function listActions(s) {
 }
 
 const sameAction = (a, b) => a.type === b.type && a.unitId === b.unitId && a.skill === b.skill
-  && a.targetId === b.targetId && a.use === b.use && (!a.to || (b.to && samePos(a.to, b.to)));
+  && a.targetId === b.targetId && a.use === b.use && a.pattern === b.pattern && (!a.to || (b.to && samePos(a.to, b.to)));
 
 export function validateAction(s, action) {
   if (!action || typeof action !== 'object') return { ok: false, reason: 'Unknown action.' };
@@ -384,7 +403,7 @@ export function validateAction(s, action) {
 
 function explain(s, a) {
   if (s.phase === 'react') return 'Answer the Aggressive Root prompt first.';
-  if (s.phase === 'storm') return 'Choose whether Hexor slams with Storm Hammer, or skip.';
+  if (s.phase === 'storm') return 'Choose a Storm Hammer pattern (+ or X), or skip.';
   if (s.phase === 'ice') return a.type === 'ice' ? 'Ice must go on an empty square within 3 of Aqna.' : 'Place Aqna\'s ice block or skip.';
   const u = s.units[a.unitId];
   if (!u) return 'Choose one of your heroes.';
@@ -420,9 +439,11 @@ function explain(s, a) {
     const t = s.units[a.targetId];
     if (!t || !t.alive) return 'Choose a living target.';
     if (t.id !== u.id && !inSkillReach(s, u, t.pos)) {
-      return sk.reach?.ray
-        ? `${label(t)} is not on ${HEROES[u.hero].name}'s ${sk.reach.dirs === DIAG ? 'diagonals' : 'straight lines'} within ${sk.range} squares, or something blocks the line.`
-        : `Target is out of range (${sk.range} squares).`;
+      return sk.reach?.cells
+        ? `${label(t)} is not in ${HEROES[u.hero].name}'s ${sk.key === 'root' ? 'root' : 'shield'} pattern.`
+        : sk.reach?.ray
+          ? `${label(t)} is not on ${HEROES[u.hero].name}'s ${sk.reach.dirs === DIAG ? 'diagonals' : 'straight lines'} within ${sk.range} squares, or something blocks the line.`
+          : `Target is out of range (${sk.range} squares).`;
     }
     if (t.warded) return `${label(t)} is protected by Empty Grave.`;
     if (sk.key === 'grave') return 'Empty Grave only works on your own units.';
@@ -448,23 +469,17 @@ function eliminate(s, u, lines, by = null) {
 }
 
 /** Storm Hammer: push every unit around `center` outward, chaining. Returns pushes for FX. */
-function stormHammer(s, hexor, center, lines, fx) {
+function stormHammer(s, hexor, center, lines, fx, pattern) {
   const visited = new Set([hexor.id]);
   const pushUnit = (u, dr, dc) => {
     if (visited.has(u.id)) return samePos(u.pos, u.pos); // already handled
     visited.add(u.id);
     if (u.warded) { fx.push({ id: u.id, from: { ...u.pos }, to: { ...u.pos }, blocked: true }); return false; }
     const dest = { r: u.pos.r + dr, c: u.pos.c + dc };
-    if ((!inBounds(dest) || blockAt(s, dest)) && u.team === hexor.team) {
-      // Allies are shoved but never killed: against terrain or the edge they just hold their ground.
+    if (!inBounds(dest) || blockAt(s, dest)) {
+      // Nobody is ever killed by the slam itself: against terrain or the edge, they just hold their ground.
       fx.push({ id: u.id, from: { ...u.pos }, to: { ...u.pos }, blocked: true });
       return false;
-    }
-    if (!inBounds(dest) || blockAt(s, dest)) {
-      fx.push({ id: u.id, from: { ...u.pos }, to: dest, stuck: true });
-      lines.push(`${label(u)} is slammed into ${inBounds(dest) ? 'terrain' : 'the board edge'}.`);
-      eliminate(s, u, lines, hexor.team);
-      return true;
     }
     const behind = unitAt(s, dest);
     if (behind) {
@@ -475,7 +490,7 @@ function stormHammer(s, hexor, center, lines, fx) {
     u.pos = dest;
     return true;
   };
-  for (const [dr, dc] of KING) {
+  for (const [dr, dc] of (pattern === 'x' ? DIAG : ORTHO)) {
     const p = { r: center.r + dr, c: center.c + dc };
     if (!inBounds(p)) continue;
     const u = unitAt(s, p);
@@ -607,9 +622,9 @@ export function applyAction(state, action, { trusted = false } = {}) {
     s.phase = 'main'; s.pending = null;
     if (action.type === 'storm') {
       s.energy[hexor.team] -= HEROES.hexor.skill.cost;
-      last = { team: hexor.team, unitId: hexor.id, from: { ...hexor.pos }, to: { ...hexor.pos }, hits: [], kind: 'storm', phase: 'storm', storm: [] };
-      lines.push(`${label(hexor)}'s Storm Hammer shakes the ground. Storm Hammer, ${tokens(HEROES.hexor.skill.cost)}: he just eliminated an enemy. ${left(s, hexor.team)}`);
-      stormHammer(s, hexor, hexor.pos, lines, last.storm);
+      last = { team: hexor.team, unitId: hexor.id, from: { ...hexor.pos }, to: { ...hexor.pos }, hits: [], kind: 'storm', phase: 'storm', storm: [], pattern: action.pattern };
+      lines.push(`${label(hexor)}'s Storm Hammer shakes the ground in a ${action.pattern === 'x' ? 'X' : '+'}. Storm Hammer, ${tokens(HEROES.hexor.skill.cost)}: he just eliminated an enemy. ${left(s, hexor.team)}`);
+      stormHammer(s, hexor, hexor.pos, lines, last.storm, action.pattern);
       pushLog(s, lines, hexor.team);
       s.lastAction = last;
       checkWinner(s);

@@ -153,13 +153,14 @@ test('Plantae Aggressive Root: 3 tokens, roots a target for its next turn', () =
 });
 
 test('Plantae interrupt: 3 tokens, negates an action on her lines; she is not rooted, it recharges', () => {
-  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } });
+  // d7: 2 ahead is d5, 2 either side is b7/f7. c7 (1 to the side) is on the pattern too.
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } });
   const s = act(base, mv('p1-hexor', 'e6'));
   assert.equal(s.phase, 'react');
   assert.equal(toMove(s), 'p2');
-  assert.deepEqual(s.units['p1-hexor'].pos, sq('d4'), 'action is on hold');
+  assert.deepEqual(s.units['p1-hexor'].pos, sq('c7'), 'action is on hold');
   const used = act(s, { type: 'react', use: true });
-  assert.deepEqual(used.units['p1-hexor'].pos, sq('d4'));
+  assert.deepEqual(used.units['p1-hexor'].pos, sq('c7'));
   assert.equal(used.current, 'p2', 'Ivory\'s turn is over; Ember plays normally');
   assert.equal(used.energy.p2, 0, '3 spent, no refill on the new turn');
   assert.equal(used.units['p2-plantae'].rooted, 0, 'no self-root any more');
@@ -167,35 +168,43 @@ test('Plantae interrupt: 3 tokens, negates an action on her lines; she is not ro
   assert.ok(listActions(used).some((a) => a.unitId === 'p2-plantae'), 'Plantae can act right away');
   const declined = act(s, { type: 'react', use: false });
   assert.deepEqual(declined.units['p1-hexor'].pos, sq('e6'));
-  // only on her straight lines: a diagonal neighbour, a unit behind another one, or a far one gets no prompt
+  // only in her pattern: a diagonal neighbour, a square behind her, or a far one gets no prompt
   const diag = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'e6', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'g5'));
-  assert.equal(diag.phase, 'main');
-  const behind = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'd6', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'e6'));
-  assert.equal(behind.phase, 'main', 'Aqna blocks the line');
+  assert.equal(diag.phase, 'main', 'a diagonal neighbour is not in the pattern');
+  const behind = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd8', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'c6'));
+  assert.equal(behind.phase, 'main', 'never reaches behind her');
   const far = act(setup({ 'p2-plantae': 'h8', 'p2-aqna': 'a8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'e6'));
   assert.equal(far.phase, 'main');
-  const poor = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 2 } }), mv('p1-hexor', 'e6'));
+  const poor = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 2 } }), mv('p1-hexor', 'e6'));
   assert.equal(poor.phase, 'main');
 });
 
-test('Supports reach along their movement lines: Root straight, Empty Grave diagonal, 3 squares, blocked', () => {
-  // Plantae d4: e5 is diagonal (no), d6 is straight (yes), d8 behind d6 (no)
-  const r = setup({ 'p1-plantae': 'd4', 'p1-hasim': 'a1', 'p2-hasim': 'e5', 'p2-aqna': 'd6', 'p2-genga': 'd8' }, { energy: { p1: 3, p2: 0 } });
-  const roots = listActions(r).filter((a) => a.type === 'skill').map((a) => a.targetId);
-  assert.deepEqual(roots, ['p2-aqna']);
-  assert.match(reject(r, { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-hasim' }), /straight lines/);
-  // Magumba d4: steps 1 diagonally; shields himself, f6 (diagonal, 2) yes, d6 (straight) no, g7 behind f6 no
-  const g = setup({ 'p1-magumba': 'd4', 'p1-hasim': 'f6', 'p1-hexor': 'd6', 'p1-plantae': 'g7', 'p2-aqna': 'h8' }, { energy: { p1: 2, p2: 0 } });
-  const moves = listActions(g).filter((a) => a.type === 'move' && a.unitId === 'p1-magumba').map((a) => a.to);
-  assert.equal(moves.length, 4, 'one diagonal step each way');
-  const shields = listActions(g).filter((a) => a.type === 'skill').map((a) => a.targetId).sort();
-  assert.deepEqual(shields, ['p1-hasim', 'p1-magumba']);
-  // terrain blocks the line too
-  const t = setup({ 'p1-magumba': 'd4', 'p1-hasim': 'f6', 'p2-aqna': 'h8' }, { blocks: { e5: 'rock' }, energy: { p1: 2, p2: 0 } });
-  assert.deepEqual(listActions(t).filter((a) => a.type === 'skill').map((a) => a.targetId), ['p1-magumba']);
+test('Plantae and Magumba skill patterns are fixed shapes, never blocked by what\'s in between', () => {
+  // Plantae (p1-plantae on d4, facing p2's side): 2 squares dead ahead (d5, d6) and 2 to either
+  // side (b4, c4, e4, f4); never behind her (d3). An ally standing in the path doesn't block it.
+  const p = setup({
+    'p1-plantae': 'd4', 'p1-hasim': 'd5', // ally sits directly between her and the target below
+    'p2-aqna': 'd6', 'p2-hasim': 'e5', 'p2-genga': 'd3',
+  }, { energy: { p1: 3, p2: 0 } });
+  const roots = listActions(p).filter((a) => a.type === 'skill').map((a) => a.targetId);
+  assert.deepEqual(roots, ['p2-aqna'], 'the ally 1 ahead does not block the enemy 2 ahead');
+  assert.match(reject(p, { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-hasim' }), /root pattern/, 'diagonal: out of the pattern');
+  assert.match(reject(p, { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-genga' }), /root pattern/, 'behind her: out of the pattern');
+
+  // Magumba (p1-magumba on d4): a fan 2 squares deep, 5 wide at its far edge (also unblocked).
+  const m = setup({
+    'p1-magumba': 'd4', 'p1-hasim': 'd5', // ally on the fan's near row
+    'p1-hexor': 'd6', // ally 2 ahead, through the first one
+    'p2-aqna': 'h8',
+  }, { energy: { p1: 2, p2: 0 } });
+  const shields = listActions(m).filter((a) => a.type === 'skill').map((a) => a.targetId).sort();
+  assert.deepEqual(shields, ['p1-hasim', 'p1-hexor', 'p1-magumba']);
+  // terrain in the fan doesn't block it either
+  const t = setup({ 'p1-magumba': 'd4', 'p1-hasim': 'd6' }, { blocks: { d5: 'rock' }, energy: { p1: 2, p2: 0 } });
+  assert.deepEqual(listActions(t).filter((a) => a.type === 'skill').map((a) => a.targetId).sort(), ['p1-hasim', 'p1-magumba']);
 });
 
-test('Hexor Storm Hammer: optional 2-token slam after a capture; pushes, chains, kills on terrain/edge, spares warded', () => {
+test('Hexor Storm Hammer: optional 2-token slam after a capture; pick + or X, pushes, chains, never kills, spares warded', () => {
   const pos = {
     'p1-hexor': 'b3', 'p1-hasim': 'b6', 'p1-magumba': 'c6',
     'p2-aqna': 'c5', 'p2-plantae': 'd5', 'p2-genga': 'e5', 'p2-beast': 'd4',
@@ -205,27 +214,36 @@ test('Hexor Storm Hammer: optional 2-token slam after a capture; pushes, chains,
   s = act(s, mv('p1-hexor', 'c5'));
   assert.equal(s.units['p2-aqna'].alive, false);
   assert.equal(s.phase, 'storm');
-  assert.deepEqual(listActions(s), [{ type: 'storm' }, { type: 'skip' }]);
+  assert.deepEqual(listActions(s), [{ type: 'storm', pattern: 'plus' }, { type: 'storm', pattern: 'x' }, { type: 'skip' }]);
   const skipped = act(s, { type: 'skip' });
   assert.equal(skipped.current, 'p2');
   assert.deepEqual(skipped.units['p2-plantae'].pos, sq('d5'), 'skip: nobody is pushed');
   assert.equal(skipped.energy.p2, 0, 'tokens do not refill each turn');
-  s = act(s, { type: 'storm' });
+  // + slam: only the 4 straight neighbours, chaining into whatever is behind them
+  s = act(s, { type: 'storm', pattern: 'plus' });
   assert.equal(s.energy.p1, 0);
   assert.equal(s.lastAction.kind, 'storm');
-  assert.deepEqual(s.units['p2-plantae'].pos, sq('e5'));
-  assert.deepEqual(s.units['p2-genga'].pos, sq('f5'));
-  assert.deepEqual(s.units['p1-hasim'].pos, sq('a7'));
-  assert.deepEqual(s.units['p1-magumba'].pos, sq('c6'));
-  assert.equal(s.units['p2-beast'].alive, false, 'slammed into the rock');
+  assert.deepEqual(s.units['p2-plantae'].pos, sq('e5'), 'straight east of Hexor: pushed');
+  assert.deepEqual(s.units['p2-genga'].pos, sq('f5'), 'chained one further');
+  assert.deepEqual(s.units['p1-magumba'].pos, sq('c6'), 'warded: holds');
+  assert.deepEqual(s.units['p1-hasim'].pos, sq('b6'), 'diagonal to Hexor: outside the + pattern, untouched');
+  assert.deepEqual(s.units['p2-beast'].pos, sq('d4'), 'diagonal to Hexor: outside the + pattern, untouched');
   // not enough tokens: no storm phase
   const poor = act(setup(pos, { blocks: { e3: 'rock' }, energy: { p1: 1, p2: 0 } }), mv('p1-hexor', 'c5'));
   assert.equal(poor.phase, 'main');
   assert.equal(poor.current, 'p2');
-  // board edge counts as terrain
+  // X slam: the diagonal neighbours this time, pushing the beast toward the rock
+  let x = act(setup(pos, { blocks: { e3: 'rock' }, energy: { p1: 2, p2: 0 } }), mv('p1-hexor', 'c5'));
+  x = act(x, { type: 'storm', pattern: 'x' });
+  assert.deepEqual(x.units['p1-hasim'].pos, sq('a7'), 'diagonal ally: pushed');
+  assert.equal(x.units['p2-beast'].alive, true, 'never eliminated by the slam, even into terrain');
+  assert.deepEqual(x.units['p2-beast'].pos, sq('d4'), 'blocked by the rock at e3: holds its ground');
+  assert.deepEqual(x.units['p2-plantae'].pos, sq('d5'), 'straight to Hexor: outside the X pattern, untouched');
+  // board edge: a unit pushed off the board just holds its ground, never eliminated
   let e = setup({ 'p1-hexor': 'c5', 'p2-aqna': 'b7', 'p2-plantae': 'a8', 'p2-genga': 'h1' }, { energy: { p1: 2, p2: 0 } });
-  e = act(act(e, mv('p1-hexor', 'b7')), { type: 'storm' });
-  assert.equal(e.units['p2-plantae'].alive, false);
+  e = act(act(e, mv('p1-hexor', 'b7')), { type: 'storm', pattern: 'x' });
+  assert.equal(e.units['p2-plantae'].alive, true);
+  assert.deepEqual(e.units['p2-plantae'].pos, sq('a8'), 'off the board edge: holds its ground');
 });
 
 test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest moves at the limit', () => {
@@ -399,7 +417,7 @@ test('Aggressive Root has a 3-turn cooldown shared by active use and interrupts'
   const noPrompt = act(s, mv('p1-hexor', 'e6'));
   assert.equal(noPrompt.phase, 'main');
   // an interrupt also starts the cooldown
-  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
   let r = act(act(base, mv('p1-hexor', 'e6')), { type: 'react', use: true });
   assert.equal(r.units['p2-plantae'].cd, 2, 'set to 3, ticked at the start of Ember\'s turn');
   r = act(r, mv('p2-aqna', 'h7'));
@@ -409,7 +427,7 @@ test('Aggressive Root has a 3-turn cooldown shared by active use and interrupts'
 });
 
 test('Aggressive Root can interrupt again once recharged (no per-match cap)', () => {
-  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
   let s = act(act(base, mv('p1-hexor', 'e6')), { type: 'react', use: true });
   assert.equal(s.units['p2-plantae'].reacts, 1);
   s = act(s, mv('p2-aqna', 'h7'));
@@ -418,18 +436,23 @@ test('Aggressive Root can interrupt again once recharged (no per-match cap)', ()
   assert.equal(again.phase, 'react', 'a second interrupt is offered');
 });
 
-test('Storm Hammer never kills Hexor\'s own allies: blocked allies stay put', () => {
+test('Storm Hammer never eliminates anyone, ally or enemy, even pushed off the board or into terrain', () => {
   const opts = { energy: { p1: 2, p2: 0 } };
-  let s = setup({ 'p1-hexor': 'c5', 'p1-hasim': 'a8', 'p1-creep-b': 'c8', 'p2-aqna': 'b7', 'p2-plantae': 'a7', 'p2-genga': 'h1' }, opts);
-  s = act(act(s, mv('p1-hexor', 'b7')), { type: 'storm' });
-  assert.equal(s.units['p2-aqna'].alive, false);
-  assert.equal(s.units['p2-plantae'].alive, false, 'enemy off the board is eliminated');
-  assert.equal(s.units['p1-hasim'].alive, true, 'ally is not eliminated');
-  assert.deepEqual(s.units['p1-hasim'].pos, sq('a8'));
-  assert.equal(s.units['p1-creep-b'].alive, true);
-  assert.deepEqual(s.units['p1-creep-b'].pos, sq('c8'));
+  const pos = { 'p1-hexor': 'c5', 'p1-hasim': 'a8', 'p1-creep-b': 'c8', 'p2-aqna': 'b7', 'p2-plantae': 'a7', 'p2-genga': 'h1' };
+  // X: the two diagonal allies are pushed off the board edge and just hold their ground
+  const x = act(act(setup(pos, opts), mv('p1-hexor', 'b7')), { type: 'storm', pattern: 'x' });
+  assert.equal(x.units['p2-aqna'].alive, false, 'captured by the move itself, not the slam');
+  assert.equal(x.units['p1-hasim'].alive, true);
+  assert.deepEqual(x.units['p1-hasim'].pos, sq('a8'));
+  assert.equal(x.units['p1-creep-b'].alive, true);
+  assert.deepEqual(x.units['p1-creep-b'].pos, sq('c8'));
+  // +: the enemy to the west is pushed off the board edge too — also never eliminated any more
+  const plus = act(act(setup(pos, opts), mv('p1-hexor', 'b7')), { type: 'storm', pattern: 'plus' });
+  assert.equal(plus.units['p2-plantae'].alive, true);
+  assert.deepEqual(plus.units['p2-plantae'].pos, sq('a7'));
+  // terrain works the same way, for anyone
   let t = setup({ 'p1-hexor': 'b3', 'p1-hasim': 'd5', 'p2-aqna': 'c5', 'p2-genga': 'h1' }, { ...opts, blocks: { e5: 'rock' } });
-  t = act(act(t, mv('p1-hexor', 'c5')), { type: 'storm' });
+  t = act(act(t, mv('p1-hexor', 'c5')), { type: 'storm', pattern: 'plus' });
   assert.equal(t.units['p1-hasim'].alive, true);
   assert.deepEqual(t.units['p1-hasim'].pos, sq('d5'));
 });

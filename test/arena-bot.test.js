@@ -18,10 +18,10 @@ test('bot takes a winning capture at every level', () => {
 });
 
 test('bot answers follow-up phases and reaction prompts with legal choices', () => {
-  // reaction: Ember Plantae may interrupt Ivory Hexor
-  let s = setup({ 'p1-hexor': 'd4', 'p1-hasim': 'a1', 'p2-plantae': 'd7', 'p2-aqna': 'h8' });
+  // reaction: Ember Plantae may interrupt Ivory Hexor (acting from 2 squares straight ahead of her)
+  let s = setup({ 'p1-hexor': 'd6', 'p1-hasim': 'a1', 'p2-plantae': 'd7', 'p2-aqna': 'h8' });
   s.energy.p2 = 3;
-  s = applyAction(s, { type: 'move', unitId: 'p1-hexor', to: sq('e6') }).state;
+  s = applyAction(s, { type: 'move', unitId: 'p1-hexor', to: sq('f5') }).state;
   assert.equal(toMove(s), 'p2');
   const r = chooseAction(s, 'normal');
   assert.equal(r.action.type, 'react');

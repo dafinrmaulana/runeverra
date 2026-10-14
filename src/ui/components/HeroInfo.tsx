@@ -14,6 +14,7 @@ export function MoveDiagram({ hero, size = 7 }: { hero: string; size?: number })
 
 export function reachText(sk: any) {
   const n = `${sk.range} square${sk.range > 1 ? 's' : ''}`;
+  if (sk.reach?.cells) return `Reach: a fixed pattern facing forward, up to ${n} deep. Nothing blocks it.`;
   if (sk.reach?.ray) return `Reach: ${n} along ${sk.reach.dirs.length === 4 && sk.reach.dirs.every(([a, b]: number[]) => a && b) ? 'the diagonals' : 'straight lines'}, blocked by the first unit or terrain.`;
   return `Reach: ${n} in any direction.`;
 }

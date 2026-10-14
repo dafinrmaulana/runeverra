@@ -272,7 +272,7 @@ export class GameController {
   }
 
   skip() { if (this.deciderIsHuman()) this.commit({ type: 'skip' }); }
-  slam() { if (this.deciderIsHuman() && this.game.phase === 'storm') this.commit({ type: 'storm' }); }
+  slam(pattern: 'plus' | 'x') { if (this.deciderIsHuman() && this.game.phase === 'storm') this.commit({ type: 'storm', pattern }); }
   react(use: boolean) { if (this.deciderIsHuman() && this.game.phase === 'react') this.commit({ type: 'react', use }); }
   escape() { if (this.armed) this.armed = false; else this.clearSel(); this.say(''); this.render({}); }
 

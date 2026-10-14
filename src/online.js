@@ -41,7 +41,7 @@ export function decodeMoves(text) {
 
 const samePos = (a, b) => (!a && !b) || (a && b && a.r === b.r && a.c === b.c);
 export const sameAction = (a, b) => a.type === b.type && a.unitId === b.unitId && a.skill === b.skill
-  && a.targetId === b.targetId && a.use === b.use && samePos(a.to, b.to);
+  && a.targetId === b.targetId && a.use === b.use && a.pattern === b.pattern && samePos(a.to, b.to);
 
 /** Index of `action` in listActions(state), or -1. */
 export const actionIndex = (state, action) => listActions(state).findIndex((a) => sameAction(a, action));
