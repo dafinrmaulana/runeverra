@@ -36,7 +36,6 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
     <canvas class="fx" aria-hidden="true"></canvas></div></div></div>`;
   const q = (s) => host.querySelector(s);
   const boardEl = q('.board'), terrainEl = q('.terrain'), piecesEl = q('.pieces'), backdrop = q('.backdrop'), marksEl = q('.marks');
-  if (facing) boardEl.classList.add('facing');
   const cells = new Array(BOARD_SIZE * BOARD_SIZE);
   // Cells are laid out in display order; `cells` stays indexed by the real square.
   for (let dr = 0; dr < BOARD_SIZE; dr++) {
@@ -118,7 +117,9 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
   window.addEventListener('pointerup', onUp);
   const onCancel = () => endDrag(false);
   window.addEventListener('pointercancel', onCancel);
-  boardEl.addEventListener('lostpointercapture', () => { if (drag) endDrag(drag.moved); });
+  // Only the board's own capture ending matters. On touch the browser first captures the pointer to the
+  // pressed square; handing it to the board fires that square's lostpointercapture, which must not drop the piece.
+  boardEl.addEventListener('lostpointercapture', (e) => { if (drag && e.target === boardEl) endDrag(drag.moved); });
   const blockEls = new Map();
   let lastMap = null;
   const ambient = createAmbient(q('.ambient'));
@@ -128,7 +129,7 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
     if (map === lastMap) return;
     lastMap = map;
     const m = MAPS[map];
-    boardEl.className = `board theme-${m.theme}`;
+    boardEl.className = `board theme-${m.theme}${facing ? ' facing' : ''}`;
     const art = MAP_ART[m.theme];
     backdrop.style.backgroundImage = art ? `url(${ART(art)})` : 'none';
     ambient.start(m.theme);

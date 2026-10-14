@@ -230,25 +230,6 @@ input, select, textarea { border-radius: 2px !important; }
 .cursor-setting .cursor-opt { padding: 10px 6px; }
 .cursor-setting .cursor-opt svg { width: 32px; height: 32px; }
 
-/* face to face: Ember's pieces face the player sitting at the top */
-.faceoff .piece.p2 .token { rotate: 180deg; }
-.faceoff .piece.p2 .tag { bottom: auto; top: -9%; rotate: 180deg; box-shadow: inset 0 -2px 0 var(--ember); }
-.faceoff .piece.p2 .threat { rotate: 180deg; }
-
-/* controls: skill, undo/redo and menu share one height */
-.controls-row { align-items: center; --ctl-h: 46px; }
-.controls-row .undo-redo, .controls-row > .btn.icon-btn { height: var(--ctl-h); }
-.controls-row .undo-redo .btn { height: 100%; padding-block: 0; }
-.controls-row > .btn.icon-btn { padding-block: 0; }
-.controls-row .undo-redo { border-color: var(--line-hi); border-radius: 3px; }
-.controls-row .skill-sq { width: var(--ctl-h); height: var(--ctl-h); border-radius: 3px; }
-.controls-row .skill-sq img { border-radius: 2px; }
-.skill-sq { background: var(--panel-hi); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-hi); }
-.skill-sq.ready { background: var(--sand); color: #2a1d10; box-shadow: 0 0 0 2px rgba(227, 184, 120, .35), 0 0 16px rgba(227, 184, 120, .45); }
-.skill-sq.ready:hover { transform: translateY(-1px); }
-.skill-sq.armed { background: var(--leaf); color: #10201a; box-shadow: 0 0 0 2px rgba(90, 158, 128, .4), 0 0 18px rgba(90, 158, 128, .55); }
-.skill-sq .glyph { width: 62%; height: 62%; }
-
 /* face to face: Ember's pieces face the top seat, name tag under the portrait from that side */
 .board.facing .piece.p2 .token { rotate: 180deg; }
 .board.facing .piece.p2 .tag { bottom: auto; top: -9%; transform: translateX(-50%) rotate(180deg); box-shadow: inset 0 -2px 0 var(--ember); }
@@ -300,3 +281,22 @@ input, select, textarea { border-radius: 2px !important; }
 .piece .tag { bottom: -4%; }
 .board.facing .piece.p2 .tag { top: -4%; }
 .skill-wrap.inline .skill-sq { margin: 7px 7px 7px 0; }
+
+/* play as / bot level: label on its own line, choices side by side in equal columns */
+.side-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; align-items: stretch; }
+.side-pick-label { grid-column: 1 / -1; margin: 0; }
+.side-opt { min-width: 0; flex: none; height: 100%; }
+.diff-pick { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.diff-pick .seg { display: grid; grid-template-columns: repeat(3, 1fr); }
+.diff-pick .seg button { padding: 8px 6px; }
+.diff-pick .note { font-size: .84rem; }
+
+/* tokens: lit pips burn bright, spent ones fade to an outline */
+.energy i.on { background: #ffd27a; border-color: #fff1cf; box-shadow: 0 0 0 1px rgba(255, 210, 122, .35), 0 0 9px rgba(255, 196, 92, .9); }
+.tokens .energy i { width: 10px; height: 10px; }
+.tokens .energy i:not(.on) { opacity: .45; border-color: var(--sand-dk); background: transparent; box-shadow: none; }
+.tokens .tn { color: #ffd27a; font-weight: 700; }
+
+/* long-press on a piece: no callout, no image drag, no text selection */
+.board, .board * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.board img { -webkit-user-drag: none; pointer-events: none; }

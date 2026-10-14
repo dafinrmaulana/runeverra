@@ -182,7 +182,7 @@ export function App() {
                 {(['p1', 'p2'] as Team[]).map((t) => (
                   <button key={t} type="button" role="radio" aria-checked={side === t} className={`side-opt ${t}`} onClick={() => chooseSide(t)}>
                     <span className={`team-badge ${t}`}>{TEAM_NAMES[t]}</span>
-                    <small>{t === 'p1' ? 'Moves first' : 'Moves second · board turned to your side'}</small>
+                    <small>{t === 'p1' ? 'Moves first' : 'Moves second'}</small>
                   </button>
                 ))}
               </div>
