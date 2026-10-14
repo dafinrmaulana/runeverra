@@ -85,7 +85,7 @@ export const HEROES = {
     moveText: 'Jumps in an L, like a chess knight.',
     skill: {
       key: 'storm', name: 'Storm Hammer', type: 'follow', cost: 2, range: 1,
-      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: pick a pattern, + (straight) or X (diagonal), and every unit on those 4 squares around him is pushed 2 squares away. If terrain, the board edge or another unit is in the way, it stops on the last empty square (or holds its ground if there is none). Nobody is ever eliminated by the slam itself.',
+      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: pick a pattern, + (straight) or X (diagonal), and every unit on those 4 squares around him is pushed 2 squares away. If terrain, the board edge or another unit is in the way, it stops on the last empty square; if it can\'t move straight at all, it slides into an empty square beside it instead (holding its ground only when there is none). Nobody is ever eliminated by the slam itself.',
     },
   },
   aqna: {
@@ -471,10 +471,33 @@ function eliminate(s, u, lines, by = null) {
 }
 
 /**
+ * A pushed unit that can't move even 1 square straight away slides into an empty square next to
+ * it instead, never toward Hexor: first the two squares angled away from him, then the two to the
+ * side. Between two equal choices, the one nearer the middle of the board wins. Null if none.
+ */
+function stormSidestep(s, from, dr, dc) {
+  const mid = (BOARD_SIZE - 1) / 2;
+  const center = (p) => (p.r - mid) ** 2 + (p.c - mid) ** 2;
+  const options = [];
+  for (const [or, oc] of KING) {
+    if (or === dr && oc === dc) continue; // the blocked push itself
+    const dot = or * dr + oc * dc;
+    if (dot < 0) continue; // toward Hexor
+    const cos = dot / (Math.hypot(or, oc) * Math.hypot(dr, dc));
+    const tier = cos > 0.5 ? 0 : 1; // angled away first, then sideways
+    const p = { r: from.r + or, c: from.c + oc };
+    if (inBounds(p) && !blockAt(s, p) && !unitAt(s, p)) options.push({ p, tier, d: center(p) });
+  }
+  options.sort((a, b) => a.tier - b.tier || a.d - b.d);
+  return options[0]?.p || null;
+}
+
+/**
  * Storm Hammer: the 4 units next to `center` in the chosen pattern (+ straight, X diagonal) are
  * pushed up to STORM_PUSH squares straight away from it. Terrain, the board edge or another unit
- * stops a push early: the unit takes whatever empty squares are left (maybe none). Nobody is ever
- * eliminated by the slam itself, and a warded unit holds its ground. Returns pushes for FX.
+ * stops a push early: the unit takes whatever empty squares are left. If not even 1 is left, it
+ * slides into an empty square beside it (stormSidestep), or holds its ground when there is none.
+ * Nobody is ever eliminated by the slam itself, and a warded unit holds its ground. Returns pushes for FX.
  */
 function stormHammer(s, hexor, center, lines, fx, pattern) {
   for (const [dr, dc] of (pattern === 'x' ? DIAG : ORTHO)) {
@@ -490,6 +513,7 @@ function stormHammer(s, hexor, center, lines, fx, pattern) {
         if (!inBounds(next) || blockAt(s, next) || unitAt(s, next)) break;
         to = next;
       }
+      if (samePos(to, from)) to = stormSidestep(s, from, dr, dc) || from;
     }
     if (samePos(to, from)) {
       fx.push({ id: u.id, from, to: { ...from }, blocked: true });

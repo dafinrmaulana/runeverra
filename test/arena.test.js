@@ -238,13 +238,13 @@ test('Hexor Storm Hammer: optional 2-token slam after a capture; pick + or X, pu
   x = act(x, { type: 'storm', pattern: 'x' });
   assert.deepEqual(x.units['p1-hasim'].pos, sq('a7'), 'diagonal ally: the board edge stops it after 1 square');
   assert.equal(x.units['p2-beast'].alive, true, 'never eliminated by the slam, even into terrain');
-  assert.deepEqual(x.units['p2-beast'].pos, sq('d4'), 'blocked by the rock at e3: holds its ground');
+  assert.deepEqual(x.units['p2-beast'].pos, sq('e4'), 'rock at e3 blocks it: slips aside, away from Hexor, toward the middle (e4, not d3)');
   assert.deepEqual(x.units['p2-plantae'].pos, sq('d5'), 'straight to Hexor: outside the X pattern, untouched');
-  // board edge: a unit pushed off the board just holds its ground, never eliminated
+  // board corner: no empty square to slip into, so it holds its ground, never eliminated
   let e = setup({ 'p1-hexor': 'c5', 'p2-aqna': 'b7', 'p2-plantae': 'a8', 'p2-genga': 'h1' }, { energy: { p1: 2, p2: 0 } });
   e = act(act(e, mv('p1-hexor', 'b7')), { type: 'storm', pattern: 'x' });
   assert.equal(e.units['p2-plantae'].alive, true);
-  assert.deepEqual(e.units['p2-plantae'].pos, sq('a8'), 'off the board edge: holds its ground');
+  assert.deepEqual(e.units['p2-plantae'].pos, sq('a8'), 'in the corner: nowhere to go, holds its ground');
 });
 
 test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest moves at the limit', () => {
@@ -440,22 +440,22 @@ test('Aggressive Root can interrupt again once recharged (no per-match cap)', ()
 test('Storm Hammer never eliminates anyone, ally or enemy, even pushed off the board or into terrain', () => {
   const opts = { energy: { p1: 2, p2: 0 } };
   const pos = { 'p1-hexor': 'c5', 'p1-hasim': 'a8', 'p1-creep-b': 'c8', 'p2-aqna': 'b7', 'p2-plantae': 'a7', 'p2-genga': 'h1' };
-  // X: the two diagonal allies are pushed off the board edge and just hold their ground
+  // X: two diagonal allies pushed into the edge: one in the corner holds, the other slips aside
   const x = act(act(setup(pos, opts), mv('p1-hexor', 'b7')), { type: 'storm', pattern: 'x' });
   assert.equal(x.units['p2-aqna'].alive, false, 'captured by the move itself, not the slam');
   assert.equal(x.units['p1-hasim'].alive, true);
-  assert.deepEqual(x.units['p1-hasim'].pos, sq('a8'));
+  assert.deepEqual(x.units['p1-hasim'].pos, sq('a8'), 'corner: holds');
   assert.equal(x.units['p1-creep-b'].alive, true);
-  assert.deepEqual(x.units['p1-creep-b'].pos, sq('c8'));
-  // +: the enemy to the west is pushed off the board edge too — also never eliminated any more
+  assert.deepEqual(x.units['p1-creep-b'].pos, sq('d8'), 'edge: slips to the square angled away from Hexor');
+  // +: the enemy to the west hits the edge too: a8 is taken, so it slips to a6
   const plus = act(act(setup(pos, opts), mv('p1-hexor', 'b7')), { type: 'storm', pattern: 'plus' });
   assert.equal(plus.units['p2-plantae'].alive, true);
-  assert.deepEqual(plus.units['p2-plantae'].pos, sq('a7'));
+  assert.deepEqual(plus.units['p2-plantae'].pos, sq('a6'));
   // terrain works the same way, for anyone
   let t = setup({ 'p1-hexor': 'b3', 'p1-hasim': 'd5', 'p2-aqna': 'c5', 'p2-genga': 'h1' }, { ...opts, blocks: { e5: 'rock' } });
   t = act(act(t, mv('p1-hexor', 'c5')), { type: 'storm', pattern: 'plus' });
   assert.equal(t.units['p1-hasim'].alive, true);
-  assert.deepEqual(t.units['p1-hasim'].pos, sq('d5'));
+  assert.deepEqual(t.units['p1-hasim'].pos, sq('e4'), 'rock at e5: slips to e4, nearer the middle than e6');
 });
 
 test('creeps: lanes are the flank files and no map puts terrain in them', () => {

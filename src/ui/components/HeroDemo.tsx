@@ -79,7 +79,7 @@ const DEMOS: Record<string, Demo> = {
       { text: 'Hexor jumps in an L, like a chess knight, over anything.', show: { live: 'p1-hexor' }, ms: 2400 },
       { text: 'He captures Aqna…', act: mv('p1-hexor', 'e7'), ms: 1600 },
       { text: 'Storm Hammer (2 tokens): pick a pattern, + or X.', ms: 1800 },
-      { text: 'Slam +: the 4 straight squares around him are pushed 2 squares. Magumba slides 2; rock and the edge stop the others, who hold their ground — never eliminated.', act: { type: 'storm', pattern: 'plus' }, ms: 3200 },
+      { text: 'Slam +: the 4 straight squares around him are pushed 2 squares. Magumba slides 2; the edge and the rock block the others, so they slip into an empty square beside them — never eliminated.', act: { type: 'storm', pattern: 'plus' }, ms: 3200 },
     ],
   },
   aqna: {
