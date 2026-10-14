@@ -874,3 +874,21 @@ a.btn { text-decoration: none; display: inline-block; }
 .skill-sq:disabled { filter: grayscale(.6) brightness(.85); }
 .skill-sq .sq-cost { z-index: 2; }
 .skill-sq.ready .sq-cost, .skill-sq.armed .sq-cost { right: 3px; bottom: 3px; }
+
+/* marks above the pieces: the action an interrupt would cancel */
+.marks { z-index: 3; width: 100%; height: 100%; overflow: visible; }
+.marks .flow { stroke-dasharray: 18 12; animation: flow .9s linear infinite; filter: drop-shadow(0 0 6px rgba(0,0,0,.6)); }
+@keyframes flow { to { stroke-dashoffset: -30; } }
+.marks .reticle { animation: reticle 1s ease-in-out infinite; }
+@keyframes reticle { 50% { transform: scale(1.1); } }
+.marks .actor-box { animation: pulse 1.2s ease-in-out infinite; }
+.marks .spin { transform-box: fill-box; transform-origin: center; animation: spin 4s linear infinite; }
+/* the interrupt state of the turn banner */
+.turn-banner.react-ask { background: linear-gradient(135deg, #a6f08f, #3f9a3a); color: #0d1a0b; }
+@media (max-width: 560px) {
+  .statusbar { gap: 6px; }
+  .tokens { padding: 3px 7px; gap: 4px; }
+  .tokens .energy { display: none; }
+  .tokens .tn::before { content: "◆ "; }
+  .turn-banner { font-size: .78rem; padding: 5px 12px; letter-spacing: .05em; }
+}

@@ -40,6 +40,7 @@ function statusFor(c: GameController, team?: Team) {
     if (c.peerLeft) return 'Opponent left the match';
     return c.deciderIsHuman() ? 'Your turn' : 'Opponent\'s turn';
   }
+  if (g.phase === 'react' && c.deciderIsHuman() && (!team || d === team)) return 'Interrupt?';
   if (c.mode.kind === 'bot') return c.deciderIsBot() ? (g.phase === 'react' ? 'Bot is deciding whether to root' : 'Bot is thinking') : 'Your turn';
   if (team) return d === team ? 'Your turn' : `${TEAM_NAMES[d]}'s turn`;
   return `${TEAM_NAMES[d]} to act`;
@@ -351,6 +352,7 @@ function SeatPanel({ c, team, threats }: { c: GameController; team: Team; threat
 
 export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes, onHome }: Props) {
   const c = useCtrl(ctrl);
+  useEffect(() => { (window as any).__hgCtrl = ctrl; }, [ctrl]); // test hook: inspect/drive the match from devtools
   const host = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState(false);
   const [rules, setRules] = useState(false);
@@ -386,7 +388,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
     <div className="statusbar">
       <span className="sb-side left"><Tokens c={c} team={me} who="You" active={!over && c.decider() === me} /></span>
       <span key={`${over ? g.status : c.decider()}-${over}`}
-        className={`turn-banner ${over ? g.status : c.decider()}${waiting ? ' waiting' : ''}${over ? ' over' : ''}`}>
+        className={`turn-banner ${over ? g.status : c.decider()}${waiting ? ' waiting' : ''}${over ? ' over' : ''}${!over && g.phase === 'react' && c.deciderIsHuman() ? ' react-ask' : ''}`}>
         {!over && <span className={`turn-arrow ${c.decider() === me ? 'to-left' : 'to-right'}`} aria-hidden="true">{c.decider() === me ? '◂' : '▸'}</span>}
         <span className={`turn-text${waiting ? ' thinking' : ''}`}>{status}</span>
       </span>

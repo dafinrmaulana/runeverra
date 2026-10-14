@@ -24,10 +24,10 @@ export const BEAST_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellip
  */
 export function createBoard(host, { onCell }) {
   host.innerHTML = `<div class="arena"><div class="backdrop"></div><div class="board-wrap"><div class="board">
-    <canvas class="layer ambient" aria-hidden="true"></canvas><div class="layer terrain"></div><div class="layer pieces"></div>
+    <canvas class="layer ambient" aria-hidden="true"></canvas><div class="layer terrain"></div><div class="layer pieces"></div><svg class="layer marks" viewBox="0 0 800 800" preserveAspectRatio="none" aria-hidden="true"></svg>
     <canvas class="fx" aria-hidden="true"></canvas></div></div></div>`;
   const q = (s) => host.querySelector(s);
-  const boardEl = q('.board'), terrainEl = q('.terrain'), piecesEl = q('.pieces'), backdrop = q('.backdrop');
+  const boardEl = q('.board'), terrainEl = q('.terrain'), piecesEl = q('.pieces'), backdrop = q('.backdrop'), marksEl = q('.marks');
   const cells = [];
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
@@ -117,6 +117,37 @@ export function createBoard(host, { onCell }) {
     }
     renderTerrain(game);
     renderPieces(game, live, threats, view.deathDelay || 0);
+    renderMarks(game, pendActor, pendTo, pend);
+  }
+
+  /**
+   * Marks drawn above the pieces: while an interrupt is being decided, an arrow from the
+   * acting unit to its destination and a pulsing reticle on any unit it would eliminate.
+   */
+  function renderMarks(game, actor, to, pend) {
+    const k = actor && to ? `${actor.id}>${to.r},${to.c}` : '';
+    if (marksEl.dataset.k === k) return;
+    marksEl.dataset.k = k;
+    if (!k) { marksEl.innerHTML = ''; return; }
+    const ctr = (p) => ({ x: p.c * 100 + 50, y: p.r * 100 + 50 });
+    const a = ctr(actor.pos), b = ctr(to);
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / len, uy = (b.y - a.y) / len;
+    const sx = a.x + ux * 38, sy = a.y + uy * 38, ex = b.x - ux * 46, ey = b.y - uy * 46;
+    const opt = pend.type === 'move' ? moveOptions(game, actor).find((o) => samePos(o.to, to)) : null;
+    const victims = (opt ? opt.kills : pend.type === 'skill' && pend.targetId ? [pend.targetId] : []).map((id) => game.units[id]).filter(Boolean);
+    const hostile = opt ? opt.kills.length > 0 : pend.type === 'skill';
+    const col = hostile ? '#ff5a3c' : '#6fcf55';
+    const reticle = (p) => {
+      const c = ctr(p);
+      return `<g class="reticle" style="transform-origin:${c.x}px ${c.y}px">
+        <circle cx="${c.x}" cy="${c.y}" r="44" fill="rgba(255,90,60,.16)" stroke="${col}" stroke-width="5" stroke-dasharray="14 10"/>
+        <path d="M${c.x - 50} ${c.y}h16M${c.x + 34} ${c.y}h16M${c.x} ${c.y - 50}v16M${c.x} ${c.y + 34}v16" stroke="${col}" stroke-width="6" stroke-linecap="round"/></g>`;
+    };
+    marksEl.innerHTML = `<defs><marker id="mk-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="${col}"/></marker></defs>
+      <rect x="${actor.pos.c * 100 + 4}" y="${actor.pos.r * 100 + 4}" width="92" height="92" rx="14" fill="none" stroke="${col}" stroke-width="5" class="actor-box"/>
+      <line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${col}" stroke-width="9" stroke-linecap="round" marker-end="url(#mk-arrow)" class="flow" />
+      ${victims.length ? victims.map((v) => reticle(v.pos)).join('') : `<circle cx="${b.x}" cy="${b.y}" r="30" fill="none" stroke="${col}" stroke-width="5" stroke-dasharray="10 8" class="spin"/>`}`;
   }
 
   function renderTerrain(game) {
