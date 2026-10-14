@@ -578,9 +578,7 @@ a.btn { text-decoration: none; display: inline-block; }
 @keyframes fadeOut { to { opacity: 0; } }
 @keyframes popIn { from { opacity: 0; transform: translateY(-18px) scale(.97); } }
 @keyframes popOut { to { opacity: 0; transform: translateY(-10px) scale(.98); } }
-@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -14px); } }
-@keyframes toastInUp { from { opacity: 0; transform: translate(-50%, 14px); } }
-@keyframes toastInMirror { from { opacity: 0; transform: translate(-50%, -14px) rotate(180deg); } to { transform: translate(-50%, 0) rotate(180deg); } }
+@keyframes toastPop { from { opacity: 0; transform: scale(.94); } }
 .page { animation: fadeDown .32s cubic-bezier(.2,.8,.2,1) backwards; }
 @media (prefers-reduced-motion: reduce) { .page, .modal, .modal-card, .toast, .tip, .acc-panel { animation: none !important; transition: none !important; } }
 
@@ -627,16 +625,22 @@ a.btn { text-decoration: none; display: inline-block; }
 .acc.open .acc-inner > * { animation: fadeDown .3s ease-out both; }
 .acc-title { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 
-/* toast over the board */
+/* toast floating over the board: a draggable handle (.toast-pos) positions and moves it, the
+   inner .toast carries the look and (face to face, far seat) the 180° mirror, independently of
+   the drag offset. It starts centered on the board and re-centers for every new prompt. */
+.toast-pos {
+  position: absolute; left: 50%; top: 50%; z-index: 20; width: min(calc(100% - 24px), 560px);
+  touch-action: none; cursor: grab;
+}
+.toast-pos:active { cursor: grabbing; }
 .toast {
-  position: absolute; left: 50%; z-index: 7; width: min(calc(100% - 24px), 560px); transform: translateX(-50%);
+  position: relative; left: auto; top: auto; transform: none; width: 100%;
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px;
   background: rgba(28,31,39,.96); border: 1px solid #3a3f4c; border-left: 4px solid var(--brass);
   box-shadow: 0 14px 30px rgba(0,0,0,.55); font-size: .9rem; backdrop-filter: blur(4px);
 }
-.toast.top { top: 12px; animation: toastIn .3s cubic-bezier(.2,.9,.25,1.05) both; }
-.toast.bottom { bottom: 12px; animation: toastInUp .3s cubic-bezier(.2,.9,.25,1.05) both; }
-.toast.top.mirrored { transform: translateX(-50%) rotate(180deg); animation: toastInMirror .3s cubic-bezier(.2,.9,.25,1.05) both; }
+.toast.over-map { animation: toastPop .22s cubic-bezier(.2,.9,.25,1.05) both; }
+.toast.mirrored { transform: rotate(180deg); }
 .toast.react { border-left-color: var(--vine); }
 .toast img { width: 32px; height: 32px; border-radius: 8px; flex: none; }
 .toast .pt { flex: 1 1 220px; min-width: 0; }
@@ -766,8 +770,6 @@ a.btn { text-decoration: none; display: inline-block; }
 .turnline { display: flex; gap: 12px; align-items: baseline; min-height: 1.4em; flex-wrap: wrap; }
 .turnline .turn-num { font-family: var(--f-mono); font-size: .76rem; color: var(--muted); flex: none; }
 .turnline .msg { text-align: left; flex: 1 1 200px; }
-.toast.docked { position: absolute; top: 0; left: 0; right: 0; width: auto; transform: none; animation: fadeDown .26s cubic-bezier(.2,.9,.25,1.05) both; z-index: 8; }
-.seat .toast.docked { inset: 0; border-radius: 10px; overflow-y: auto; align-content: center; }
 .menu-setting { padding: 6px 2px; border-block: 1px solid var(--line); }
 .menu-setting .switch span:last-child { display: grid; }
 .menu-setting small { color: var(--muted); font-size: .78rem; }
@@ -945,22 +947,8 @@ a.btn { text-decoration: none; display: inline-block; }
 .seat-sheet { position: absolute; top: 0; left: 0; right: 0; bottom: auto; min-height: 100%; max-height: 300px; height: auto; z-index: 20;
   border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 16px 34px rgba(0,0,0,.5); display: grid; }
 .seat-sheet-card { height: auto; max-height: 300px; }
-.dock.local .toast.docked { z-index: 25; }
-
-/* decision toasts stack over what's under them: translucent, with the content below blurred */
-.toast.docked { background: rgba(24,27,35,.66); -webkit-backdrop-filter: blur(7px) saturate(1.1); backdrop-filter: blur(7px) saturate(1.1);
-  border: 1px solid rgba(255,255,255,.14); box-shadow: 0 12px 30px rgba(0,0,0,.45); }
-.toast.docked.react { border-left: 4px solid var(--vine); }
-.toast.docked.phase { border-left: 4px solid var(--brass); }
-.seat .toast.docked { inset: auto; top: 0; left: 0; right: 0; min-height: 100%; height: auto; overflow: visible; z-index: 30; align-content: center; }
-.dock .toast.docked { z-index: 30; }
-/* room above the top seat for its toast to grow into (toward the far edge, never over the board) */
-.seat-slot.top { min-height: 126px; }
 @media (max-width: 560px) {
   .seat-slot.top { min-height: 158px; }
-  .toast.docked { font-size: .82rem; padding: 8px 10px; gap: 8px; }
-  .toast.docked img { width: 26px; height: 26px; }
-  .toast.docked .row .btn { padding: 6px 10px; }
 }
 
 /* undo / redo / menu: line icons */
@@ -991,10 +979,3 @@ a.btn { text-decoration: none; display: inline-block; }
 .bot-team.p1 .hidden-slot { border-color: rgba(239,231,209,.4); }
 .bot-team.p1 .hidden-slot .q { color: #efe7d1; }
 
-/* decision toast sits between the board and the controls: the board stays put, undo stays reachable */
-.toast.flow { position: relative; left: auto; top: auto; transform: none; width: auto; margin: 0;
-  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 24px rgba(0,0,0,.35);
-  animation: fadeDown .26s cubic-bezier(.2,.9,.25,1.05) both; }
-.toast.flow.react { border-left: 4px solid var(--vine); }
-.toast.flow.phase { border-left: 4px solid var(--brass); }
-.faceoff .toast.flow { margin: 0; }

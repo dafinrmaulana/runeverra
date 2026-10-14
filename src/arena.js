@@ -48,7 +48,7 @@ export const HEROES = {
     moveText: 'Steps 1 square straight.',
     skill: {
       key: 'summon', name: 'Wild Company', type: 'active', cost: 3, range: 1,
-      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also step 1 square in any direction (free; it can capture, but has no special moves). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
+      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also move up to 2 squares in any direction (free; it can capture, but has no special moves). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
     },
   },
   magumba: {
@@ -90,8 +90,8 @@ export const HEROES = {
 };
 export const BEAST = {
   name: 'Beast', title: "Ge'nga's companion", cls: 'claw',
-  move: [{ kind: 'slide', dirs: KING, range: 1 }],
-  moveText: 'Steps 1 square in any direction, right after Ge\'nga acts.',
+  move: [{ kind: 'slide', dirs: KING, range: 2 }],
+  moveText: 'Moves up to 2 squares in any direction, right after Ge\'nga acts.',
 };
 export const CREEP = {
   name: 'Creep', title: 'Minion', cls: 'claw',

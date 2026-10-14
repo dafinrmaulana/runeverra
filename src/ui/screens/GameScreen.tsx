@@ -60,15 +60,27 @@ function describe(s: any, a: any) {
 }
 
 /**
- * Decision prompts (interrupt, beast/ice/storm follow-ups) as a toast floating over the
- * board, so the board itself never moves. Face to face, it sits at the deciding player's edge.
+ * A toast floating directly over the board (so it's impossible to miss) for decision prompts
+ * (interrupt, beast/ice/storm follow-ups); the board itself never moves underneath it. It can
+ * be dragged anywhere so the player can slide it aside to see the board, and it re-centers for
+ * the next prompt. Face to face, it's mirrored for the far seat so that player reads it upright.
  */
-function Toast({ c, only, flow }: { c: GameController; only?: Team; flow?: boolean }) {
+function Toast({ c, mirror }: { c: GameController; mirror?: boolean }) {
   const g = c.game;
+  const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const [off, setOff] = useState({ x: 0, y: 0 });
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { x: e.clientX, y: e.clientY, ox: off.x, oy: off.y };
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    setOff({ x: d.ox + (e.clientX - d.x), y: d.oy + (e.clientY - d.y) });
+  };
+  const onPointerUp = () => { dragRef.current = null; };
   if (g.status !== 'playing' || !c.deciderIsHuman()) return null;
-  const side: Team = c.decider()!;
-  if (only && side !== only) return null;
-  const pos = flow ? 'flow' : 'docked';
   let body = null;
   if (g.phase === 'react') {
     const pend = g.pending.action; const actor = g.units[pend.unitId]; const plant = g.units[g.pending.plantId];
@@ -98,7 +110,19 @@ function Toast({ c, only, flow }: { c: GameController; only?: Team; flow?: boole
     );
   }
   if (!body) return null;
-  return <div key={`${g.turn}-${g.phase}`} className={`toast ${g.phase === 'react' ? 'react' : 'phase'} ${pos}`} role="alertdialog">{body}</div>;
+  return (
+    <div
+      key={`${g.turn}-${g.phase}`}
+      className="toast-pos"
+      style={{ transform: `translate(calc(-50% + ${off.x}px), calc(-50% + ${off.y}px))` }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div className={`toast over-map ${g.phase === 'react' ? 'react' : 'phase'}${mirror ? ' mirrored' : ''}`} role="alertdialog">{body}</div>
+    </div>
+  );
 }
 
 function Pips({ n }: { n: number }) {
@@ -413,7 +437,6 @@ function SeatPanel({ c, team, threats }: { c: GameController; team: Team; threat
           </div>
         ) : <p className={`seat-msg ${mine ? c.msgKind : ''}`}>{mine && c.msg ? c.msg : last?.text}</p>}
       </div>
-      {team === 'p2' && <Toast c={c} only="p2" />}
       {sheet && (
         <div className="seat-sheet" onClick={() => setSheet(null)}>
           <div className="seat-sheet-card" onClick={(e) => e.stopPropagation()}>
@@ -501,6 +524,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
     <div className="board-host-wrap">
       <div className="board-host" ref={host} />
       {overlay}
+      <Toast c={c} mirror={local && g.status === 'playing' && c.decider() === 'p2'} />
     </div>
   );
 
@@ -511,7 +535,6 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           {/* the top seat grows away from the board, so the board stays put */}
           <div className="seat-slot top"><SeatPanel c={c} team="p2" threats={threats} /></div>
           {board}
-          <Toast c={c} only="p1" flow />
           <Controls c={c} onMenu={() => setMenu(true)} local />
           <SeatPanel c={c} team="p1" threats={threats} />
         </div>
@@ -520,7 +543,6 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           <section aria-label="Board" className="board-col">
             {topbar}
             {board}
-            <Toast c={c} flow />
             <Controls c={c} onMenu={() => setMenu(true)} roomCode={roomCode} />
             <SelectedAccordion c={c} threats={threats} />
           </section>

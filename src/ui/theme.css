@@ -57,7 +57,7 @@ h1, .logo, .step-head h2, .overlay h2, .modal-card h2, .modal-card h3, .picker-h
 /* ---------- panels: flat umber, soft line ---------- */
 .mode-card, .level-card, .picker, .bot-team, .room-card, .opp-card, .modal-card, .seat, .acc, .hpanel, .maptile,
 .slot, .htile, .tip, .picker-modal-card, .board-host-wrap .overlay, .hpanel .empty, .ledger .empty, .skill-btn,
-.undo-redo, .sel-empty, .seat .sel-acc, .btn.icon-btn, .seat .toast.docked, .seat-sel-btn, .side-opt, .toast {
+.undo-redo, .sel-empty, .seat .sel-acc, .btn.icon-btn, .seat-sel-btn, .side-opt, .toast {
   border-radius: 3px;
 }
 .mode-card, .level-card, .picker, .bot-team, .room-card, .opp-card, .modal-card, .seat, .acc, .hpanel, .maptile,

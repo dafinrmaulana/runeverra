@@ -13,7 +13,7 @@ export function Rules() {
       </ul>
       <h3>Roles</h3>
       <ul>
-        <li><b>Roam</b> (Aqna, Hexor): up to 2 squares straight; Hexor's L jump counts as his 2 steps. Ge'nga steps 1 straight, and his beast steps 1 any way right after him.</li>
+        <li><b>Roam</b> (Aqna, Hexor): up to 2 squares straight; Hexor's L jump counts as his 2 steps. Ge'nga steps 1 straight, and his beast moves up to 2 squares any way right after him.</li>
         <li><b>Assassin</b> (Hasim): 1 square any way, plus a free Backstab jump.</li>
         <li><b>Support</b> (Plantae, Magumba): steps 1 (Plantae straight, Magumba diagonally); the skill follows the same lines up to 3 squares.</li>
       </ul>
