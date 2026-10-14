@@ -990,3 +990,11 @@ a.btn { text-decoration: none; display: inline-block; }
 .bot-team.p1 .slot.filled { box-shadow: 0 0 0 2px rgba(239,231,209,.75), 0 6px 14px rgba(0,0,0,.35); }
 .bot-team.p1 .hidden-slot { border-color: rgba(239,231,209,.4); }
 .bot-team.p1 .hidden-slot .q { color: #efe7d1; }
+
+/* decision toast sits between the board and the controls: the board stays put, undo stays reachable */
+.toast.flow { position: relative; left: auto; top: auto; transform: none; width: auto; margin: 0;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  animation: fadeDown .26s cubic-bezier(.2,.9,.25,1.05) both; }
+.toast.flow.react { border-left: 4px solid var(--vine); }
+.toast.flow.phase { border-left: 4px solid var(--brass); }
+.faceoff .toast.flow { margin: 0; }

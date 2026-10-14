@@ -59,12 +59,12 @@ function describe(s: any, a: any) {
  * Decision prompts (interrupt, beast/ice/storm follow-ups) as a toast floating over the
  * board, so the board itself never moves. Face to face, it sits at the deciding player's edge.
  */
-function Toast({ c, only }: { c: GameController; only?: Team }) {
+function Toast({ c, only, flow }: { c: GameController; only?: Team; flow?: boolean }) {
   const g = c.game;
   if (g.status !== 'playing' || !c.deciderIsHuman()) return null;
   const side: Team = c.decider()!;
   if (only && side !== only) return null;
-  const pos = 'docked';
+  const pos = flow ? 'flow' : 'docked';
   let body = null;
   if (g.phase === 'react') {
     const pend = g.pending.action; const actor = g.units[pend.unitId]; const plant = g.units[g.pending.plantId];
@@ -431,7 +431,8 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           {/* the top seat grows away from the board, so the board stays put */}
           <div className="seat-slot top"><SeatPanel c={c} team="p2" threats={threats} /></div>
           {board}
-          <div className="dock local"><Controls c={c} onMenu={() => setMenu(true)} local /><Toast c={c} only="p1" /></div>
+          <Toast c={c} only="p1" flow />
+          <Controls c={c} onMenu={() => setMenu(true)} local />
           <SeatPanel c={c} team="p1" threats={threats} />
         </div>
       ) : (
@@ -439,7 +440,8 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           <section aria-label="Board" className="board-col">
             {topbar}
             {board}
-            <div className="dock"><Controls c={c} onMenu={() => setMenu(true)} roomCode={roomCode} /><Toast c={c} /></div>
+            <Toast c={c} flow />
+            <Controls c={c} onMenu={() => setMenu(true)} roomCode={roomCode} />
             <SelectedAccordion c={c} threats={threats} />
           </section>
           <aside className="ledger">
