@@ -795,7 +795,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .seat-sel-btn:hover { border-color: var(--muted); }
 .seat-sel-btn .sel-trigger { flex: 1; min-width: 0; }
 .seat-sel-btn .sel-trigger > img { width: 30px; height: 30px; }
-.seat-sel-btn .sel-short, .seat-sel-btn .sel-fx { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+
 .seat-sheet-card .sel-detail { padding: 0; }
 .slots-row .slot { width: 100%; height: clamp(84px, 11vw, 118px); aspect-ratio: auto; max-height: none; }
 .seat { height: 150px; }
@@ -900,12 +900,11 @@ a.btn { text-decoration: none; display: inline-block; }
 /* face to face: no sideways scrolling; the details sheet keeps its header visible */
 .seat, .seat-body, .seat-sel, .seat-sel-btn, .seat-sheet-card { min-width: 0; max-width: 100%; }
 .seat-body { overflow-x: hidden; }
-.seat-sel-btn { overflow: hidden; }
-.seat-sel-btn .sel-text { min-width: 0; overflow: hidden; }
-.seat-sel-btn .sel-name { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
-.seat-sel-btn .sel-name .sub { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.seat-sel-btn .sel-name .chip, .seat-sel-btn .sel-name .fx-pill, .seat-sel-btn .sel-name .cost { flex: none; }
-.seat-sel-btn .sel-short { white-space: nowrap; text-overflow: ellipsis; display: block; }
+/* the unit line shrinks to leave room for the skill button; its text wraps instead of being cut */
+.seat-sel-btn { overflow: visible; }
+.seat-sel-btn .sel-text { min-width: 0; }
+.seat-sel-btn .sel-name { flex-wrap: wrap; row-gap: 2px; }
+.seat-sel-btn .sel-short { display: block; white-space: normal; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: anywhere; }
 .seat-sheet { padding: 0; overflow: hidden; }
 .seat-sheet-card { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; height: 100%; overflow: hidden; }
 .seat-sheet-head { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer; padding: 8px 12px;
@@ -921,3 +920,17 @@ a.btn { text-decoration: none; display: inline-block; }
 .seat-sheet-body p { overflow-wrap: anywhere; }
 .seat-sheet { background: var(--panel); }
 .seat-sheet-card, .seat-sheet-body { background: var(--panel); }
+
+/* face to face: the skill button keeps its own column and never pokes out of the panel */
+.seat-sel { grid-template-columns: minmax(0, 1fr) 52px; padding-right: 2px; }
+.skill-wrap.inline { justify-self: end; }
+.skill-wrap.inline .sq-cost { right: 2px; bottom: 2px; min-width: 18px; height: 18px; font-size: .62rem; box-shadow: 0 0 0 2px rgba(0,0,0,.35); }
+.seat-body { padding-right: 2px; }
+.seat { height: 168px; }
+.seat-top { flex-wrap: nowrap; min-width: 0; }
+.seat-top .seat-status { white-space: nowrap; }
+@media (max-width: 560px) {
+  .seat .count { display: none; }
+  .seat .tokens .who { display: none; }
+  .seat-top { gap: 6px; }
+}
