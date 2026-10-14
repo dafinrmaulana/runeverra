@@ -3,7 +3,7 @@ import { HEROES, MAPS, TEAM_NAMES } from '../arena.js';
 import { pickTeam, BOT_LEVELS } from '../arena-bot.js';
 import { matchFromConfig } from '../online.js';
 import { GameController, type Mode } from './game/controller';
-import { room } from './online/room';
+import { room } from './online';
 import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
 import { Rules } from './components/Rules';
@@ -366,7 +366,9 @@ function RoomPanel({ onContinue }: { onContinue: () => void }) {
           </div>
         </div>
         {r.error && <p className="err">{r.error}</p>}
-        <p className="hall-note">Both players need to be signed in with access to this page: invite your friend by email from the Share menu. Two tabs on one device also work.</p>
+        <p className="hall-note">{(import.meta as any).env?.VITE_WS_URL
+          ? 'Send the link to this page plus the room code. Two tabs on one device also work.'
+          : 'Both players need to be signed in with access to this page: invite your friend by email from the Share menu. Two tabs on one device also work.'}</p>
       </div>
     );
   }

@@ -1,0 +1,20 @@
+[Unit]
+Description=Runeverra online-play WebSocket relay
+After=network.target
+
+[Service]
+Type=simple
+# Adjust to wherever you cloned the repo on the VPS.
+WorkingDirectory=/opt/runeverra
+ExecStart=/usr/bin/node --max-old-space-size=128 server/ws-server.mjs
+Restart=always
+RestartSec=2
+Environment=PORT=8787
+# A plain, unprivileged user is enough; the service never touches the filesystem.
+User=runeverra
+Group=runeverra
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
