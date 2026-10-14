@@ -426,9 +426,10 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
     <div className="game-screen">
       {local ? (
         <div className="faceoff">
-          <SeatPanel c={c} team="p2" threats={threats} />
+          {/* the top seat grows away from the board, so the board stays put */}
+          <div className="seat-slot top"><SeatPanel c={c} team="p2" threats={threats} /></div>
           {board}
-          <div className="dock"><Controls c={c} onMenu={() => setMenu(true)} local /><Toast c={c} only="p1" /></div>
+          <div className="dock local"><Controls c={c} onMenu={() => setMenu(true)} local /><Toast c={c} only="p1" /></div>
           <SeatPanel c={c} team="p1" threats={threats} />
         </div>
       ) : (

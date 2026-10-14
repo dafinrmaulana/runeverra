@@ -934,3 +934,15 @@ a.btn { text-decoration: none; display: inline-block; }
   .seat .tokens .who { display: none; }
   .seat-top { gap: 6px; }
 }
+
+/* face to face: seats size to their content; the details sheet floats over the page */
+.seat { height: auto; overflow: visible; grid-template-rows: auto auto; }
+.seat-body { overflow: visible; }
+.seat-slot.top { min-height: 118px; display: flex; flex-direction: column; justify-content: flex-end; }
+.dock.local { min-height: 0; }
+.faceoff { gap: 8px; }
+.faceoff .controls { gap: 2px; }
+.seat-sheet { position: absolute; top: 0; left: 0; right: 0; bottom: auto; min-height: 100%; max-height: 300px; height: auto; z-index: 20;
+  border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 16px 34px rgba(0,0,0,.5); display: grid; }
+.seat-sheet-card { height: auto; max-height: 300px; }
+.dock.local .toast.docked { z-index: 25; }
