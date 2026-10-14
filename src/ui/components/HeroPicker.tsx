@@ -21,7 +21,6 @@ type Props = {
 /** Pick a team of four: a two-column hero list, numbered slots, tooltip/modal descriptions. */
 export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrored, readOnly }: Props) {
   const box = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<{ id: string; top: number } | null>(null);
   const [modal, setModal] = useState<string | null>(null);
   const [note, setNote] = useState('');
 
@@ -31,10 +30,6 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
     if (i >= 0) { onChange(picks.filter((h) => h !== id)); setNote(''); return; }
     if (picks.length >= SIZE) { setNote('Team is full. Tap a hero in your team to remove it first.'); return; }
     onChange([...picks, id]); setNote('');
-  };
-  const showTip = (id: string, el: HTMLElement) => {
-    const top = el.offsetTop + el.offsetHeight + 6;
-    setHover({ id, top });
   };
 
   return (
@@ -50,10 +45,6 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
             <button type="button" className="btn ghost small-btn" onClick={() => { onChange([]); setNote(''); }} disabled={!picks.length}>Clear</button>
           </span>
         )}
-        <div className="seg small" role="group" aria-label="Description length">
-          <button type="button" aria-pressed={mode === 'short'} onClick={() => onMode('short')}>Short</button>
-          <button type="button" aria-pressed={mode === 'detail'} onClick={() => onMode('detail')}>Detail</button>
-        </div>
       </div>
 
       <div className="slots-row">
@@ -70,16 +61,14 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
       </div>
       {note && <p className="picker-note">{note}</p>}
 
-      <div className="hero-grid" onMouseLeave={() => setHover(null)}>
+      <div className="hero-grid">
         {HERO_IDS.map((id) => {
           const h = (HEROES as any)[id];
           const idx = picks.indexOf(id);
           const full = idx < 0 && picks.length >= SIZE;
           return (
-            <div key={id} className={`htile ${h.cls}${idx >= 0 ? ' picked' : ''}${full ? ' dim' : ''}`}
-              onMouseEnter={(e) => showTip(id, e.currentTarget)}>
-              <button type="button" className="htile-main" onClick={() => toggle(id)} aria-pressed={idx >= 0} disabled={readOnly}
-                onFocus={(e) => showTip(id, e.currentTarget.parentElement!)} onBlur={() => setHover(null)}>
+            <div key={id} className={`htile ${h.cls}${idx >= 0 ? ' picked' : ''}${full ? ' dim' : ''}`}>
+              <button type="button" className="htile-main" onClick={() => toggle(id)} aria-pressed={idx >= 0} disabled={readOnly}>
                 <span className="portrait"><img src={ICON(id)} alt="" />{idx >= 0 && <span className="order">{idx + 1}</span>}</span>
                 <span className="htile-text">
                   <b>{h.name}</b>
@@ -87,17 +76,11 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
                   <span className="sk">{h.skill.name} <span className="cost" title="Token cost">{costChip(h.skill)}</span></span>
                 </span>
               </button>
-              <button type="button" className="info-btn" aria-label={`About ${h.name}`} onClick={() => { setHover(null); setModal(id); }}>i</button>
+              <button type="button" className="info-btn" aria-label={`About ${h.name}`} onClick={() => setModal(id)} title="Hero details">i</button>
             </div>
           );
         })}
       </div>
-
-      {hover && !modal && (
-        <div key={hover.id} className="tip" style={{ top: hover.top }} role="tooltip">
-          <HeroInfo id={hover.id} mode={mode} />
-        </div>
-      )}
 
       <Modal open={!!modal} onClose={() => setModal(null)} label="Hero details" full mirrored={mirrored} className="hero-modal">
         {modal && (
