@@ -23,10 +23,11 @@ const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-
 // Fixed skill shapes, as [depth, side] pairs relative to the caster: depth counts forward steps
 // (flipped per team by `forward`, below), side is columns left(-)/right(+), the same for both
 // teams. Unlike a move or a line-of-sight skill, these aren't blocked by what's in between.
-// Plantae's Aggressive Root: 2 squares straight ahead, and 2 squares to either side. Never behind her.
-const ROOT_PATTERN = [[1, 0], [2, 0], [0, -1], [0, -2], [0, 1], [0, 2]];
-// Magumba's Empty Grave: a fan widening as it reaches out, 2 squares deep.
-const SHIELD_FAN = [[1, -1], [1, 0], [1, 1], [2, -2], [2, -1], [2, 0], [2, 1], [2, 2]];
+// Plantae's Aggressive Root: straight ahead only, the full length of the board. Never behind her.
+const ROOT_PATTERN = Array.from({ length: BOARD_SIZE }, (_, i) => [i + 1, 0]);
+// Magumba's Empty Grave: a fan widening as it reaches out, 2 squares deep, with the far row
+// stretching 1 square further out on each side than the near row.
+const SHIELD_FAN = [[1, -1], [1, 0], [1, 1], [2, -3], [2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [2, 3]];
 
 // Roles describe how a hero moves: Roam and Assassin move 2 (Hexor's L counts as 2 steps),
 // Support moves 1 but reaches 3 with its skill.
@@ -65,7 +66,7 @@ export const HEROES = {
     moveText: 'Steps 1 square diagonally.',
     skill: {
       key: 'grave', name: 'Empty Grave', type: 'active', cost: 2, range: 2, reach: { cells: SHIELD_FAN },
-      text: 'Targets himself or one ally in a fan ahead of him, up to 2 squares deep, widening as it goes — nothing in between blocks it. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
+      text: 'Targets himself or one ally in a fan ahead of him, up to 2 squares deep and widening as it goes, with its far edge reaching 3 squares to either side — nothing in between blocks it. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
     },
   },
   plantae: {
@@ -73,8 +74,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
     moveText: 'Steps 1 square straight.',
     skill: {
-      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 2, reach: { cells: ROOT_PATTERN }, reaction: true, reactionCost: 3, cooldown: 3,
-      text: 'Roots an enemy 2 squares ahead of her, or 2 squares to either side — never behind her, and nothing in between blocks it. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy in that pattern acts: that action is negated. After either use, it recharges for 3 of your turns.',
+      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: BOARD_SIZE, reach: { cells: ROOT_PATTERN }, reaction: true, reactionCost: 3, cooldown: 3,
+      text: 'Roots an enemy anywhere straight ahead of her, the length of the board — never to the side or behind her, and nothing in between blocks it. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy straight ahead of her acts: that action is negated. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {
@@ -548,10 +549,10 @@ function resolveSkill(s, action, lines, last) {
   last.kind = sk.key; last.from = { ...u.pos }; last.to = null; last.hits.push({ ...t.pos }); last.targetId = t.id;
   if (sk.key === 'grave') {
     t.warded = true; t.rooted = 0;
-    lines.push(`${t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`} Empty Grave, ${tokens(sk.cost)}: ${t.id === u.id ? 'he targets himself' : `${label(t)} is ${dist(u, t)} on his diagonal, within range ${sk.range}`}; enemy attacks on ${t.id === u.id ? 'him' : 'it'} are negated until ${label(u)}'s next turn. ${left(s, u.team)}`);
+    lines.push(`${t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`} Empty Grave, ${tokens(sk.cost)}: ${t.id === u.id ? 'he targets himself' : `${label(t)} is ${dist(u, t)} in his shield fan, within range ${sk.range}`}; enemy attacks on ${t.id === u.id ? 'him' : 'it'} are negated until ${label(u)}'s next turn. ${left(s, u.team)}`);
   } else if (sk.key === 'root') {
     t.rooted = 1;
-    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} in a straight line, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
+    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} straight ahead of her, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
   }
 }
 
@@ -586,7 +587,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
       plant.reacts = (plant.reacts || 0) + 1;
       const toward = pend.to || s.units[pend.targetId]?.pos || null; // where the negated action was going
       last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, toward: toward && { ...toward }, phase: 'react' };
-      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} from Plantae, on her line within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, plant.team)}`);
+      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} straight ahead of Plantae, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, plant.team)}`);
       pushLog(s, lines, plant.team);
       s.lastAction = last;
       endTurn(s);

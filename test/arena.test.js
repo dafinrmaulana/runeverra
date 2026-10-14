@@ -153,14 +153,14 @@ test('Plantae Aggressive Root: 3 tokens, roots a target for its next turn', () =
 });
 
 test('Plantae interrupt: 3 tokens, negates an action on her lines; she is not rooted, it recharges', () => {
-  // d7: 2 ahead is d5, 2 either side is b7/f7. c7 (1 to the side) is on the pattern too.
-  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } });
+  // d7: straight ahead of her is her whole file below her (d6..d1), nothing to the sides.
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } });
   const s = act(base, mv('p1-hexor', 'e6'));
   assert.equal(s.phase, 'react');
   assert.equal(toMove(s), 'p2');
-  assert.deepEqual(s.units['p1-hexor'].pos, sq('c7'), 'action is on hold');
+  assert.deepEqual(s.units['p1-hexor'].pos, sq('d4'), 'action is on hold');
   const used = act(s, { type: 'react', use: true });
-  assert.deepEqual(used.units['p1-hexor'].pos, sq('c7'));
+  assert.deepEqual(used.units['p1-hexor'].pos, sq('d4'));
   assert.equal(used.current, 'p2', 'Ivory\'s turn is over; Ember plays normally');
   assert.equal(used.energy.p2, 0, '3 spent, no refill on the new turn');
   assert.equal(used.units['p2-plantae'].rooted, 0, 'no self-root any more');
@@ -168,39 +168,39 @@ test('Plantae interrupt: 3 tokens, negates an action on her lines; she is not ro
   assert.ok(listActions(used).some((a) => a.unitId === 'p2-plantae'), 'Plantae can act right away');
   const declined = act(s, { type: 'react', use: false });
   assert.deepEqual(declined.units['p1-hexor'].pos, sq('e6'));
-  // only in her pattern: a diagonal neighbour, a square behind her, or a far one gets no prompt
-  const diag = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'e6', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'g5'));
-  assert.equal(diag.phase, 'main', 'a diagonal neighbour is not in the pattern');
+  // only in her pattern: off her file, behind her, or a far one gets no prompt
+  const side = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'e5'));
+  assert.equal(side.phase, 'main', 'off her file: not in the pattern');
   const behind = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd8', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'c6'));
   assert.equal(behind.phase, 'main', 'never reaches behind her');
   const far = act(setup({ 'p2-plantae': 'h8', 'p2-aqna': 'a8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }), mv('p1-hexor', 'e6'));
   assert.equal(far.phase, 'main');
-  const poor = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 2 } }), mv('p1-hexor', 'e6'));
+  const poor = act(setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 2 } }), mv('p1-hexor', 'e6'));
   assert.equal(poor.phase, 'main');
 });
 
 test('Plantae and Magumba skill patterns are fixed shapes, never blocked by what\'s in between', () => {
-  // Plantae (p1-plantae on d4, facing p2's side): 2 squares dead ahead (d5, d6) and 2 to either
-  // side (b4, c4, e4, f4); never behind her (d3). An ally standing in the path doesn't block it.
+  // Plantae (p1-plantae on d4, facing p2's side): straight ahead only, the length of the board
+  // (d5..d8 here); never to the side, never behind her (d3). An ally standing in the path doesn't block it.
   const p = setup({
-    'p1-plantae': 'd4', 'p1-hasim': 'd5', // ally sits directly between her and the target below
+    'p1-plantae': 'd4', 'p1-hasim': 'd5', // ally sits directly between her and the target further ahead
     'p2-aqna': 'd6', 'p2-hasim': 'e5', 'p2-genga': 'd3',
   }, { energy: { p1: 3, p2: 0 } });
   const roots = listActions(p).filter((a) => a.type === 'skill').map((a) => a.targetId);
-  assert.deepEqual(roots, ['p2-aqna'], 'the ally 1 ahead does not block the enemy 2 ahead');
-  assert.match(reject(p, { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-hasim' }), /root pattern/, 'diagonal: out of the pattern');
+  assert.deepEqual(roots, ['p2-aqna'], 'the ally in between does not block the enemy further ahead');
+  assert.match(reject(p, { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-hasim' }), /root pattern/, 'off her file: out of the pattern');
   assert.match(reject(p, { type: 'skill', unitId: 'p1-plantae', skill: 'root', targetId: 'p2-genga' }), /root pattern/, 'behind her: out of the pattern');
 
-  // Magumba (p1-magumba on d4): a fan 2 squares deep, 5 wide at its far edge (also unblocked).
+  // Magumba (p1-magumba on d4): a fan 2 squares deep, 7 wide at its far edge (also unblocked).
   const m = setup({
     'p1-magumba': 'd4', 'p1-hasim': 'd5', // ally on the fan's near row
-    'p1-hexor': 'd6', // ally 2 ahead, through the first one
+    'p1-hexor': 'g6', // ally on the fan's wide far row, out at its very edge
     'p2-aqna': 'h8',
   }, { energy: { p1: 2, p2: 0 } });
   const shields = listActions(m).filter((a) => a.type === 'skill').map((a) => a.targetId).sort();
   assert.deepEqual(shields, ['p1-hasim', 'p1-hexor', 'p1-magumba']);
   // terrain in the fan doesn't block it either
-  const t = setup({ 'p1-magumba': 'd4', 'p1-hasim': 'd6' }, { blocks: { d5: 'rock' }, energy: { p1: 2, p2: 0 } });
+  const t = setup({ 'p1-magumba': 'd4', 'p1-hasim': 'g6' }, { blocks: { d5: 'rock' }, energy: { p1: 2, p2: 0 } });
   assert.deepEqual(listActions(t).filter((a) => a.type === 'skill').map((a) => a.targetId).sort(), ['p1-hasim', 'p1-magumba']);
 });
 
@@ -417,7 +417,7 @@ test('Aggressive Root has a 3-turn cooldown shared by active use and interrupts'
   const noPrompt = act(s, mv('p1-hexor', 'e6'));
   assert.equal(noPrompt.phase, 'main');
   // an interrupt also starts the cooldown
-  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
   let r = act(act(base, mv('p1-hexor', 'e6')), { type: 'react', use: true });
   assert.equal(r.units['p2-plantae'].cd, 2, 'set to 3, ticked at the start of Ember\'s turn');
   r = act(r, mv('p2-aqna', 'h7'));
@@ -427,7 +427,7 @@ test('Aggressive Root has a 3-turn cooldown shared by active use and interrupts'
 });
 
 test('Aggressive Root can interrupt again once recharged (no per-match cap)', () => {
-  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'c7', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
+  const base = setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 4 } });
   let s = act(act(base, mv('p1-hexor', 'e6')), { type: 'react', use: true });
   assert.equal(s.units['p2-plantae'].reacts, 1);
   s = act(s, mv('p2-aqna', 'h7'));
