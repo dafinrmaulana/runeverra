@@ -63,7 +63,12 @@ export class GameController {
 
   // ---------- board ----------
   attach(host: HTMLElement, intro = true) {
-    this.board = createBoard(host, { onCell: (p: Pos) => this.onCell(p), flip: this.viewer() === 'p2' });
+    this.board = createBoard(host, {
+      onCell: (p: Pos) => this.onCell(p),
+      onPress: (p: Pos) => this.onPress(p),
+      onDrop: (id: string, p: Pos) => this.onDrop(id, p),
+      flip: this.viewer() === 'p2',
+    });
     this.render({});
     if (intro) this.board.intro(this.game);
     this.maybeBot();
@@ -177,6 +182,28 @@ export class GameController {
       this.render({}); return;
     }
     this.clearSel(); this.say(''); this.render({});
+  }
+
+  /** A press on a piece that can move now: lift it (select, showing its squares). */
+  onPress(pos: Pos): { id: string; fresh: boolean } | null {
+    const g = this.game;
+    if (g.status !== 'playing' || !this.deciderIsHuman() || this.armed) return null;
+    if (g.phase !== 'main' && g.phase !== 'beast') return null;
+    const u = unitAt(g, pos);
+    if (!u || !listActions(g).some((a: any) => a.type === 'move' && a.unitId === u.id)) return null;
+    const fresh = this.selectedId !== u.id;
+    if (fresh) this.select(u.id);
+    return { id: u.id, fresh };
+  }
+
+  /** A lifted piece released on `pos`. True when it moved there. */
+  onDrop(id: string, pos: Pos): boolean {
+    const g = this.game;
+    const a = listActions(g).find((x: any) => x.type === 'move' && x.unitId === id && samePos(x.to, pos));
+    if (a) return this.commit(a);
+    this.say(validateAction(g, { type: 'move', unitId: id, to: pos }).reason || 'That square is out of reach.', 'err');
+    this.render({});
+    return false;
   }
 
   select(id: string) {

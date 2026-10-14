@@ -9,13 +9,14 @@ import { MapPicker } from './components/MapPicker';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
 import { Modal, Steps } from './components/ui';
+import { CursorPicker } from './cursor';
 import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
 import type { DescMode } from './components/HeroInfo';
 
 const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 type ModeKind = 'bot' | 'local' | 'online';
-type Screen = 'home' | 'level' | 'room' | 'heroes' | 'map' | 'game';
+type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game';
 type Level = 'easy' | 'normal' | 'hard';
 type BotTeam = 'hidden' | 'shuffle' | 'manual';
 
@@ -40,6 +41,8 @@ export function App() {
   const [desc, setDesc] = useState<DescMode>(pref('desc', 'short'));
   const [ctrl, setCtrl] = useState<GameController | null>(null);
   const [rules, setRules] = useState(false);
+  const [settings, setSettings] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
   const r = useRoom();
 
   useEffect(() => { setPref('desc', desc); }, [desc]);
@@ -91,9 +94,14 @@ export function App() {
     setScreen('home');
   }
   function choose(k: ModeKind) {
+    if (k === 'bot') { setDiffOpen(true); return; } // difficulty first, in a dialog over home
     setKind(k);
     setPicks({ p1: [], p2: [] });
-    setScreen(k === 'bot' ? 'level' : k === 'online' ? 'room' : 'heroes');
+    setScreen(k === 'online' ? 'room' : 'heroes');
+  }
+  function startBot(l: Level) {
+    setLevel(l); setDiffOpen(false);
+    setKind('bot'); setPicks({ p1: [], p2: [] }); setScreen('heroes');
   }
 
   // ---------- screens ----------
@@ -113,9 +121,9 @@ export function App() {
   }
 
   return (
-    <div className="app" key={screen}>
+    <div className="app">
       {screen === 'home' && (
-        <div className="home page">
+        <div className="home page" key="home">
           <div className="home-wall" aria-hidden="true">
             {HOME_WALL.map((h) => <div key={h} className="wall-col" style={{ backgroundImage: `url(${ART(h)})` }} />)}
           </div>
@@ -139,37 +147,34 @@ export function App() {
             </div>
             <div className="home-foot">
               <button type="button" className="btn ghost" onClick={() => setRules(true)}>How to play</button>
+              <button type="button" className="btn ghost" onClick={() => setSettings(true)}>Settings</button>
             </div>
           </div>
         </div>
       )}
 
-      {screen === 'level' && (
-        <Step title="Choose difficulty" onBack={() => setScreen('home')}>
-          <div className="level-list">
-            {(['easy', 'normal', 'hard'] as Level[]).map((l) => (
-              <button key={l} type="button" className="level-card" aria-pressed={level === l} onClick={() => { setLevel(l); setScreen('heroes'); }}>
-                <b>{BOT_LEVELS[l].label}</b><span>{LEVEL_TEXT[l]}</span>
-              </button>
-            ))}
-          </div>
-        </Step>
-      )}
-
       {screen === 'room' && (
-        <Step title="Online room" onBack={() => { room.leave(); setScreen('home'); }}>
-          <RoomPanel onContinue={() => setScreen('heroes')} />
-        </Step>
+        <Setup title="Online" onBack={() => { room.leave(); setScreen('home'); }}>
+          <div className="setup-body page" key="room"><RoomPanel onContinue={() => setScreen('heroes')} /></div>
+        </Setup>
       )}
 
-      {screen === 'heroes' && (
-        <Step title="Choose heroes" step={1} onBack={() => setScreen(kind === 'bot' ? 'level' : kind === 'online' ? 'room' : 'home')}
-          next={{
+      {(screen === 'heroes' || screen === 'map') && (
+        <Setup title={screen === 'heroes' ? 'Choose heroes' : 'Choose battlefield'} step={screen === 'heroes' ? 1 : 2}
+          onBack={() => setScreen(screen === 'map' ? 'heroes' : kind === 'online' ? 'room' : 'home')}
+          next={screen === 'heroes' ? {
             label: 'Next: battlefield',
             disabled: kind === 'online' ? r.picks.length !== 4 : teamOf('p1').length !== 4 || p2Picks.length !== 4,
             hint: heroHint(kind, kind === 'bot' ? picks[youT] : picks.p1, kind === 'bot' ? botPicks : p2Picks, r),
             onClick: () => setScreen('map'),
-          }}>
+          } : kind === 'online' ? {
+            label: r.ready ? 'Not ready' : 'Ready',
+            disabled: !r.room || r.picks.length !== 4,
+            hint: !r.opp ? 'Waiting for your opponent to join.' : r.ready ? 'Ready. The match starts when your opponent is ready too.'
+              : r.oppReadyForNext() ? 'Your opponent is ready.' : 'Press Ready when you are set.',
+            onClick: () => r.setReady(!r.ready),
+          } : { label: 'Start match', disabled: false, hint: `${(MAPS as any)[map].name}${creeps ? ' · creeps on' : ''}`, onClick: startLocal }}>
+          {screen === 'heroes' && <div className="setup-body page" key="heroes">
           {kind === 'bot' && (
             <div className="pick-stack">
               <div className="side-pick" role="radiogroup" aria-label="Play as">
@@ -180,6 +185,15 @@ export function App() {
                     <small>{t === 'p1' ? 'Moves first' : 'Moves second · board turned to your side'}</small>
                   </button>
                 ))}
+              </div>
+              <div className="diff-pick">
+                <span className="side-pick-label">Bot level</span>
+                <div className="seg" role="group" aria-label="Bot level">
+                  {(['easy', 'normal', 'hard'] as Level[]).map((l) => (
+                    <button key={l} type="button" aria-pressed={level === l} onClick={() => setLevel(l)}>{BOT_LEVELS[l].label}</button>
+                  ))}
+                </div>
+                <span className="note">{LEVEL_TEXT[level]}</span>
               </div>
               <HeroPicker team={youT} title="Your team" picks={picks[youT]} onChange={(p) => setPicks({ ...picks, [youT]: p })} mode={desc} onMode={setDesc} />
               <div className={`bot-team ${botT}`}>
@@ -224,18 +238,8 @@ export function App() {
               <HeroPicker team={r.side || 'p1'} title="Your team" picks={r.picks} onChange={(p) => r.setPicks(p)} mode={desc} onMode={setDesc} />
             </div>
           )}
-        </Step>
-      )}
-
-      {screen === 'map' && (
-        <Step title="Choose battlefield" step={2} onBack={() => setScreen('heroes')}
-          next={kind === 'online' ? {
-            label: r.ready ? 'Not ready' : 'Ready',
-            disabled: !r.room || r.picks.length !== 4,
-            hint: !r.opp ? 'Waiting for your opponent to join.' : r.ready ? 'Ready. The match starts when your opponent is ready too.'
-              : r.oppReadyForNext() ? 'Your opponent is ready.' : 'Press Ready when you are set.',
-            onClick: () => r.setReady(!r.ready),
-          } : { label: 'Start match', disabled: false, hint: `${(MAPS as any)[map].name}${creeps ? ' · creeps on' : ''}`, onClick: startLocal }}>
+          </div>}
+          {screen === 'map' && <div className="setup-body page" key="map">
           {kind === 'online' && r.side === 'p2' && <p className="note">The host (Ivory) picks the battlefield. You see their choice here.</p>}
           {kind === 'online' && <OppCard compact />}
           <MapPicker
@@ -243,8 +247,30 @@ export function App() {
             readOnly={kind === 'online' && r.side === 'p2'}
             onMap={(m) => (kind === 'online' ? r.setMap(m, r.creeps) : setMap(m))}
             onCreeps={(v) => (kind === 'online' ? r.setMap(r.map, v) : setCreeps(v))} />
-        </Step>
+          </div>}
+        </Setup>
       )}
+
+      <Modal open={diffOpen} onClose={() => setDiffOpen(false)} label="Choose difficulty">
+        <h3>Choose difficulty</h3>
+        <div className="level-list in-modal">
+          {(['easy', 'normal', 'hard'] as Level[]).map((l, i) => (
+            <button key={l} type="button" className="level-card" aria-pressed={level === l} onClick={() => startBot(l)}>
+              <b>{BOT_LEVELS[l].label}<span className="lv-pips" aria-hidden="true">{[0, 1, 2].map((k) => <i key={k} className={k <= i ? 'on' : ''} />)}</span></b>
+              <span>{LEVEL_TEXT[l]}</span>
+            </button>
+          ))}
+        </div>
+        <button className="btn ghost" type="button" onClick={() => setDiffOpen(false)}>Cancel</button>
+      </Modal>
+
+      <Modal open={settings} onClose={() => setSettings(false)} label="Settings">
+        <div className="settings">
+          <h3>Mouse cursor</h3>
+          <CursorPicker />
+          <button className="btn primary" type="button" onClick={() => setSettings(false)}>Done</button>
+        </div>
+      </Modal>
 
       <Modal open={rules} onClose={() => setRules(false)} label="How to play" className="wide">
         <Rules />
@@ -261,13 +287,15 @@ function heroHint(kind: ModeKind, first: HeroId[], p2: HeroId[], r: typeof room)
   return 'Both teams set.';
 }
 
-type StepProps = {
+type SetupProps = {
   title: string; step?: number; onBack: () => void; children: React.ReactNode;
   next?: { label: string; disabled: boolean; hint?: string; onClick: () => void };
 };
-function Step({ title, step, onBack, children, next }: StepProps) {
+/** The frame around the setup screens. It stays mounted while the screens inside change,
+ *  so the header, the timeline and the footer hold still; only the body fades in. */
+function Setup({ title, step, onBack, children, next }: SetupProps) {
   return (
-    <div className="step page">
+    <div className="setup">
       <header className="step-head">
         <button type="button" className="back-btn" onClick={onBack} aria-label="Back">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -275,7 +303,7 @@ function Step({ title, step, onBack, children, next }: StepProps) {
         <h2>{title}</h2>
       </header>
       {step && <Steps steps={['Heroes', 'Battlefield', 'Fight']} current={step} />}
-      <div className="step-body">{children}</div>
+      {children}
       {next && (
         <footer className="step-foot">
           <span className="hint">{next.hint}</span>
@@ -286,42 +314,78 @@ function Step({ title, step, onBack, children, next }: StepProps) {
   );
 }
 
+const SIGIL_HOST = <svg className="sigil" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M24 4 L40 14 V30 L24 44 L8 30 V14 Z" /><path d="M24 14 V34 M16 20 H32" /></svg>;
+const SIGIL_JOIN = <svg className="sigil" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><circle cx="24" cy="24" r="18" /><path d="M24 6 V16 M24 32 V42 M6 24 H16 M32 24 H42" /><circle cx="24" cy="24" r="5" /></svg>;
+
+function HallBanner({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="hall-banner">
+      <div className="hall-art" aria-hidden="true">{HOME_WALL.map((h) => <span key={h} style={{ backgroundImage: `url(${ART(h)})` }} />)}</div>
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </div>
+  );
+}
+
 function RoomPanel({ onContinue }: { onContinue: () => void }) {
   const r = useRoom();
   const [code, setCode] = useState('');
-  if (r.joining) return <div className="room-card"><p className="note">Connecting to the room…</p></div>;
+  if (r.joining) {
+    return <div className="hall"><HallBanner title="Opening the gates" text="Connecting to the room…" /></div>;
+  }
   if (!r.room) {
     return (
-      <div className="room-grid">
-        <div className="room-card">
-          <h3>Create a room</h3>
-          <p className="note">You play Ivory and choose the battlefield. Send the code to your friend.</p>
-          <button type="button" className="btn primary big" onClick={() => r.create()}>Create room</button>
-        </div>
-        <div className="room-card">
-          <h3>Join a room</h3>
-          <p className="note">Type the 5-letter code your friend sent you.</p>
-          <form className="join" onSubmit={(e) => { e.preventDefault(); r.join(code); }}>
-            <input value={code} onChange={(e) => setCode(e.target.value)} maxLength={7} placeholder="CODE" aria-label="Room code" autoComplete="off" spellCheck={false} />
-            <button type="submit" className="btn primary big">Join</button>
-          </form>
+      <div className="hall">
+        <HallBanner title="The Gathering Hall" text="Raise a room and send its code, or answer a friend's call." />
+        <div className="gates">
+          <div className="gate host">
+            {SIGIL_HOST}
+            <h4>Raise a room</h4>
+            <p>You play Ivory, move first and choose the battlefield.</p>
+            <button type="button" className="btn primary big" onClick={() => r.create()}>Create room</button>
+          </div>
+          <div className="gate join">
+            {SIGIL_JOIN}
+            <h4>Answer a call</h4>
+            <p>Type the 5-letter code your friend sent you.</p>
+            <form className="join-form" onSubmit={(e) => { e.preventDefault(); r.join(code); }}>
+              <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={5} placeholder="•••••" aria-label="Room code" autoComplete="off" spellCheck={false} />
+              <button type="submit" className="btn primary big" disabled={code.trim().length < 5}>Join room</button>
+            </form>
+          </div>
         </div>
         {r.error && <p className="err">{r.error}</p>}
-        <p className="note full">Both players need to be signed in with access to this page: invite your friend by email from the Share menu. Two tabs on one device also work.</p>
+        <p className="hall-note">Both players need to be signed in with access to this page: invite your friend by email from the Share menu. Two tabs on one device also work.</p>
       </div>
     );
   }
+  const opp: Team = r.side === 'p1' ? 'p2' : 'p1';
   return (
-    <div className="room-card lobby">
-      <p className="note">Room code</p>
-      <div className="bigcode">{r.code}</div>
-      <button type="button" className="btn" onClick={() => { try { navigator.clipboard.writeText(r.code!); } catch { /* none */ } }}>Copy code</button>
-      <p className="lobby-status"><span className={`dot ${r.opp ? 'on' : ''}`} />{r.opp ? 'Your opponent is here.' : 'Waiting for your opponent to join…'}</p>
-      <p className="note">You play {TEAM_NAMES[r.side!]}.{r.via !== 'room' ? ` Connected through the shared lobby (${r.via}).` : ''}</p>
-      {r.error && <p className="err">{r.error}</p>}
-      <div className="row">
-        <button type="button" className="btn primary big" onClick={onContinue}>Choose heroes</button>
-        <button type="button" className="btn" onClick={() => r.leave()}>Leave room</button>
+    <div className="hall">
+      <HallBanner title="The Gathering Hall" text={r.opp ? 'Your opponent has arrived. Choose your heroes.' : 'Send the code below. The hall waits for your opponent.'} />
+      <div className="table">
+        <div className="plaque">
+          <small>Room code</small>
+          <div className="bigcode">{r.code}</div>
+          <button type="button" className="btn ghost" onClick={() => { try { navigator.clipboard.writeText(r.code!); } catch { /* none */ } }}>Copy code</button>
+        </div>
+        <div className="seats">
+          <div className={`seat-card ${r.side}`}>
+            <span className="crest">{TEAM_NAMES[r.side!][0]}</span>
+            <b>You</b><small>{TEAM_NAMES[r.side!]}</small>
+          </div>
+          <span className="vs">vs</span>
+          <div className={`seat-card ${opp}${r.opp ? '' : ' empty'}`}>
+            <span className="crest">{r.opp ? TEAM_NAMES[opp][0] : '?'}</span>
+            <b>{r.opp ? 'Opponent' : 'Awaiting'}</b><small>{r.opp ? TEAM_NAMES[opp] : 'Seat open'}</small>
+          </div>
+        </div>
+        {r.via !== 'room' && <p className="hall-note">Connected through the shared lobby ({r.via}).</p>}
+        {r.error && <p className="err">{r.error}</p>}
+        <div className="row">
+          <button type="button" className="btn primary big" onClick={onContinue}>Choose heroes</button>
+          <button type="button" className="btn big" onClick={() => r.leave()}>Leave room</button>
+        </div>
       </div>
     </div>
   );

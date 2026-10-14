@@ -1,5 +1,5 @@
 // Small UI primitives with enter/exit transitions: Modal, Switch, Accordion, Steps.
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 /** Keep something mounted while it animates out. Returns [mounted, state]. */
@@ -63,13 +63,18 @@ export function Accordion({ trigger, children, className = '', defaultOpen = fal
 
 /** Numbered step timeline. `current` is 1-based. */
 export function Steps({ steps, current }: { steps: string[]; current: number }) {
+  // Kept mounted between screens: the line to the new step fills, then its marker lights up.
+  const prev = useRef(current);
+  const arriving = prev.current < current;
+  useEffect(() => { prev.current = current; }, [current]);
   return (
     <ol className="steps" aria-label="Progress">
       {steps.map((s, i) => {
         const n = i + 1;
         const st = n < current ? 'done' : n === current ? 'now' : 'todo';
         return (
-          <li key={s} className={st} aria-current={st === 'now' ? 'step' : undefined}>
+          <li key={s} className={`${st}${st === 'now' && arriving ? ' arriving' : ''}`} aria-current={st === 'now' ? 'step' : undefined}>
+            {i > 0 && <span className="bar" aria-hidden="true"><i /></span>}
             <span className="num">{st === 'done' ? '✓' : n}</span>
             <span className="lbl">{s}</span>
           </li>

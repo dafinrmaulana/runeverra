@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { CursorPicker } from '../cursor';
 import {
   HEROES, MAPS, TEAM_NAMES as TN, ENERGY, CREEPS, ROLES, label, heroDef, livingHeroes, moveOptions, samePos,
   squareName, skillCooldown, skillActions, getThreats,
@@ -460,6 +461,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
         <h2>Paused</h2>
         <button className="btn primary big" type="button" onClick={() => setMenu(false)}>Resume</button>
         <div className="menu-setting"><Switch checked={c.showThreats} onChange={(v) => c.setThreats(v)} label={<><b>Show threats</b><small>Mark units an enemy can capture next turn</small></>} /></div>
+        <div className="menu-setting cursor-setting"><b>Mouse cursor</b><CursorPicker /></div>
         <button className="btn big" type="button" onClick={() => { setMenu(false); setRules(true); }}>How to play</button>
         {c.mode.kind !== 'online' && <button className="btn big" type="button" onClick={() => { setMenu(false); onRematch(); }}>Restart match</button>}
         <button className="btn big" type="button" onClick={() => { setMenu(false); onChangeHeroes(); }}>Change heroes</button>

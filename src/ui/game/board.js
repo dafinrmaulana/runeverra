@@ -22,7 +22,12 @@ export const BEAST_SVG = '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellip
  * Mount a board into `host`. `onCell(pos)` fires for clicks on squares.
  * Call `render(game, view)` after every change; `animate(before, after)` for effects.
  */
-export function createBoard(host, { onCell, flip = false }) {
+/**
+ * @param {HTMLElement} host
+ * @param {{ onCell: (p: any) => void, onPress?: ((p: any) => ({ id: string, fresh: boolean } | null)) | null,
+ *   onDrop?: ((id: string, p: any) => boolean) | null, flip?: boolean }} opts
+ */
+export function createBoard(host, { onCell, onPress = null, onDrop = null, flip = false }) {
   /** Display position of a board square: turned 180° when this player sits on Ember's side. */
   const V = (p) => (flip ? { r: BOARD_SIZE - 1 - p.r, c: BOARD_SIZE - 1 - p.c } : p);
   host.innerHTML = `<div class="arena"><div class="backdrop"></div><div class="board-wrap"><div class="board">
@@ -41,13 +46,77 @@ export function createBoard(host, { onCell, flip = false }) {
       b.dataset.r = r; b.dataset.c = c;
       if (dc === 0) b.insertAdjacentHTML('beforeend', `<span class="coord rank">${BOARD_SIZE - r}</span>`);
       if (dr === BOARD_SIZE - 1) b.insertAdjacentHTML('beforeend', `<span class="coord file">${'abcdefgh'[c]}</span>`);
-      b.addEventListener('click', () => onCell({ r, c }));
+      b.addEventListener('click', () => {
+        if (swallowClick) { swallowClick = false; return; }
+        onCell({ r, c });
+      });
       boardEl.insertBefore(b, q('.ambient'));
       cells[r * BOARD_SIZE + c] = b;
     }
   }
   const cellAt = (p) => cells[p.r * BOARD_SIZE + p.c];
   const pieceEls = new Map();
+
+  // ---------- hold and drag, like lifting a chess piece ----------
+  // Pressing a piece that can move lifts it and shows its squares at once; dragging carries it;
+  // releasing on a square moves there. A plain tap still works as before.
+  let swallowClick = false;
+  let drag = null; // { id, from, x0, y0, el, base, moved, over }
+  const DRAG_START = 6;
+  const posFromPoint = (x, y) => {
+    const r = boardEl.getBoundingClientRect();
+    const dc = Math.floor(((x - r.left) / r.width) * BOARD_SIZE), dr = Math.floor(((y - r.top) / r.height) * BOARD_SIZE);
+    if (dr < 0 || dc < 0 || dr >= BOARD_SIZE || dc >= BOARD_SIZE) return null;
+    return V({ r: dr, c: dc });
+  };
+  const setOver = (p) => {
+    if (drag.over) cellAt(drag.over).classList.remove('drop-over');
+    drag.over = p && !samePos(p, drag.from) ? p : null;
+    if (drag.over) cellAt(drag.over).classList.add('drop-over');
+  };
+  function endDrag(commit) {
+    const d = drag; drag = null;
+    if (!d) return;
+    if (d.over) cellAt(d.over).classList.remove('drop-over');
+    boardEl.classList.remove('dragging');
+    if (!d.el) return;
+    d.el.classList.remove('lifted', 'carried');
+    if (commit && d.moved && d.over && onDrop && onDrop(d.id, d.over)) return; // the move re-renders the piece
+    if (d.el.style.transform !== d.base) d.el.style.transform = d.base; // glide back
+  }
+  boardEl.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || drag || !onPress) return;
+    const cell = e.target.closest && e.target.closest('.cell');
+    if (!cell) return;
+    const from = { r: +cell.dataset.r, c: +cell.dataset.c };
+    const res = onPress(from);
+    if (!res) return;
+    if (res.fresh) swallowClick = true; // the press already selected it
+    const el = pieceEls.get(res.id) || null;
+    drag = { id: res.id, from, x0: e.clientX, y0: e.clientY, el, base: el ? el.style.transform : '', moved: false, over: null };
+    if (el) el.classList.add('lifted');
+  });
+  boardEl.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+    if (!drag.moved && Math.hypot(dx, dy) < DRAG_START) return;
+    if (!drag.moved) {
+      drag.moved = true; swallowClick = true; boardEl.classList.add('dragging'); drag.el?.classList.add('carried');
+      try { boardEl.setPointerCapture(e.pointerId); } catch { /* keeps working without capture */ }
+    }
+    if (drag.el) drag.el.style.transform = `${drag.base} translate(${dx}px, ${dy}px)`;
+    setOver(posFromPoint(e.clientX, e.clientY));
+  });
+  const onUp = () => {
+    if (!drag) return;
+    endDrag(true);
+    // The click (if any) follows this event at once; never let a stale swallow eat a later tap.
+    setTimeout(() => { swallowClick = false; }, 0);
+  };
+  window.addEventListener('pointerup', onUp);
+  const onCancel = () => endDrag(false);
+  window.addEventListener('pointercancel', onCancel);
+  boardEl.addEventListener('lostpointercapture', () => { if (drag) endDrag(drag.moved); });
   const blockEls = new Map();
   let lastMap = null;
   const ambient = createAmbient(q('.ambient'));
@@ -92,6 +161,7 @@ export function createBoard(host, { onCell, flip = false }) {
       : live && live.kind === 'hero' && live.hero === 'plantae' ? live : null;
     const rootRange = HEROES.plantae.skill.range;
     const la = game.lastAction;
+    const movers = new Set(acts.filter((a) => a.type === 'move').map((a) => a.unitId));
     for (const el of cells) {
       const p = { r: +el.dataset.r, c: +el.dataset.c };
       const ma = moveActs.find((a) => samePos(a.to, p));
@@ -113,6 +183,7 @@ export function createBoard(host, { onCell, flip = false }) {
       el.classList.toggle('last', !!la && [la.from, la.to].some((x) => x && samePos(x, p)));
       el.classList.remove('hit');
       const u = unitAt(game, p), b = blockAt(game, p);
+      el.classList.toggle('grab', !!onPress && !!u && movers.has(u.id));
       el.setAttribute('aria-label', `${squareName(p)}${u ? `, ${label(u)}` : b ? `, ${b.kind}` : ''}`);
     }
     for (const h of view.hits || []) {
@@ -217,7 +288,7 @@ export function createBoard(host, { onCell, flip = false }) {
     if (el) { el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); }
   }
 
-  function destroy() { ambient.stop(); fx.destroy(); host.innerHTML = ''; }
+  function destroy() { drag = null; window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onCancel); ambient.stop(); fx.destroy(); host.innerHTML = ''; }
 
   return {
     render, reset, hop, destroy,
