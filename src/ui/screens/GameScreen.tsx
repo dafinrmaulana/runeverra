@@ -98,7 +98,7 @@ function Toast({ c, mirror }: { c: GameController; mirror?: boolean }) {
     const have = `you have ${g.energy[g.current]}`;
     const text = g.phase === 'beast' ? 'Wild Company: move the beast now (free), or skip.'
       : g.phase === 'ice' ? `Icy Step: tap a dashed square to raise ice for ${tk(HEROES.aqna.skill.cost)} (${have}), or skip.`
-        : `Storm Hammer: slam for ${tk(HEROES.hexor.skill.cost)} (${have}) and push the 4 units in a pattern around Hexor, or skip.`;
+        : `Storm Hammer: slam for ${tk(HEROES.hexor.skill.cost)} (${have}) and push the 4 units in a pattern around Hexor 2 squares away, or skip.`;
     body = (
       <>
         <span className="pt">{text}</span>

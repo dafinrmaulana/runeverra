@@ -61,25 +61,25 @@ const DEMOS: Record<string, Demo> = {
   plantae: {
     setup: () => scene('jungle', [U('p1', 'plantae', 'd3'), U('p2', 'hexor', 'd6'), U('p2', 'aqna', 'f5'), KEEP]),
     steps: [
-      { text: 'Plantae steps 1 square straight. The green line is her reach: straight ahead to the far edge of the board, unblocked by anything in between.', show: { live: 'p1-plantae' }, ms: 2800 },
-      { text: 'Aggressive Root (3 tokens): Hexor is on her line, no matter what\'s between them. Aqna, off to the side, can\'t be targeted.', show: { live: 'p1-plantae', armed: true }, ms: 2600 },
+      { text: 'Plantae steps 1 square straight. The green squares are her reach: a 3x3 block right in front of her, unblocked by anything in between.', show: { live: 'p1-plantae' }, ms: 2800 },
+      { text: 'Aggressive Root (3 tokens): Hexor is in the block, no matter what\'s between them. Aqna, outside it, can\'t be targeted.', show: { live: 'p1-plantae', armed: true }, ms: 2600 },
       { text: 'Hexor is rooted: he can\'t act on his next turn.', act: sk('p1-plantae', { skill: 'root', targetId: 'p2-hexor' }), ms: 2400 },
       {
         text: 'On the enemy turn it works as an interrupt…',
         state: () => scene('jungle', [U('p1', 'plantae', 'd3'), U('p2', 'genga', 'd5'), BEAST('p2', 'c5'), KEEP], {}, { current: 'p2', turn: 2 }),
         ms: 1500,
       },
-      { text: 'Ge\'nga acts on her line: Plantae may answer.', act: mv('p2-genga', 'd6'), ms: 2400 },
+      { text: 'Ge\'nga acts inside her block: Plantae may answer.', act: mv('p2-genga', 'd6'), ms: 2400 },
       { text: 'Interrupt (3 tokens): the action is negated. Then the skill recharges for 3 turns.', act: { type: 'react', use: true }, ms: 2800 },
     ],
   },
   hexor: {
-    setup: () => scene('keep', [U('p1', 'hexor', 'd5'), U('p1', 'magumba', 'd6'), U('p2', 'aqna', 'e7'), U('p2', 'genga', 'e8'), U('p2', 'plantae', 'f7'), U('p2', 'hasim', 'a1')], { g7: 'rock' }, { energy: { p1: 4, p2: 0 } }), // no interrupt from that Plantae
+    setup: () => scene('keep', [U('p1', 'hexor', 'd5'), U('p1', 'magumba', 'd7'), U('p2', 'aqna', 'e7'), U('p2', 'genga', 'e8'), U('p2', 'plantae', 'f7'), U('p2', 'hasim', 'a1')], { g7: 'rock' }, { energy: { p1: 4, p2: 0 } }), // no interrupt from that Plantae
     steps: [
       { text: 'Hexor jumps in an L, like a chess knight, over anything.', show: { live: 'p1-hexor' }, ms: 2400 },
       { text: 'He captures Aqna…', act: mv('p1-hexor', 'e7'), ms: 1600 },
       { text: 'Storm Hammer (2 tokens): pick a pattern, + or X.', ms: 1800 },
-      { text: 'Slam +: the 4 straight squares around him are pushed 1 square. Hitting rock or the edge, a unit just holds its ground — never eliminated.', act: { type: 'storm', pattern: 'plus' }, ms: 3200 },
+      { text: 'Slam +: the 4 straight squares around him are pushed 2 squares. Magumba slides 2; rock and the edge stop the others, who hold their ground — never eliminated.', act: { type: 'storm', pattern: 'plus' }, ms: 3200 },
     ],
   },
   aqna: {

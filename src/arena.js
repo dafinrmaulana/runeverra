@@ -23,11 +23,12 @@ const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-
 // Fixed skill shapes, as [depth, side] pairs relative to the caster: depth counts forward steps
 // (flipped per team by `forward`, below), side is columns left(-)/right(+), the same for both
 // teams. Unlike a move or a line-of-sight skill, these aren't blocked by what's in between.
-// Plantae's Aggressive Root: straight ahead only, the full length of the board. Never behind her.
-const ROOT_PATTERN = Array.from({ length: BOARD_SIZE }, (_, i) => [i + 1, 0]);
-// Magumba's Empty Grave: a fan widening as it reaches out, 2 squares deep, with the far row
-// stretching 1 square further out on each side than the near row.
-const SHIELD_FAN = [[1, -1], [1, 0], [1, 1], [2, -3], [2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [2, 3]];
+// Plantae's Aggressive Root: a 3x3 block right in front of her. Never beside or behind her.
+const ROOT_PATTERN = [1, 2, 3].flatMap((depth) => [-1, 0, 1].map((side) => [depth, side]));
+// Magumba's Empty Grave: a fan widening as it reaches out, 2 squares deep.
+const SHIELD_FAN = [[1, -1], [1, 0], [1, 1], [2, -2], [2, -1], [2, 0], [2, 1], [2, 2]];
+// Storm Hammer pushes each unit in its pattern this many squares away from Hexor.
+const STORM_PUSH = 2;
 
 // Roles describe how a hero moves: Roam and Assassin move 2 (Hexor's L counts as 2 steps),
 // Support moves 1 but reaches 3 with its skill.
@@ -66,7 +67,7 @@ export const HEROES = {
     moveText: 'Steps 1 square diagonally.',
     skill: {
       key: 'grave', name: 'Empty Grave', type: 'active', cost: 2, range: 2, reach: { cells: SHIELD_FAN },
-      text: 'Targets himself or one ally in a fan ahead of him, up to 2 squares deep and widening as it goes, with its far edge reaching 3 squares to either side — nothing in between blocks it. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
+      text: 'Targets himself or one ally in a fan ahead of him, up to 2 squares deep, widening as it goes — nothing in between blocks it. Until your next turn, every enemy attack or skill against that unit is negated. Also removes Root from it.',
     },
   },
   plantae: {
@@ -74,8 +75,8 @@ export const HEROES = {
     move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
     moveText: 'Steps 1 square straight.',
     skill: {
-      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: BOARD_SIZE, reach: { cells: ROOT_PATTERN }, reaction: true, reactionCost: 3, cooldown: 3,
-      text: 'Roots an enemy anywhere straight ahead of her, the length of the board — never to the side or behind her, and nothing in between blocks it. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy straight ahead of her acts: that action is negated. After either use, it recharges for 3 of your turns.',
+      key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reach: { cells: ROOT_PATTERN }, reaction: true, reactionCost: 3, cooldown: 3,
+      text: 'Roots an enemy in the 3x3 block right in front of her — never beside or behind her, and nothing in between blocks it. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy in that block acts: that action is negated. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {
@@ -84,7 +85,7 @@ export const HEROES = {
     moveText: 'Jumps in an L, like a chess knight.',
     skill: {
       key: 'storm', name: 'Storm Hammer', type: 'follow', cost: 2, range: 1,
-      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: pick a pattern, + (straight) or X (diagonal), and every unit on those 4 squares around him is pushed 1 square away, pushing any unit behind it too. Nobody is ever eliminated by the slam itself: pushed into terrain or off the board, a unit just holds its ground.',
+      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: pick a pattern, + (straight) or X (diagonal), and every unit on those 4 squares around him is pushed 2 squares away. If terrain, the board edge or another unit is in the way, it stops on the last empty square (or holds its ground if there is none). Nobody is ever eliminated by the slam itself.',
     },
   },
   aqna: {
@@ -469,33 +470,33 @@ function eliminate(s, u, lines, by = null) {
   }
 }
 
-/** Storm Hammer: push every unit around `center` outward, chaining. Returns pushes for FX. */
+/**
+ * Storm Hammer: the 4 units next to `center` in the chosen pattern (+ straight, X diagonal) are
+ * pushed up to STORM_PUSH squares straight away from it. Terrain, the board edge or another unit
+ * stops a push early: the unit takes whatever empty squares are left (maybe none). Nobody is ever
+ * eliminated by the slam itself, and a warded unit holds its ground. Returns pushes for FX.
+ */
 function stormHammer(s, hexor, center, lines, fx, pattern) {
-  const visited = new Set([hexor.id]);
-  const pushUnit = (u, dr, dc) => {
-    if (visited.has(u.id)) return samePos(u.pos, u.pos); // already handled
-    visited.add(u.id);
-    if (u.warded) { fx.push({ id: u.id, from: { ...u.pos }, to: { ...u.pos }, blocked: true }); return false; }
-    const dest = { r: u.pos.r + dr, c: u.pos.c + dc };
-    if (!inBounds(dest) || blockAt(s, dest)) {
-      // Nobody is ever killed by the slam itself: against terrain or the edge, they just hold their ground.
-      fx.push({ id: u.id, from: { ...u.pos }, to: { ...u.pos }, blocked: true });
-      return false;
-    }
-    const behind = unitAt(s, dest);
-    if (behind) {
-      pushUnit(behind, dr, dc);
-      if (unitAt(s, dest)) { fx.push({ id: u.id, from: { ...u.pos }, to: { ...u.pos }, blocked: true }); return false; }
-    }
-    fx.push({ id: u.id, from: { ...u.pos }, to: dest });
-    u.pos = dest;
-    return true;
-  };
   for (const [dr, dc] of (pattern === 'x' ? DIAG : ORTHO)) {
     const p = { r: center.r + dr, c: center.c + dc };
     if (!inBounds(p)) continue;
     const u = unitAt(s, p);
-    if (u && !visited.has(u.id)) pushUnit(u, dr, dc);
+    if (!u || u.id === hexor.id) continue;
+    const from = { ...u.pos };
+    let to = from;
+    if (!u.warded) {
+      for (let k = 1; k <= STORM_PUSH; k++) {
+        const next = { r: from.r + dr * k, c: from.c + dc * k };
+        if (!inBounds(next) || blockAt(s, next) || unitAt(s, next)) break;
+        to = next;
+      }
+    }
+    if (samePos(to, from)) {
+      fx.push({ id: u.id, from, to: { ...from }, blocked: true });
+    } else {
+      fx.push({ id: u.id, from, to: { ...to } });
+      u.pos = { ...to };
+    }
   }
 }
 
@@ -552,7 +553,7 @@ function resolveSkill(s, action, lines, last) {
     lines.push(`${t.id === u.id ? `${label(u)} wraps himself in Empty Grave.` : `${label(u)} casts Empty Grave on ${label(t)}.`} Empty Grave, ${tokens(sk.cost)}: ${t.id === u.id ? 'he targets himself' : `${label(t)} is ${dist(u, t)} in his shield fan, within range ${sk.range}`}; enemy attacks on ${t.id === u.id ? 'him' : 'it'} are negated until ${label(u)}'s next turn. ${left(s, u.team)}`);
   } else if (sk.key === 'root') {
     t.rooted = 1;
-    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} straight ahead of her, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
+    lines.push(`${label(u)} roots ${label(t)}: it can't act next turn. Aggressive Root, ${tokens(sk.cost)}: ${label(t)} is ${dist(u, t)} in the block in front of her, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, u.team)}`);
   }
 }
 
@@ -587,7 +588,7 @@ export function applyAction(state, action, { trusted = false } = {}) {
       plant.reacts = (plant.reacts || 0) + 1;
       const toward = pend.to || s.units[pend.targetId]?.pos || null; // where the negated action was going
       last = { team: plant.team, unitId: plant.id, from: { ...plant.pos }, to: null, hits: [{ ...actor.pos }], kind: 'interrupt', targetId: actor.id, toward: toward && { ...toward }, phase: 'react' };
-      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} straight ahead of Plantae, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, plant.team)}`);
+      lines.push(`${label(plant)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(sk.reactionCost ?? sk.cost)}: ${label(actor)} acted ${dist(plant, actor)} in the block in front of Plantae, within range ${sk.range}; recharges for ${sk.cooldown} turns. ${left(s, plant.team)}`);
       pushLog(s, lines, plant.team);
       s.lastAction = last;
       endTurn(s);
