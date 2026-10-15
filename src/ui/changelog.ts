@@ -16,7 +16,7 @@ export const CHANGELOG: Patch[] = [
       { tag: 'new', text: 'Install Runeverra as an app from Settings. Games against the bot and face to face also work offline.' },
       { tag: 'fix', text: 'The home screen now fits phone screens, and the demo\'s skill names no longer hide behind the characters.' },
       { tag: 'balance', text: 'Oasis Bazaar and Savanna Crossing have new obstacle spots, so obstacles now sit on both square colours. Heroes that only move on one colour (like Magumba) are no longer walled off.' },
-      { tag: 'ui', text: 'The full screen button now says what it does.' },
+      { tag: 'ui', text: 'Game controls fit on one line on phones: skill, undo and redo, full screen and menu (the last two are icon buttons).' },
       { tag: 'fix', text: 'On small phone screens the turn banner no longer overlaps the rune bars: it gets its own row above them.' },
       { tag: 'ui', text: 'Skill costs now show a rune symbol next to the number, so it is clear the number is runes.' },
       { tag: 'ui', text: 'Battlefield screen: time and creeps are now at the top in one "Match options" box, and the maps show in two columns on phones.' },

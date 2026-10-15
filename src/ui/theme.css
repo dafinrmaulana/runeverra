@@ -727,3 +727,14 @@ input, select, textarea { border-radius: 2px !important; }
   .statusbar .tokens { width: 100%; justify-content: center; padding-inline: 8px; }
   .statusbar .tokens .tn { display: inline-flex; }
 }
+
+/* ---------- controls row: skill, undo/redo, chat, full screen and menu on one line ---------- */
+.controls-row { flex-wrap: nowrap; gap: 8px; }
+.controls-row > * { flex: none; }
+.btn.icon-btn.only-icon { width: var(--ctl, 44px); padding: 0; justify-content: center; }
+.btn.icon-btn.only-icon svg { width: 20px; height: 20px; }
+@media (max-width: 380px) {
+  .undo-redo .btn { padding: 0 10px; }
+  .undo-redo .btn-txt { display: none; }
+  .controls-row { gap: 6px; }
+}

@@ -407,18 +407,19 @@ function Controls({ c, onMenu, roomCode, local, focus, onFocus }: { c: GameContr
         {c.mode.kind !== 'online' && (
           <span className="undo-redo">
             <button className="btn icon" type="button" disabled={!c.canUndo()} onClick={() => c.undo()} title="Undo (Ctrl+Z)">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>Undo</button>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg><span className="btn-txt">Undo</span></button>
             <button className="btn icon" type="button" disabled={!c.canRedo()} onClick={() => c.redo()} title="Redo (Ctrl+Shift+Z)">
-              Redo<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg></button>
+              <span className="btn-txt">Redo</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg></button>
           </span>
         )}
         {onFocus && (
-          <button className="btn icon-btn focus-btn" type="button" onClick={onFocus} aria-pressed={!!focus} title={focus ? 'Back to the normal view' : 'Make the board fill the screen'}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">{focus ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}</svg>{focus ? 'Exit full' : 'Full screen'}
+          <button className="btn icon-btn only-icon focus-btn" type="button" onClick={onFocus} aria-pressed={!!focus}
+            aria-label={focus ? 'Exit full screen board' : 'Full screen board'} title={focus ? 'Exit full screen' : 'Full screen board'}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">{focus ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}</svg>
           </button>
         )}
         {c.mode.kind === 'online' && <ChatButton />}
-        {!local && <button className="btn icon-btn" type="button" onClick={onMenu}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>Menu</button>}
+        {!local && <button className="btn icon-btn only-icon" type="button" onClick={onMenu} aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>}
       </div>
       <div className="turnline"><span className="turn-num">Turn {c.game.turn}{roomCode ? ` · room ${roomCode}` : ''}</span>
         {!local && <span className={`msg ${c.msgKind}`} role="status" aria-live="polite">{c.msg}</span>}</div>
