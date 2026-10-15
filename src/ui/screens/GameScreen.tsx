@@ -13,6 +13,7 @@ import { BEAST_SVG, CREEP_SVG } from '../game/board.js';
 import { Rules } from '../components/Rules';
 import { MoveDiagram, RangeDiagram } from '../components/HeroInfo';
 import { Modal, Switch, Accordion } from '../components/ui';
+import { ChatButton, ChatBubble } from '../components/Chat';
 
 const TEAM_NAMES = TN as Record<string, string>;
 
@@ -415,6 +416,7 @@ function Controls({ c, onMenu, roomCode, local, focus, onFocus }: { c: GameContr
             <svg viewBox="0 0 24 24" aria-hidden="true">{focus ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}</svg>
           </button>
         )}
+        {c.mode.kind === 'online' && <ChatButton />}
         {!local && <button className="btn icon-btn" type="button" onClick={onMenu}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>Menu</button>}
       </div>
       <div className="turnline"><span className="turn-num">Turn {c.game.turn}{roomCode ? ` · room ${roomCode}` : ''}</span>
@@ -574,6 +576,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
       <div className="board-host" ref={host} />
       {overlay}
       {offlineNotice}
+      {c.mode.kind === 'online' && <ChatBubble />}
       <Toast c={c} mirror={local && g.status === 'playing' && c.decider() === 'p2'} />
     </div>
   );

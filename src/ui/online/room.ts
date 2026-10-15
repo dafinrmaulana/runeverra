@@ -46,6 +46,15 @@ export class RoomClient {
   /** Called when both sides are ready: hand over the (caught-up) match. */
   onStart: ((game: any, fresh: boolean, clock?: any) => void) | null = null;
   canTime = false; // no authority for a match clock on the platform room
+  canChat = false;
+  chat: { side: Team; text: string; ts: number }[] = [];
+  unread = 0;
+  chatMuted = false;
+  chatOpen = false;
+  chatNotice = '';
+  sendChat(_text: string) { /* no chat on the platform room */ }
+  setChatMuted(_on: boolean) {}
+  setChatOpen(_on: boolean) {}
   clockMin = 0;
   setClock(_min: number) { /* Classic only here */ }
   controller: GameController | null = null;

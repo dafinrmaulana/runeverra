@@ -7,6 +7,7 @@ import { room } from './online';
 import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
 import { ClockPicker } from './components/ClockPicker';
+import { ChatButton } from './components/Chat';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
 import { ReplaysScreen } from './screens/ReplaysScreen';
@@ -183,13 +184,13 @@ export function App() {
       )}
 
       {screen === 'room' && (
-        <Setup title="Online" onBack={() => { room.leave(); setScreen('home'); }}>
+        <Setup chat title="Online" onBack={() => { room.leave(); setScreen('home'); }}>
           <div className="setup-body page" key="room"><RoomPanel onContinue={() => setScreen('heroes')} /></div>
         </Setup>
       )}
 
       {(screen === 'heroes' || screen === 'map') && (
-        <Setup title={screen === 'heroes' ? 'Choose heroes' : 'Choose battlefield'} step={screen === 'heroes' ? 1 : 2}
+        <Setup chat={kind === 'online'} title={screen === 'heroes' ? 'Choose heroes' : 'Choose battlefield'} step={screen === 'heroes' ? 1 : 2}
           onBack={() => setScreen(screen === 'map' ? 'heroes' : kind === 'online' ? 'room' : 'home')}
           next={screen === 'heroes' ? {
             label: 'Next: battlefield',
@@ -329,12 +330,12 @@ function heroHint(kind: ModeKind, first: HeroId[], p2: HeroId[], r: typeof room)
 }
 
 type SetupProps = {
-  title: string; step?: number; onBack: () => void; children: React.ReactNode;
+  title: string; step?: number; onBack: () => void; children: React.ReactNode; chat?: boolean;
   next?: { label: string; disabled: boolean; hint?: string; onClick: () => void };
 };
 /** The frame around the setup screens. It stays mounted while the screens inside change,
  *  so the header, the timeline and the footer hold still; only the body fades in. */
-function Setup({ title, step, onBack, children, next }: SetupProps) {
+function Setup({ title, step, onBack, children, next, chat }: SetupProps) {
   return (
     <div className="setup">
       <header className="step-head">
@@ -342,6 +343,8 @@ function Setup({ title, step, onBack, children, next }: SetupProps) {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         <h2>{title}</h2>
+        {chat && <span className="grow" />}
+        {chat && <ChatButton />}
       </header>
       {step && <Steps steps={['Heroes', 'Battlefield', 'Fight']} current={step} />}
       {children}

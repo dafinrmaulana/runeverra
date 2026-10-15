@@ -13,6 +13,8 @@ const TEAM_SIZE = 4;
 const STORE = 'runeverra-online-ws'; // per tab (sessionStorage): a reload rejoins, another tab is another player
 const WS_URL = (import.meta as any).env?.VITE_WS_URL as string | undefined;
 
+export type ChatMsg = { side: Team; text: string; ts: number };
+
 export type Presence = { picks?: string[]; ready?: boolean };
 
 export class WsRoomClient {
@@ -33,6 +35,12 @@ export class WsRoomClient {
   started = 0;
   onStart: ((game: any, fresh: boolean, clock?: any) => void) | null = null;
   canTime = true; // the relay keeps the match clock
+  canChat = true;
+  chat: ChatMsg[] = [];
+  unread = 0;
+  chatMuted = false;
+  chatOpen = false; // the chat sheet is showing: new messages count as read
+  chatNotice = '';
   clockMin = 0;
   controller: GameController | null = null;
   version = 0;
@@ -124,7 +132,7 @@ export class WsRoomClient {
     try { this.room?.close(); } catch { /* gone */ }
     this.room = null; this.joining = false;
     if (forget) {
-      Object.assign(this, { code: null, side: null, token: null, ready: false, match: 0, started: 0, opp: null, error: '' });
+      Object.assign(this, { code: null, side: null, token: null, ready: false, match: 0, started: 0, opp: null, error: '', chat: [], unread: 0 });
       this.save();
     }
     this.changed();
@@ -148,6 +156,12 @@ export class WsRoomClient {
     this.send({ t: 'clock', minutes: min });
     this.changed();
   }
+  sendChat(text: string) {
+    const t = text.trim();
+    if (t) this.send({ t: 'chat', text: t.slice(0, 200) });
+  }
+  setChatMuted(on: boolean) { this.chatMuted = on; if (on) this.unread = 0; this.changed(); }
+  setChatOpen(on: boolean) { this.chatOpen = on; if (on) this.unread = 0; this.changed(); }
   setReady(on: boolean) {
     this.ready = on;
     this.send({ t: 'ready', ready: on });
@@ -225,6 +239,23 @@ export class WsRoomClient {
       return;
     }
     if (msg.t === 'clock') { this.controller?.setClock(msg.clock || null); return; }
+    if (msg.t === 'chatlog') {
+      this.chat = (Array.isArray(msg.log) ? msg.log : []).slice(-100);
+      this.changed();
+      return;
+    }
+    if (msg.t === 'chat') {
+      this.chat = [...this.chat, { side: msg.side, text: String(msg.text || ''), ts: Number(msg.ts) || Date.now() }].slice(-100);
+      if (msg.side !== this.side && !this.chatMuted && !this.chatOpen) this.unread++;
+      this.changed();
+      return;
+    }
+    if (msg.t === 'chatlimit') {
+      this.chatNotice = 'Slow down a little.';
+      this.changed();
+      setTimeout(() => { this.chatNotice = ''; this.changed(); }, 2500);
+      return;
+    }
   }
 }
 
