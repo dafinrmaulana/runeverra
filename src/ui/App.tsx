@@ -8,6 +8,7 @@ import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
 import { ClockPicker } from './components/ClockPicker';
 import { Tour } from './components/Tour';
+import { Portal } from './components/Portal';
 import { ChatButton } from './components/Chat';
 import { LegalScreen, type LegalDoc } from './screens/LegalScreen';
 import { Rules } from './components/Rules';
@@ -21,7 +22,7 @@ import { resetTally } from './record';
 import { useInstall } from './pwa';
 import { Modal, Steps, Switch } from './components/ui';
 import { CursorPicker } from './cursor';
-import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
+import { ICON, pref, setPref, type HeroId, type Team } from './data';
 import type { DescMode } from './components/HeroInfo';
 
 type ModeKind = 'bot' | 'local' | 'online';
@@ -34,8 +35,6 @@ const LEVEL_TEXT: Record<Level, string> = {
   normal: 'Looks two turns ahead and punishes loose pieces.',
   hard: 'Thinks longer and deeper. Plan your trades.',
 };
-
-const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 function useRoom() { useSyncExternalStore(room.subscribe, room.getVersion); return room; }
 
@@ -156,7 +155,7 @@ export function App() {
 
   return (
     <>
-    <Floor mode={screen === 'home' ? 'home' : 'dim'} />
+    <Floor mode={screen === 'home' ? 'home' : screen === 'room' ? 'game' : 'dim'} />
     <div className="app">
       {screen === 'home' && (
         <div className="home page" key="home">
@@ -421,13 +420,12 @@ function Setup({ title, step, onBack, children, next, chat }: SetupProps) {
   );
 }
 
-const SIGIL_HOST = <svg className="sigil" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M24 4 L40 14 V30 L24 44 L8 30 V14 Z" /><path d="M24 14 V34 M16 20 H32" /></svg>;
-const SIGIL_JOIN = <svg className="sigil" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><circle cx="24" cy="24" r="18" /><path d="M24 6 V16 M24 32 V42 M6 24 H16 M32 24 H42" /><circle cx="24" cy="24" r="5" /></svg>;
+const SIGIL_HOST = <svg className="sigil" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><path d="M24 4 L40 14 V30 L24 44 L8 30 V14 Z" /><path d="M16 27 L24 18 L32 27" /><path d="M24 18 V35" /></svg>;
+const SIGIL_JOIN = <svg className="sigil" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><path d="M10 42 V22 a14 14 0 0 1 28 0 V42 Z" /><path d="M24 22 L29 29 L24 36 L19 29 Z" /></svg>;
 
-function HallBanner({ title, text }: { title: string; text: string }) {
+function PortalHead({ title, text }: { title: string; text: string }) {
   return (
-    <div className="hall-banner">
-      <div className="hall-art" aria-hidden="true">{HOME_WALL.map((h) => <span key={h} style={{ backgroundImage: `url(${ART(h)})` }} />)}</div>
+    <div className="portal-head">
       <h3>{title}</h3>
       <p>{text}</p>
     </div>
@@ -438,22 +436,28 @@ function RoomPanel({ onContinue }: { onContinue: () => void }) {
   const r = useRoom();
   const [code, setCode] = useState('');
   if (r.joining) {
-    return <div className="hall"><HallBanner title="Opening the gates" text="Connecting to the room…" /></div>;
+    return (
+      <div className="hall portal-page">
+        <PortalHead title="Opening the gates" text="Connecting to the room…" />
+        <Portal state="connecting" />
+      </div>
+    );
   }
   if (!r.room) {
     return (
-      <div className="hall">
-        <HallBanner title="The Gathering Hall" text="Raise a room and send its code, or answer a friend's call." />
+      <div className="hall portal-page">
+        <PortalHead title="The Teleport Altar" text="Open a portal and send its code, or step through a friend's." />
+        <Portal state="idle" />
         <div className="gates">
           <div className="gate host">
             {SIGIL_HOST}
-            <h4>Raise a room</h4>
+            <h4>Open a portal</h4>
             <p>You play Ivory, move first and choose the battlefield.</p>
             <button type="button" className="btn primary big" onClick={() => r.create()}>Create room</button>
           </div>
           <div className="gate join">
             {SIGIL_JOIN}
-            <h4>Answer a call</h4>
+            <h4>Step through</h4>
             <p>Type the 5-letter code your friend sent you.</p>
             <form className="join-form" onSubmit={(e) => { e.preventDefault(); r.join(code); }}>
               <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={5} placeholder="•••••" aria-label="Room code" autoComplete="off" spellCheck={false} />
@@ -470,12 +474,13 @@ function RoomPanel({ onContinue }: { onContinue: () => void }) {
   }
   const opp: Team = r.side === 'p1' ? 'p2' : 'p1';
   return (
-    <div className="hall">
-      <HallBanner title="The Gathering Hall" text={r.opp ? 'Your opponent has arrived. Choose your heroes.' : 'Send the code below. The hall waits for your opponent.'} />
+    <div className="hall portal-page">
+      <PortalHead title={r.opp ? 'Portal linked' : 'Portal open'} text={r.opp ? 'Your opponent has stepped through. Choose your heroes.' : 'Send the code below and wait for your opponent to step through.'} />
+      <Portal state={r.opp ? 'linked' : 'open'} />
       <div className="table">
         <div className="plaque">
-          <small>Room code</small>
-          <div className="bigcode">{r.code}</div>
+          <small>Portal code</small>
+          <div className="bigcode" aria-label={`Room code ${r.code}`}>{(r.code || '').split('').map((ch, i) => <span key={i}>{ch}</span>)}</div>
           <button type="button" className="btn ghost" onClick={() => { try { navigator.clipboard.writeText(r.code!); } catch { /* none */ } }}>Copy code</button>
         </div>
         <div className="seats">

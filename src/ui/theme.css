@@ -838,3 +838,40 @@ html { overflow-x: clip; }
   .ring { filter: none; }
   .floor-fog .g3, .floor-fog .g4, .floor-fog .g6 { display: none; }
 }
+
+/* ---------- online room: the teleport altar ---------- */
+.portal-page { gap: 14px; justify-items: center; }
+.portal-page > * { width: 100%; max-width: 640px; }
+.portal-head { text-align: center; display: grid; gap: 4px; }
+.portal-head h3 { margin: 0; font: 800 clamp(1.4rem, 5.4vw, 2.1rem)/1.05 var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--sand); text-shadow: 0 0 18px rgba(20, 15, 12, .9); }
+.portal-head p { margin: 0; color: var(--bone); opacity: .85; }
+.portal { --glow: 227, 184, 120; position: relative; width: min(74vw, 330px); aspect-ratio: 1; margin: 36px auto 30px; }
+.portal.open, .portal.connecting { --glow: 170, 215, 170; }
+.portal.linked { --glow: 130, 232, 200; }
+.portal-disc { position: absolute; inset: -9%; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #241e19 0 60%, #1b1612 61% 71%, #2c241d 72% 74%, #141010 75% 100%); box-shadow: 0 18px 46px rgba(0, 0, 0, .6), inset 0 0 0 2px rgba(227, 184, 120, .18); }
+.portal-glow { position: absolute; inset: 6%; border-radius: 50%; background: radial-gradient(circle, rgba(var(--glow), .42), rgba(var(--glow), .12) 55%, transparent 72%); animation: portalbreath 4.6s ease-in-out infinite; }
+.portal-rings { position: absolute; inset: 0; }
+.portal .floor-circle { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform: none; opacity: 1; }
+.portal .ring { filter: drop-shadow(0 0 6px rgba(var(--glow), .7)); }
+.portal.open .ring *, .portal.connecting .ring * { stroke: rgb(var(--glow)); }
+.portal.linked .ring * { stroke: #b6f6e2; }
+.portal.connecting .ring.r1 { animation-duration: 14s; } .portal.connecting .ring.r2 { animation-duration: 10s; } .portal.connecting .ring.r3 { animation-duration: 6s; }
+.portal.linked .ring.r1 { animation-duration: 60s; } .portal.linked .ring.r2 { animation-duration: 40s; } .portal.linked .ring.r3 { animation-duration: 20s; }
+.pylon { position: absolute; width: 11%; height: 11%; background: linear-gradient(135deg, #3a3029, #1c1612); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); filter: drop-shadow(0 0 7px rgba(var(--glow), .9)); }
+.pylon::after { content: ""; position: absolute; inset: 30%; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: rgb(var(--glow)); animation: portalbreath 3.2s ease-in-out infinite; }
+.pylon.n { left: 44.5%; top: -7%; } .pylon.s { left: 44.5%; bottom: -7%; } .pylon.w { left: -7%; top: 44.5%; } .pylon.e { right: -7%; top: 44.5%; }
+.mote { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: rgb(var(--glow)); box-shadow: 0 0 8px rgb(var(--glow)); opacity: 0; animation: portalmote 4.8s ease-out infinite; }
+.portal.idle .mote { animation-duration: 7s; opacity: 0; }
+.portal-pulse { position: absolute; inset: 24%; border-radius: 50%; border: 2px solid rgba(var(--glow), .8); opacity: 0; }
+.portal.open .portal-pulse, .portal.linked .portal-pulse { animation: portalpulse 3.2s ease-out infinite; }
+.portal.linked .portal-glow { animation-duration: 2.4s; }
+@keyframes portalbreath { 50% { opacity: .55; transform: scale(1.05); } }
+@keyframes portalmote { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 15% { opacity: .95; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1); } }
+@keyframes portalpulse { 0% { opacity: .85; transform: scale(.6); } 100% { opacity: 0; transform: scale(2.5); } }
+@media (prefers-reduced-motion: reduce) { .portal * { animation: none !important; } }
+.table { display: grid; gap: 14px; }
+.plaque { display: grid; gap: 8px; justify-items: center; padding: 14px 12px; background: rgba(36, 30, 25, .94); border: 1px solid var(--line-hi); border-radius: 2px; }
+.plaque small { font-family: var(--f-mono); font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.bigcode { display: flex; gap: 8px; justify-content: center; }
+.bigcode span { width: clamp(40px, 12vw, 56px); height: clamp(52px, 15vw, 70px); display: grid; place-items: center; font: 800 clamp(1.5rem, 7vw, 2.2rem) var(--f-display); color: var(--sand); background: #15110e; border: 1px solid var(--sand-dk); border-radius: 2px; box-shadow: inset 0 0 14px rgba(227, 184, 120, .12), 0 0 12px rgba(227, 184, 120, .12); }

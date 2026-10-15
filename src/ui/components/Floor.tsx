@@ -97,7 +97,7 @@ function StoneFloor() {
 const VB = '-600 -600 1200 1200';
 
 /** Three layers that turn at their own pace: the rune band, the great star, the inner seal. */
-function Rings({ lit }: { lit?: boolean }) {
+export function Rings({ lit }: { lit?: boolean }) {
   return (
     <div className={`floor-circle${lit ? ' lit' : ' base'}`}>
       <svg className="ring r1" viewBox={VB} aria-hidden="true">
