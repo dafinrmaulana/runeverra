@@ -10,6 +10,8 @@ import { createBoard } from './board.js';
 import { tk, pref, setPref, type Team } from '../data';
 import { addResult, getTally, resetTally, sideA } from '../record';
 import { saveReplay } from '../replays';
+import { sfx } from '../audio';
+import { sfxFor } from '../../sfx-map.js';
 import { createClock, setRunning, remaining, expired, fromSnapshot } from '../../clock.js';
 
 export type Mode =
@@ -126,7 +128,7 @@ export class GameController {
   }
   refresh() { this.render({}); }
 
-  say(text: string, kind: '' | 'ok' | 'err' = '') { this.msg = text; this.msgKind = kind; }
+  say(text: string, kind: '' | 'ok' | 'err' = '') { this.msg = text; this.msgKind = kind; if (kind === 'err') sfx('error'); }
   clearSel() { this.selectedId = null; this.armed = false; }
 
   // ---------- decisions ----------
@@ -146,6 +148,7 @@ export class GameController {
     const newLines = g.log.slice(before.log.length).map((l: any) => l.text).join(' ');
     if (newLines) this.say((src === 'bot' ? 'Bot: ' : src === 'remote' ? 'Opponent: ' : '') + newLines, 'ok');
     else if (g.phase === 'react') this.say(`${label(g.units[g.pending.plantId])} can interrupt this action.`);
+    this.playSound(before, g, src);
     const plan = this.board ? this.board.plan(before, g) : { deathDelay: 0, hop: null };
     const hits = g.lastAction && g.lastAction !== before.lastAction ? (g.lastAction.hits || []) : [];
     if (g.phase === 'beast' && this.deciderIsHuman()) this.selectedId = g.pending.unitId;
@@ -165,6 +168,17 @@ export class GameController {
       });
     }
     return true;
+  }
+
+  /** The sound of what just happened, then the end-of-match fanfare, then a chime when it is the player's turn. */
+  private playSound(before: any, g: any, src: Source) {
+    sfx(sfxFor(g.lastAction && g.lastAction !== before.lastAction ? g.lastAction : null, g.units));
+    if (before.status === 'playing' && g.status !== 'playing') {
+      const mine = this.mode.kind === 'local' ? null : g.status === this.viewer();
+      window.setTimeout(() => sfx(mine === null ? 'victory' : mine ? 'victory' : 'defeat'), 420);
+    } else if (src !== 'me' && this.deciderIsHuman() && g.phase === 'main') {
+      window.setTimeout(() => sfx('turn'), 360);
+    }
   }
 
   /** Replace the match without effects (online catch-up). */

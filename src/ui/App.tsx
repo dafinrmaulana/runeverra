@@ -9,6 +9,7 @@ import { MapPicker } from './components/MapPicker';
 import { ClockPicker } from './components/ClockPicker';
 import { Tour } from './components/Tour';
 import { Portal } from './components/Portal';
+import { SoundSetting } from './components/SoundSetting';
 import { ChatButton } from './components/Chat';
 import { LegalScreen, type LegalDoc } from './screens/LegalScreen';
 import { Rules } from './components/Rules';
@@ -349,6 +350,7 @@ export function App() {
         <div className="settings">
           <h3>Mouse cursor</h3>
           <CursorPicker />
+          <SoundSetting />
           {pwa.kind === 'prompt' && (
             <div className="install-row"><h3>Install app</h3><p className="note">Add Runeverra to your home screen. Bot and face to face games also work offline.</p>
               <button className="btn" type="button" onClick={() => pwa.install()}>Install Runeverra</button></div>

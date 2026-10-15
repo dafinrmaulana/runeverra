@@ -15,6 +15,7 @@ import { MoveDiagram, RangeDiagram } from '../components/HeroInfo';
 import { Modal, Switch, Accordion } from '../components/ui';
 import { ChatButton, ChatBubble } from '../components/Chat';
 import { Rune, CostChip } from '../components/Rune';
+import { SoundSetting } from '../components/SoundSetting';
 
 const TEAM_NAMES = TN as Record<string, string>;
 
@@ -623,6 +624,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           <Switch checked={c.showScore} onChange={(v) => c.setScore(v)} label={<><b>Show score</b><small>Wins for each side across rematches: {seriesLine(c)}</small></>} />
           <button className="btn ghost" type="button" onClick={() => c.resetScore()} disabled={!c.tally().a && !c.tally().b}>Reset</button>
         </div>
+        <div className="menu-setting"><SoundSetting /></div>
         <div className="menu-setting cursor-setting"><b>Mouse cursor</b><CursorPicker /></div>
         <button className="btn big" type="button" onClick={() => { setMenu(false); setRules(true); }}>How to play</button>
         {c.mode.kind !== 'online' && <button className="btn big" type="button" onClick={() => { setMenu(false); onRematch(); }}>Restart match</button>}
