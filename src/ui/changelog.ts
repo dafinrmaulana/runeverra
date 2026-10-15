@@ -14,6 +14,8 @@ export const CHANGELOG: Patch[] = [
       { tag: 'new', text: 'Online chat: type a message or tap a quick phrase. New messages pop up over the board, and you can mute chat any time.' },
       { tag: 'new', text: 'Full screen board for bot and online games, so the board is bigger on your phone.' },
       { tag: 'new', text: 'Install Runeverra as an app from Settings. Games against the bot and face to face also work offline.' },
+      { tag: 'ui', text: 'Skill tokens are now called runes, everywhere in the game.' },
+      { tag: 'ui', text: 'A new epic backdrop: rays of light, glowing embers and a slowly turning rune circle behind every screen.' },
       { tag: 'new', text: 'Terms of Service, Privacy Policy and Copyright pages, with credits for the team and honorable mentions.' },
     ],
   },
