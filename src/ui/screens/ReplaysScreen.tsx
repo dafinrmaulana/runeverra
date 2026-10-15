@@ -11,7 +11,7 @@ const TEAM_NAMES = TN as Record<string, string>;
 function buildStates(replay: Replay) {
   const states: any[] = [createMatch(replay.setup)];
   for (const a of replay.trail) {
-    const res = applyAction(states[states.length - 1], a);
+    const res = applyAction(states[states.length - 1], a, { trusted: a.type === 'timeout' });
     states.push(res.ok ? res.state : states[states.length - 1]); // a saved trail is always legal; stay put if not
   }
   return states;

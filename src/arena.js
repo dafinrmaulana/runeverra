@@ -138,7 +138,7 @@ const forward = (team) => (team === 'p1' ? -1 : 1);
 // ---------- setup ----------
 export const SLOTS = { p1: ['c1', 'd1', 'e1', 'f1'], p2: ['f8', 'e8', 'd8', 'c8'] };
 
-export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } = {}) {
+export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true, clockMs = 0 } = {}) {
   const teams = { p1: p1 || ['hasim', 'hexor', 'magumba', 'plantae'], p2: p2 || ['genga', 'aqna', 'plantae', 'hasim'] };
   const units = {};
   for (const team of TEAMS) {
@@ -175,7 +175,7 @@ export function createMatch({ p1, p2, map = 'oasis', seed = 0, creeps = true } =
   }
   return {
     size: BOARD_SIZE, turn: 1, current: 'p1', status: 'playing', phase: 'main', pending: null,
-    map, teams, seed, setup: { p1: teams.p1, p2: teams.p2, map, seed, creeps }, trail: [],
+    map, teams, seed, setup: { p1: teams.p1, p2: teams.p2, map, seed, creeps, clockMs }, trail: [],
     energy: { p1: ENERGY.start, p2: ENERGY.start },
     units, blocks, iceBy: {},
     log: [{ turn: 0, team: null, text: `Match begins on ${m.name}. Ivory moves first.` }],
@@ -590,6 +590,15 @@ function newLast(s, action) {
  * action straight from listActions(state) (the bot); everything else is validated.
  */
 export function applyAction(state, action, { trusted = false } = {}) {
+  // Running out of time is decided outside the rules (by a clock), so only trusted callers may end a match this way.
+  if (action && action.type === 'timeout') {
+    if (!trusted || state.status !== 'playing' || !TEAMS.includes(action.team)) return { ok: false, reason: 'Not allowed.', state };
+    const t = clone(state);
+    t.trail.push(structuredClone(action));
+    t.status = other(action.team); t.phase = 'main'; t.pending = null;
+    t.log.push({ turn: t.turn, team: t.status, text: `${TEAM_NAMES[action.team]} ran out of time. ${TEAM_NAMES[t.status]} wins.` });
+    return { ok: true, state: t, reason: null };
+  }
   if (!trusted) {
     const v = validateAction(state, action);
     if (!v.ok) return { ok: false, reason: v.reason, state };

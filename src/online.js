@@ -54,7 +54,7 @@ export function actionAt(state, index) {
 
 /** The match both clients build from the agreed setup. */
 export function matchFromConfig(cfg) {
-  return createMatch({ p1: cfg.p1, p2: cfg.p2, map: cfg.map, creeps: cfg.creeps !== false, seed: cfg.seed || 0 });
+  return createMatch({ p1: cfg.p1, p2: cfg.p2, map: cfg.map, creeps: cfg.creeps !== false, seed: cfg.seed || 0, clockMs: cfg.clockMs || 0 });
 }
 
 /**
