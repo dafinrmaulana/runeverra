@@ -386,9 +386,17 @@ type SetupProps = {
 /** The frame around the setup screens. It stays mounted while the screens inside change,
  *  so the header, the timeline and the footer hold still; only the body fades in. */
 function Setup({ title, step, onBack, children, next, chat }: SetupProps) {
+  // The header only gets a backdrop once the page has scrolled under it.
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const on = () => setStuck(window.scrollY > 6);
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
   return (
     <div className="setup">
-      <div className="setup-top">
+      <div className={`setup-top${stuck ? ' stuck' : ''}`}>
         <header className="step-head">
           <button type="button" className="back-btn" onClick={onBack} aria-label="Back">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
