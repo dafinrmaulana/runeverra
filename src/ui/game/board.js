@@ -94,7 +94,8 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
   // releasing on a square moves there. A plain tap still works as before.
   let swallowClick = false;
   let drag = null; // { id, from, x0, y0, el, base, moved, over }
-  const DRAG_START = 6;
+  // A finger wobbles far more than a mouse: a touch only becomes a drag after a real swipe.
+  const DRAG_START = 6, DRAG_START_TOUCH = 16;
   const posFromPoint = (x, y) => {
     const r = boardEl.getBoundingClientRect();
     const dc = Math.floor(((x - r.left) / r.width) * BOARD_SIZE), dr = Math.floor(((y - r.top) / r.height) * BOARD_SIZE);
@@ -125,13 +126,13 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
     if (!res) return;
     if (res.fresh) swallowClick = true; // the press already selected it
     const el = pieceEls.get(res.id) || null;
-    drag = { id: res.id, from, x0: e.clientX, y0: e.clientY, el, base: el ? el.style.transform : '', moved: false, over: null };
+    drag = { id: res.id, from, fresh: !!res.fresh, start: e.pointerType === 'mouse' ? DRAG_START : DRAG_START_TOUCH, x0: e.clientX, y0: e.clientY, el, base: el ? el.style.transform : '', moved: false, over: null };
     if (el) el.classList.add('lifted');
   });
   boardEl.addEventListener('pointermove', (e) => {
     if (!drag) return;
     const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
-    if (!drag.moved && Math.hypot(dx, dy) < DRAG_START) return;
+    if (!drag.moved && Math.hypot(dx, dy) < drag.start) return;
     if (!drag.moved) {
       drag.moved = true; swallowClick = true; boardEl.classList.add('dragging'); drag.el?.classList.add('carried');
       try { boardEl.setPointerCapture(e.pointerId); } catch { /* keeps working without capture */ }
@@ -139,9 +140,14 @@ export function createBoard(host, { onCell, onPress = null, onDrop = null, flip 
     if (drag.el) drag.el.style.transform = `${drag.base} translate(${dx}px, ${dy}px)`;
     setOver(posFromPoint(e.clientX, e.clientY));
   });
-  const onUp = () => {
+  const onUp = (e) => {
     if (!drag) return;
-    endDrag(true);
+    // Let go back on the square it was lifted from: that was a tap that wobbled, not a move.
+    // (The pointer is captured by now, so no click will reach the square: do what the tap would have.)
+    const tap = drag.moved && e && (() => { const p = posFromPoint(e.clientX, e.clientY); return p && samePos(p, drag.from); })();
+    const { from, fresh } = drag;
+    endDrag(!tap);
+    if (tap && !fresh) { swallowClick = false; onCell(from); return; }
     // The click (if any) follows this event at once; never let a stale swallow eat a later tap.
     setTimeout(() => { swallowClick = false; }, 0);
   };

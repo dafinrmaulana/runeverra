@@ -15,6 +15,7 @@ export const CHANGELOG: Patch[] = [
       { tag: 'fix', text: 'Online: fixed matches where both players suddenly saw "Opponent\'s turn". Several decisions in a row (like a move and then a follow-up choice) no longer get out of step.' },
       { tag: 'fix', text: 'Online: fewer random disconnects. The game now keeps the connection alive and reconnects on its own, including when you switch back to the tab.' },
       { tag: 'ui', text: 'Online: when someone disconnects, a notice now pauses the board instead of a long message covering the tokens on mobile. It also tells you whether it is you or your opponent.' },
+      { tag: 'fix', text: 'Mobile: a tap that wobbles a little no longer counts as a drag, so selecting and deselecting a hero works reliably.' },
       { tag: 'ui', text: 'The home tagline now reads "Outsmart one opponent".' },
     ],
   },
