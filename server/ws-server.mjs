@@ -18,10 +18,15 @@ import {
   applyAction, validateAction, toMove, HEROES, TEAM_SIZE,
 } from '../src/arena.js';
 import { newRoomCode, cleanCode, matchFromConfig } from '../src/online.js';
+import { createClock, setRunning, remaining, snapshot, minutesToMs } from '../src/clock.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const ROOM_TTL_MS = 5 * 60 * 1000; // a room with nobody connected is dropped after this
 const MAX_ROOMS = 2000; // a sane ceiling for a hobby server; refuses new rooms past this
+
+// One "minute" of match time. Tests shrink it so a clock can run out in milliseconds.
+const UNIT_MS = Number(process.env.CLOCK_UNIT_MS) || 60000;
+const toMs = (minutes) => (minutesToMs(minutes) / 60000) * UNIT_MS;
 
 const rooms = new Map(); // code -> Room
 
@@ -40,14 +45,14 @@ function newSeat() {
 function newRoom(code) {
   return {
     code, seats: { p1: newSeat(), p2: newSeat() },
-    map: 'oasis', creeps: true, match: 0, started: 0, game: null, cleanupAt: null,
+    map: 'oasis', creeps: true, clockMs: 0, clock: null, clockTimer: null, match: 0, started: 0, game: null, cleanupAt: null,
   };
 }
 
 function lobbyMsg(room, side) {
   const me = room.seats[side], opp = room.seats[other(side)];
   return {
-    t: 'lobby', side, map: room.map, creeps: room.creeps, match: room.match, started: room.started,
+    t: 'lobby', side, map: room.map, creeps: room.creeps, clockMs: room.clockMs, match: room.match, started: room.started,
     you: { picks: me.picks, ready: me.ready },
     opp: opp.connected ? { picks: opp.picks, ready: opp.ready } : null,
   };
@@ -62,19 +67,47 @@ function broadcastOpponent(room, side, connected) {
   if (opp.connected) send(opp.ws, { t: 'opponent', connected });
 }
 
+// ---------- match clock (server-authoritative; see src/clock.js) ----------
+const clockSnap = (room) => (room.clock ? snapshot(room.clock, Date.now()) : null);
+
+/** Whose clock runs now: whoever decides, unless their opponent is away (then it waits). */
+function runClock(room) {
+  if (!room.clock) return;
+  const g = room.game;
+  const t = g && g.status === 'playing' ? toMove(g) : null;
+  const away = t && !room.seats[other(t)].connected;
+  room.clock = setRunning(room.clock, t && !away ? t : null, Date.now());
+  if (room.clockTimer) { clearTimeout(room.clockTimer); room.clockTimer = null; }
+  const who = room.clock.running;
+  if (who) room.clockTimer = setTimeout(() => timeOut(room), remaining(room.clock, who, Date.now()));
+}
+
+function timeOut(room) {
+  room.clockTimer = null;
+  const team = room.clock && room.clock.running;
+  if (!team || !room.game || room.game.status !== 'playing') return;
+  const action = { type: 'timeout', team };
+  room.game = applyAction(room.game, action, { trusted: true }).state;
+  room.clock = setRunning(room.clock, null, Date.now());
+  for (const side of ['p1', 'p2']) if (room.seats[side].connected) send(room.seats[side].ws, { t: 'move', action, clock: clockSnap(room) });
+  afterMatchEnds(room);
+}
+
 /** Both sides ready, with a pending round and full picks: start (or restart) the match. */
 function maybeStart(room) {
   const p1 = room.seats.p1, p2 = room.seats.p2;
   if (!p1.ready || !p2.ready || room.match <= room.started) return;
   if (!validPicks(p1.picks) || !validPicks(p2.picks)) return;
   let game;
-  try { game = matchFromConfig({ p1: p1.picks, p2: p2.picks, map: room.map, creeps: room.creeps }); } catch { return; }
+  try { game = matchFromConfig({ p1: p1.picks, p2: p2.picks, map: room.map, creeps: room.creeps, clockMs: room.clockMs }); } catch { return; }
   room.game = game;
   room.started = room.match;
   p1.ready = false; p2.ready = false;
+  room.clock = room.clockMs > 0 ? createClock(room.clockMs) : null;
+  runClock(room);
   for (const side of ['p1', 'p2']) {
     const seat = room.seats[side];
-    if (seat.connected) send(seat.ws, { t: 'start', game, fresh: true, match: room.match });
+    if (seat.connected) send(seat.ws, { t: 'start', game, fresh: true, match: room.match, clock: clockSnap(room) });
   }
 }
 
@@ -84,7 +117,7 @@ function afterMatchEnds(room) { broadcastLobby(room); }
 function scheduleCleanup(room) {
   if (room.cleanupAt) clearTimeout(room.cleanupAt);
   room.cleanupAt = setTimeout(() => {
-    if (!room.seats.p1.connected && !room.seats.p2.connected) rooms.delete(room.code);
+    if (!room.seats.p1.connected && !room.seats.p2.connected) { if (room.clockTimer) clearTimeout(room.clockTimer); rooms.delete(room.code); }
   }, ROOM_TTL_MS);
 }
 
@@ -123,7 +156,10 @@ function handleHello(ws, msg) {
   if (room.game && room.game.status === 'playing') {
     // mid-match: the other side only needs a presence pulse, not a lobby refresh.
     broadcastOpponent(room, side, true);
-    send(ws, { t: 'sync', game: room.game, match: room.match });
+    runClock(room); // the opponent's clock was waiting for this player
+    const other_ = room.seats[other(side)];
+    if (other_.connected) send(other_.ws, { t: 'clock', clock: clockSnap(room) });
+    send(ws, { t: 'sync', game: room.game, match: room.match, clock: clockSnap(room) });
   } else {
     // pre-match: both sides' picks/ready view may be stale now — refresh both.
     broadcastLobby(room);
@@ -140,6 +176,12 @@ function handlePicks(room, side, msg) {
 function handleMap(room, side, msg) {
   if (side !== 'p1' || typeof msg.map !== 'string') return;
   room.map = msg.map; room.creeps = msg.creeps !== false;
+  broadcastLobby(room);
+}
+
+function handleClock(room, side, msg) {
+  if (side !== 'p1' || room.game?.status === 'playing') return;
+  room.clockMs = toMs(msg.minutes);
   broadcastLobby(room);
 }
 
@@ -162,8 +204,9 @@ function handleAction(room, side, msg) {
     return send(room.seats[side].ws, { t: 'error', message: check.reason || 'That move is not legal.' });
   }
   room.game = res.state;
+  runClock(room);
   const opp = room.seats[other(side)];
-  if (opp.connected) send(opp.ws, { t: 'move', action: msg.action });
+  if (opp.connected) send(opp.ws, { t: 'move', action: msg.action, clock: clockSnap(room) });
   if (room.game.status !== 'playing') afterMatchEnds(room);
 }
 
@@ -192,6 +235,7 @@ wss.on('connection', (ws) => {
     if (!room || !ws.side) return;
     if (msg.t === 'picks') return handlePicks(room, ws.side, msg);
     if (msg.t === 'map') return handleMap(room, ws.side, msg);
+    if (msg.t === 'clock') return handleClock(room, ws.side, msg);
     if (msg.t === 'ready') return handleReady(room, ws.side, msg);
     if (msg.t === 'action') return handleAction(room, ws.side, msg);
   });
@@ -201,8 +245,12 @@ wss.on('connection', (ws) => {
     const seat = room.seats[ws.side];
     if (seat.ws !== ws) return; // an old socket closing after the player already came back: nothing changed
     seat.connected = false; seat.ws = null;
-    if (room.game && room.game.status === 'playing') broadcastOpponent(room, ws.side, false);
-    else broadcastLobby(room); // lets the remaining side see the seat go empty
+    if (room.game && room.game.status === 'playing') {
+      broadcastOpponent(room, ws.side, false);
+      runClock(room); // an absent opponent pauses the clock of whoever is waiting
+      const left = room.seats[other(ws.side)];
+      if (left.connected) send(left.ws, { t: 'clock', clock: clockSnap(room) });
+    } else broadcastLobby(room); // lets the remaining side see the seat go empty
     scheduleCleanup(room);
   });
 });
