@@ -10,7 +10,6 @@ import { ClockPicker } from './components/ClockPicker';
 import { Tour } from './components/Tour';
 import { Portal } from './components/Portal';
 import { SoundSetting } from './components/SoundSetting';
-import { setMusicMood } from './music';
 import { ChatButton } from './components/Chat';
 import { LegalScreen, type LegalDoc } from './screens/LegalScreen';
 import { Rules } from './components/Rules';
@@ -65,9 +64,6 @@ export function App() {
   const [seenVer, setSeenVer] = useState<string>(pref('seenVersion', ''));
   const r = useRoom();
   const pwa = useInstall();
-
-  // The soundtrack is fullest on the home screen and sits back during a match.
-  useEffect(() => { setMusicMood(screen === 'home' ? 'home' : screen === 'game' ? 'game' : 'calm'); }, [screen]);
 
   // A new screen always opens at its top, not wherever the last one was scrolled to.
   useEffect(() => { window.scrollTo(0, 0); }, [screen]);

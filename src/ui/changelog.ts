@@ -19,7 +19,6 @@ export const CHANGELOG: Patch[] = [
       { tag: 'fix', text: 'The home screen now fits phone screens, and the demo\'s skill names no longer hide behind the characters.' },
       { tag: 'balance', text: 'Oasis Bazaar and Savanna Crossing have new obstacle spots, so obstacles now sit on both square colours. Heroes that only move on one colour (like Magumba) are no longer walled off.' },
       { tag: 'ui', text: 'Game controls fit on one line on phones: skill, undo and redo, full screen and menu (the last two are icon buttons).' },
-      { tag: 'new', text: 'An original soundtrack: a dark, driving theme with a galloping cello figure, war drums, horns and a wordless choir that builds over about 50 seconds and loops. It is fullest on the home screen and sits back during a match. It has its own volume in Settings.' },
       { tag: 'new', text: 'Sound effects with weight: steel scrapes and rings on a takedown, wind rushes past when Hasim leaps, thunder rolls for Storm Hammer, a heavy parry clang for interrupts, groaning roots, a deep growl, war horns and drums. Set the volume in Settings or the game menu; all the way down is silent.' },
       { tag: 'new', text: 'Sharing the Runeverra link now shows a preview card, and the installed app and browser tab have a proper rune icon.' },
       { tag: 'new', text: 'The online room is now a teleport altar: a rune circle that glows sand while you wait, turns jade when your opponent steps through, and shows the room code in rune slots.' },
