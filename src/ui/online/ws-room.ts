@@ -199,6 +199,7 @@ export class WsRoomClient {
     if (msg.t === 'lobby') {
       this.map = msg.map; this.creeps = msg.creeps;
       this.clockMin = Math.round((msg.clockMs || 0) / 60000);
+      this.ready = !!msg.you?.ready; // the server clears Ready when the host changes the time
       this.match = msg.match; this.started = msg.started;
       this.opp = msg.opp;
       this.changed();

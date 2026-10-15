@@ -85,3 +85,18 @@ test('opponent away pauses my clock; coming back resumes it', async () => {
   assert.ok(Math.abs(sync.clock.ms.p1 - frozen) < 60, 'p1 did not drain while b was away');
   a.close(); b2.close();
 });
+
+test('changing the time after the guest is Ready clears Ready, so both must agree again', async () => {
+  const a = await connect(); send(a, { t: 'hello' }); await sleep(80);
+  const code = find(a, 'joined').code;
+  const b = await connect(); send(b, { t: 'hello', code }); await sleep(80);
+  for (const w of [a, b]) send(w, { t: 'picks', picks: PICKS });
+  await sleep(60);
+  send(b, { t: 'ready', ready: true }); await sleep(60);
+  send(a, { t: 'clock', minutes: 5 }); await sleep(60);
+  const last = [...b.msgs].reverse().find((m) => m.t === 'lobby');
+  assert.equal(last.you.ready, false, 'guest has to confirm the new time');
+  send(a, { t: 'ready', ready: true }); await sleep(100);
+  assert.equal(find(a, 'start'), undefined, 'no match starts on a time the guest has not accepted');
+  a.close(); b.close();
+});

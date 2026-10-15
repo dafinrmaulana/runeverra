@@ -182,6 +182,7 @@ function handleMap(room, side, msg) {
 function handleClock(room, side, msg) {
   if (side !== 'p1' || room.game?.status === 'playing') return;
   room.clockMs = toMs(msg.minutes);
+  room.seats.p1.ready = false; room.seats.p2.ready = false; // both must agree to the new time
   broadcastLobby(room);
 }
 
