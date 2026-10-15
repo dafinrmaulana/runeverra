@@ -8,6 +8,14 @@ export const TAG_LABEL: Record<Tag, string> = { new: 'New', balance: 'Balance', 
 
 export const CHANGELOG: Patch[] = [
   {
+    version: '0.5.0', date: '2026-10-15', title: 'Timed mode',
+    entries: [
+      { tag: 'new', text: 'Timed mode: pick a time for each player (3, 5, 10 minutes or your own number). Whoever runs out of time loses, so a match can no longer stall forever.' },
+      { tag: 'new', text: 'Online: the server keeps the clock for both players, and it waits while your opponent is disconnected.' },
+      { tag: 'balance', text: 'Undo and redo are off in Timed matches. Classic matches are unchanged.' },
+    ],
+  },
+  {
     version: '0.4.0', date: '2026-10-15', title: 'Patch notes & online fixes',
     entries: [
       { tag: 'new', text: 'Patch notes are now in the game. Open them from the home screen to see what changed in every update.' },
