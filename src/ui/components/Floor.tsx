@@ -1,7 +1,7 @@
 // The Runeverra floor: a mossy medieval stone floor seen from above, with a great rune circle that turns
 // forever. It sits behind every screen: full on the home screen, a faint turning circle elsewhere, and
 // barely there during a match. It answers the pointer: a soft light follows it and the circle's lines
-// glow under it, and a tap sends a ripple across the floor. Everything is SVG and CSS, no image files.
+// glow under it, shining through a slow mist that drifts over the whole floor. Everything is SVG and CSS, no image files.
 import { useEffect, useMemo, useRef } from 'react';
 
 export type FloorMode = 'home' | 'dim' | 'game';
@@ -129,36 +129,24 @@ function Rings({ lit }: { lit?: boolean }) {
 
 export function Floor({ mode }: { mode: FloorMode }) {
   const root = useRef<HTMLDivElement>(null);
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
 
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     let raf = 0, x = 0.5, y = 0.5;
     const move = (e: PointerEvent) => {
       x = e.clientX; y = e.clientY;
       if (!raf) raf = requestAnimationFrame(() => { raf = 0; el.style.setProperty('--mx', `${x}px`); el.style.setProperty('--my', `${y}px`); el.classList.add('touched'); });
     };
-    const tap = (e: PointerEvent) => {
-      move(e);
-      if (still || modeRef.current === 'game') return;
-      const rip = document.createElement('i');
-      rip.className = 'floor-ripple';
-      rip.style.left = `${e.clientX}px`; rip.style.top = `${e.clientY}px`;
-      el.appendChild(rip);
-      rip.addEventListener('animationend', () => rip.remove());
-    };
     window.addEventListener('pointermove', move, { passive: true });
-    window.addEventListener('pointerdown', tap, { passive: true });
-    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerdown', tap); cancelAnimationFrame(raf); };
+    return () => { window.removeEventListener('pointermove', move); cancelAnimationFrame(raf); };
   }, []);
 
   return (
-    <div className={`floor ${mode}`} ref={root} aria-hidden="true">
+    <div className={`floor f-${mode}`} ref={root} aria-hidden="true">
       <StoneFloor />
       <Rings />
+      <div className="floor-fog"><i className="g1" /><i className="g2" /><i className="g3" /><i className="g4" /><i className="g5" /><i className="g6" /></div>
       <div className="floor-lit"><Rings lit /></div>
       <div className="floor-vignette" />
     </div>

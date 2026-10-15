@@ -498,3 +498,12 @@ test('Ge\'nga steps 1 in a + pattern; his beast steps 1 in any direction, like H
   assert.match(reject(after, mv('p2-beast', 'h7')), /can't reach/);
   act(after, mv('p2-beast', 'g6'));
 });
+
+test('maps: obstacles sit on both square colours, so a piece that stays on one colour is never walled off', () => {
+  for (const [id, m] of Object.entries(MAPS)) {
+    const cells = Object.keys(createMatch({ map: id }).blocks).map((k) => k.split(',').map(Number));
+    if (!Object.values(m.blocks).flat().length) { assert.equal(cells.length, 0, `${id} is open`); continue; }
+    const colours = new Set(cells.map(([r, c]) => (r + c) % 2));
+    assert.equal(colours.size, 2, `${id} has obstacles on one colour only`);
+  }
+});

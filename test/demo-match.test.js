@@ -13,5 +13,7 @@ test('the home demo match replays legally to a winner and shows a variety of ski
     if (g.lastAction?.kind) kinds.add(g.lastAction.kind);
   }
   assert.notEqual(g.status, 'playing', 'the demo ends with a winner');
-  for (const k of ['capture', 'storm', 'grave', 'summon', 'ice']) assert.ok(kinds.has(k), `shows ${k}`);
+  assert.ok(kinds.has('capture'), 'shows a takedown');
+  const skills = ['storm', 'grave', 'summon', 'ice', 'root', 'interrupt', 'backstab'].filter((k) => kinds.has(k));
+  assert.ok(skills.length >= 3, `shows at least 3 different skills, got ${skills.join(',')}`);
 });

@@ -412,8 +412,8 @@ function Controls({ c, onMenu, roomCode, local, focus, onFocus }: { c: GameContr
           </span>
         )}
         {onFocus && (
-          <button className="btn icon focus-btn" type="button" onClick={onFocus} aria-pressed={!!focus} aria-label={focus ? 'Exit full screen board' : 'Full screen board'} title={focus ? 'Exit full screen' : 'Full screen board'}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">{focus ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}</svg>
+          <button className="btn icon-btn focus-btn" type="button" onClick={onFocus} aria-pressed={!!focus} title={focus ? 'Back to the normal view' : 'Make the board fill the screen'}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">{focus ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}</svg>{focus ? 'Exit full' : 'Full screen'}
           </button>
         )}
         {c.mode.kind === 'online' && <ChatButton />}
@@ -550,11 +550,13 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           ? <p>{TEAM_NAMES[loser!]} ran out of time</p>
           : <p>{TEAM_NAMES[loser!]} has no heroes left · {livingHeroes(g, g.status).map((u: any) => (HEROES as any)[u.hero].name).join(', ')} still standing</p>}
         {c.showScore && <p className="final-score">{seriesLine(c)}</p>}
-        <div className="row">
-          <button className="btn primary" type="button" disabled={rematch.disabled} onClick={onRematch}>{rematch.label}</button>
-          <button className="btn" type="button" onClick={onChangeHeroes}>Change heroes</button>
-          {onReplays && <button className="btn" type="button" onClick={onReplays}>Watch replay</button>}
-          <button className="btn" type="button" onClick={onHome}>Home</button>
+        <div className="over-actions">
+          <button className="btn primary big" type="button" disabled={rematch.disabled} onClick={onRematch}>{rematch.label}</button>
+          <div className="over-sub">
+            <button className="btn" type="button" onClick={onChangeHeroes}>Change heroes</button>
+            {onReplays && <button className="btn" type="button" onClick={onReplays}>Watch replay</button>}
+            <button className="btn" type="button" onClick={onHome}>Home</button>
+          </div>
         </div>
       </div>
     </div>
