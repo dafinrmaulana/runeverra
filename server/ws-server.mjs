@@ -39,13 +39,13 @@ function send(ws, msg) {
 }
 
 function newSeat() {
-  return { ws: null, token: token(), connected: false, picks: [], ready: false };
+  return { ws: null, token: token(), connected: false, picks: [], ready: false, chatTimes: [] };
 }
 
 function newRoom(code) {
   return {
     code, seats: { p1: newSeat(), p2: newSeat() },
-    map: 'oasis', creeps: true, clockMs: 0, clock: null, clockTimer: null, match: 0, started: 0, game: null, cleanupAt: null,
+    map: 'oasis', creeps: true, clockMs: 0, clock: null, clockTimer: null, chat: [], match: 0, started: 0, game: null, cleanupAt: null,
   };
 }
 
@@ -153,6 +153,7 @@ function handleHello(ws, msg) {
   ws.room = room.code; ws.side = side;
   if (room.cleanupAt) { clearTimeout(room.cleanupAt); room.cleanupAt = null; }
   send(ws, { t: 'joined', code: room.code, side, token: seat.token });
+  if (room.chat.length) send(ws, { t: 'chatlog', log: room.chat });
   if (room.game && room.game.status === 'playing') {
     // mid-match: the other side only needs a presence pulse, not a lobby refresh.
     broadcastOpponent(room, side, true);
@@ -177,6 +178,24 @@ function handleMap(room, side, msg) {
   if (side !== 'p1' || typeof msg.map !== 'string') return;
   room.map = msg.map; room.creeps = msg.creeps !== false;
   broadcastLobby(room);
+}
+
+const CHAT_MAX = 200, CHAT_KEEP = 50, CHAT_BURST = 5, CHAT_WINDOW_MS = 5000;
+
+/** Plain text only: control characters become spaces, runs of spaces collapse, capped at CHAT_MAX. */
+const cleanChat = (t) => (typeof t === 'string' ? t.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX) : '');
+
+function handleChat(room, side, msg) {
+  const text = cleanChat(msg.text);
+  if (!text) return;
+  const seat = room.seats[side], now = Date.now();
+  seat.chatTimes = seat.chatTimes.filter((t) => now - t < CHAT_WINDOW_MS);
+  if (seat.chatTimes.length >= CHAT_BURST) return send(seat.ws, { t: 'chatlimit' }); // not `error`: the client reconnects on those
+  seat.chatTimes.push(now);
+  const entry = { side, text, ts: now };
+  room.chat.push(entry);
+  if (room.chat.length > CHAT_KEEP) room.chat.shift();
+  for (const s of ['p1', 'p2']) if (room.seats[s].connected) send(room.seats[s].ws, { t: 'chat', ...entry });
 }
 
 function handleClock(room, side, msg) {
@@ -237,6 +256,7 @@ wss.on('connection', (ws) => {
     if (msg.t === 'picks') return handlePicks(room, ws.side, msg);
     if (msg.t === 'map') return handleMap(room, ws.side, msg);
     if (msg.t === 'clock') return handleClock(room, ws.side, msg);
+    if (msg.t === 'chat') return handleChat(room, ws.side, msg);
     if (msg.t === 'ready') return handleReady(room, ws.side, msg);
     if (msg.t === 'action') return handleAction(room, ws.side, msg);
   });
