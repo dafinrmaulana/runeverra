@@ -358,7 +358,6 @@ export function App() {
           {pwa.kind === 'ios' && (
             <div className="install-row"><h3>Install app</h3><p className="note">In Safari, tap Share, then Add to Home Screen.</p></div>
           )}
-          <p className="legal-links"><button type="button" className="linklike" onClick={() => { setSettings(false); openLegal('terms'); }}>Terms</button> · <button type="button" className="linklike" onClick={() => { setSettings(false); openLegal('privacy'); }}>Privacy</button> · <button type="button" className="linklike" onClick={() => { setSettings(false); openLegal('copyright'); }}>Copyright</button></p>
           <button className="btn primary" type="button" onClick={() => setSettings(false)}>Done</button>
         </div>
       </Modal>
