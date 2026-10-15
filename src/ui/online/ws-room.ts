@@ -31,7 +31,9 @@ export class WsRoomClient {
   ready = false;
   match = 0;
   started = 0;
-  onStart: ((game: any, fresh: boolean) => void) | null = null;
+  onStart: ((game: any, fresh: boolean, clock?: any) => void) | null = null;
+  canTime = true; // the relay keeps the match clock
+  clockMin = 0;
   controller: GameController | null = null;
   version = 0;
   private listeners = new Set<() => void>();
@@ -140,6 +142,12 @@ export class WsRoomClient {
     this.send({ t: 'map', map, creeps });
     this.changed();
   }
+  setClock(min: number) {
+    if (this.side !== 'p1') return;
+    this.clockMin = min;
+    this.send({ t: 'clock', minutes: min });
+    this.changed();
+  }
   setReady(on: boolean) {
     this.ready = on;
     this.send({ t: 'ready', ready: on });
@@ -190,6 +198,7 @@ export class WsRoomClient {
     }
     if (msg.t === 'lobby') {
       this.map = msg.map; this.creeps = msg.creeps;
+      this.clockMin = Math.round((msg.clockMs || 0) / 60000);
       this.match = msg.match; this.started = msg.started;
       this.opp = msg.opp;
       this.changed();
@@ -197,22 +206,24 @@ export class WsRoomClient {
     }
     if (msg.t === 'start') {
       this.started = this.match = msg.match;
-      this.onStart?.(msg.game, msg.fresh);
+      this.onStart?.(msg.game, msg.fresh, msg.clock || null);
       this.changed();
       return;
     }
     if (msg.t === 'sync') {
       this.started = this.match = msg.match;
-      if (this.controller) { this.controller.setGame(msg.game); this.controller.say('Back in the match.', 'ok'); }
-      else this.onStart?.(msg.game, false);
+      if (this.controller) { this.controller.setGame(msg.game); this.controller.setClock(msg.clock || null); this.controller.say('Back in the match.', 'ok'); }
+      else this.onStart?.(msg.game, false, msg.clock || null);
       this.changed();
       return;
     }
     if (msg.t === 'move') {
       // the opponent's validated move: replay it through the normal commit path so it animates like any other move.
       this.controller?.commit(msg.action, 'remote');
+      this.controller?.setClock(msg.clock || null);
       return;
     }
+    if (msg.t === 'clock') { this.controller?.setClock(msg.clock || null); return; }
   }
 }
 

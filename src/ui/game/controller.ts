@@ -10,6 +10,7 @@ import { createBoard } from './board.js';
 import { tk, pref, setPref, type Team } from '../data';
 import { addResult, getTally, resetTally, sideA } from '../record';
 import { saveReplay } from '../replays';
+import { createClock, setRunning, remaining, expired, fromSnapshot } from '../../clock.js';
 
 export type Mode =
   | { kind: 'bot'; level: 'easy' | 'normal' | 'hard'; side: Team }
@@ -46,9 +47,37 @@ export class GameController {
   private botTimer: ReturnType<typeof setTimeout> | null = null;
   private gen = 0;
 
+  /** Match clock (Timed mode), or null for Classic. Online it mirrors the server's snapshot. */
+  clock: any = null;
+  private tickTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(mode: Mode, game: any) {
     this.mode = mode;
     this.game = game;
+    if (this.timed()) {
+      if (mode.kind !== 'online') this.clock = setRunning(createClock(game.setup.clockMs), toMove(game), performance.now());
+      this.startTick();
+    }
+  }
+
+  // ---------- match clock ----------
+  timed() { return (this.game.setup?.clockMs || 0) > 0; }
+  timeLeft(team: Team) { return this.clock ? remaining(this.clock, team, performance.now()) : 0; }
+  /** Online: adopt the server's snapshot (null = Classic or unknown). */
+  setClock(snap: any) { this.clock = snap ? fromSnapshot(snap, performance.now()) : null; this.changed(); }
+  /** The side that lost because its time ran out, if that is how the match ended. */
+  timedOut(): Team | null {
+    const last = this.game.trail?.[this.game.trail.length - 1];
+    return this.game.status !== 'playing' && last?.type === 'timeout' ? last.team : null;
+  }
+  private startTick() {
+    if (this.tickTimer) return;
+    this.tickTimer = setInterval(() => {
+      if (this.game.status !== 'playing' || !this.clock) return;
+      const out = expired(this.clock, performance.now());
+      if (out && this.mode.kind !== 'online') this.commit({ type: 'timeout', team: out }); // online: the server decides
+      else this.changed();
+    }, 250);
   }
 
   // ---------- subscription (useSyncExternalStore) ----------
@@ -83,7 +112,7 @@ export class GameController {
     this.maybeBot();
   }
   detach() { this.cancelBot(); this.board?.destroy(); this.board = null; }
-  destroy() { this.detach(); this.listeners.clear(); }
+  destroy() { this.detach(); this.listeners.clear(); if (this.tickTimer) { clearInterval(this.tickTimer); this.tickTimer = null; } }
 
   private render(extra: { deathDelay?: number; hits?: Pos[] }) {
     const g = this.game;
@@ -105,12 +134,13 @@ export class GameController {
   commit(action: any, src: Source = 'me'): boolean {
     const online = this.mode.kind === 'online';
     const idx = online && src === 'me' ? actionIndex(this.game, action) : -1;
-    const res = applyAction(this.game, action);
+    const res = applyAction(this.game, action, { trusted: action.type === 'timeout' });
     if (!res.ok) { this.say(res.reason || 'Not allowed.', 'err'); this.render({}); return false; }
     const before = this.game;
     if (src === 'me' && !online) { this.history.push(before); this.future = []; }
     if (online && src === 'me') (this.mode as any).onLocalMove(idx, action);
     this.game = res.state;
+    if (this.clock) this.clock = setRunning(this.clock, this.game.status === 'playing' ? toMove(this.game) : null, performance.now());
     this.clearSel();
     const g = this.game;
     const newLines = g.log.slice(before.log.length).map((l: any) => l.text).join(' ');
@@ -138,7 +168,7 @@ export class GameController {
   }
 
   /** Replace the match without effects (online catch-up). */
-  setGame(game: any) { this.game = game; this.clearSel(); this.board?.reset(); this.render({}); }
+  setGame(game: any) { this.game = game; if (this.clock && this.mode.kind !== 'online') this.clock = setRunning(this.clock, game.status === 'playing' ? toMove(game) : null, performance.now()); this.clearSel(); this.board?.reset(); this.render({}); }
 
   private maybeBot() {
     if (!this.deciderIsBot() || this.botTimer) return;
@@ -278,8 +308,8 @@ export class GameController {
   react(use: boolean) { if (this.deciderIsHuman() && this.game.phase === 'react') this.commit({ type: 'react', use }); }
   escape() { if (this.armed) this.armed = false; else this.clearSel(); this.say(''); this.render({}); }
 
-  canUndo() { return this.mode.kind !== 'online' && this.history.length > 0 && !this.deciderIsBot(); }
-  canRedo() { return this.mode.kind !== 'online' && this.future.length > 0 && !this.deciderIsBot(); }
+  canUndo() { return this.mode.kind !== 'online' && !this.timed() && this.history.length > 0 && !this.deciderIsBot(); }
+  canRedo() { return this.mode.kind !== 'online' && !this.timed() && this.future.length > 0 && !this.deciderIsBot(); }
   private jump(to: any, note: string) {
     this.cancelBot(); this.board?.clearFx();
     this.game = to;

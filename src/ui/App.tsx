@@ -55,12 +55,13 @@ export function App() {
 
   // Online: check the room capability once; a reloaded tab rejoins its room.
   useEffect(() => {
-    room.onStart = (game, fresh) => {
+    room.onStart = (game, fresh, clock) => {
       setCtrl((old) => {
         old?.destroy();
         const c = new GameController({ kind: 'online', side: room.side!, onLocalMove: (i, a) => room.localMove(i, a) }, game);
         c.say(`Online match in room ${room.code}. You play ${TEAM_NAMES[room.side!]}; Ivory moves first.`, 'ok');
         c.series = `room-${room.code}`;
+        c.setClock(clock ?? null);
         room.controller = c;
         if (!fresh) c.say('Back in the match.', 'ok');
         return c;

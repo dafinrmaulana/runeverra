@@ -44,7 +44,10 @@ export class RoomClient {
   mine: number[] = [];
   applied: Record<Team, number> = { p1: 0, p2: 0 };
   /** Called when both sides are ready: hand over the (caught-up) match. */
-  onStart: ((game: any, fresh: boolean) => void) | null = null;
+  onStart: ((game: any, fresh: boolean, clock?: any) => void) | null = null;
+  canTime = false; // no authority for a match clock on the platform room
+  clockMin = 0;
+  setClock(_min: number) { /* Classic only here */ }
   controller: GameController | null = null;
   version = 0;
   private listeners = new Set<() => void>();
