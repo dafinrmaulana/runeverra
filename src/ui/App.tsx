@@ -152,6 +152,7 @@ export function App() {
           <div className="home-wall" aria-hidden="true">
             {HOME_WALL.map((h) => <div key={h} className="wall-col" style={{ backgroundImage: `url(${ART(h)})` }} />)}
           </div>
+          <div className="home-atmo" aria-hidden="true"><i className="ring" /></div>
           <div className="home-front">
             <div className="home-hero">
               <h1 className="logo">Runeverra</h1>
