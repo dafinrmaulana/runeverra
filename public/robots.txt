@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://runeverra.daffi.my.id/sitemap.xml

@@ -1,0 +1,37 @@
+{
+  "name": "Runeverra",
+  "short_name": "Runeverra",
+  "description": "Pick four heroes, spend runes on skills and outsmart your opponent on an 8x8 board. No dice, no luck.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#221c18",
+  "theme_color": "#221c18",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./",
+  "lang": "en",
+  "categories": [
+    "games",
+    "entertainment"
+  ]
+}
