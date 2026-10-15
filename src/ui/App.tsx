@@ -65,6 +65,9 @@ export function App() {
   const r = useRoom();
   const pwa = useInstall();
 
+  // A new screen always opens at its top, not wherever the last one was scrolled to.
+  useEffect(() => { window.scrollTo(0, 0); }, [screen]);
+
   useEffect(() => { setPref('desc', desc); }, [desc]);
   useEffect(() => { setPref('level', level); setPref('botTeam', botTeam); setPref('side', side); }, [level, botTeam, side]);
   useEffect(() => { setPref('map', map); setPref('creeps', creeps); }, [map, creeps]);
