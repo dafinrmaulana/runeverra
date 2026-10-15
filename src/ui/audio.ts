@@ -1,4 +1,6 @@
 // Sound effects, synthesised with Web Audio: no audio files, nothing to license, nothing to download.
+// Steel, wind, thunder and wood are built from filtered noise and the uneven overtones of struck metal, then
+// placed in a small stone room, so they sound physical rather than like synth beeps.
 // Every recipe takes a context so it can also be rendered offline (used to check that each one makes sound).
 import { pref, setPref } from './data';
 
@@ -47,63 +49,119 @@ function hiss(ctx: Ctx, out: AudioNode, type: BiquadFilterType, f0: number, f1: 
   s.start(t, 0.1); s.stop(t + dur + 0.02);
 }
 
-const RECIPES: Record<SfxName, (c: Ctx, o: AudioNode, t: number) => void> = {
-  // stone underfoot
-  move: (c, o, t) => { hiss(c, o, 'bandpass', 900, 500, t, 0.09, 0.75, 1.2); tone(c, o, 'sine', 140, 70, t, 0.1, 0.8); },
-  beast: (c, o, t) => { hiss(c, o, 'bandpass', 520, 300, t, 0.08, 0.6, 1); tone(c, o, 'sine', 100, 55, t, 0.1, 0.85); },
-  // a takedown: a bright strike, a ring of metal, a thud
-  capture: (c, o, t) => {
-    hiss(c, o, 'highpass', 1600, 800, t, 0.12, 0.7);
-    tone(c, o, 'triangle', 520, 480, t, 0.3, 0.32); tone(c, o, 'triangle', 780, 740, t, 0.24, 0.22);
-    tone(c, o, 'sine', 110, 48, t, 0.2, 0.75);
-  },
-  // Hasim's jump: a whoosh and a slice
-  backstab: (c, o, t) => {
-    hiss(c, o, 'bandpass', 400, 3200, t, 0.2, 0.5, 2);
-    tone(c, o, 'sawtooth', 2000, 700, t + 0.14, 0.12, 0.3); hiss(c, o, 'highpass', 3000, 3000, t + 0.15, 0.06, 0.5);
-  },
-  // Magumba's shield: a rising shimmer
-  grave: (c, o, t) => {
-    [392, 523, 659, 784].forEach((f, i) => { tone(c, o, 'sine', f, f, t + i * 0.07, 0.9, 0.2); tone(c, o, 'triangle', f * 2, f * 2, t + i * 0.07, 0.5, 0.07); });
-    hiss(c, o, 'bandpass', 3200, 3200, t, 0.45, 0.1, 3); tone(c, o, 'sine', 196, 220, t, 0.7, 0.18);
-  },
-  // Plantae's roots: a creaking growth and snapping wood
-  root: (c, o, t) => {
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.connect(o);
-    tone(c, lp, 'sawtooth', 70, 135, t, 0.5, 0.5, 0.05);
-    [0.05, 0.14, 0.22, 0.33].forEach((d, i) => hiss(c, o, 'bandpass', 1100 + i * 260, 700, t + d, 0.04, 0.35, 4));
-  },
-  // the interrupt: a rising snap, then a hard dissonant stop
-  interrupt: (c, o, t) => {
-    hiss(c, o, 'bandpass', 300, 4000, t, 0.16, 0.5, 2);
-    tone(c, o, 'square', 220, 160, t + 0.16, 0.2, 0.28); tone(c, o, 'square', 233, 170, t + 0.16, 0.2, 0.22);
-    hiss(c, o, 'lowpass', 800, 200, t + 0.16, 0.16, 0.6);
-  },
-  // Hexor's hammer: a deep boom with a crack
-  storm: (c, o, t) => {
-    tone(c, o, 'sine', 90, 32, t, 0.7, 0.95); hiss(c, o, 'lowpass', 240, 80, t, 0.8, 0.8);
-    hiss(c, o, 'highpass', 1800, 600, t, 0.18, 0.5);
-  },
-  // Aqna's ice: glass bells
-  ice: (c, o, t) => {
-    [1568, 2093, 2637, 3136].forEach((f, i) => tone(c, o, 'sine', f, f, t + i * 0.05, 0.55, 0.17));
-    hiss(c, o, 'highpass', 6000, 6000, t, 0.28, 0.22);
-  },
-  // Ge'nga calls the beast: a growl and a drum
-  summon: (c, o, t) => {
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 3; bp.frequency.setValueAtTime(260, t); bp.frequency.exponentialRampToValueAtTime(700, t + 0.5); bp.connect(o);
-    tone(c, bp, 'sawtooth', 95, 70, t, 0.55, 0.5, 0.03); tone(c, o, 'sine', 60, 45, t, 0.42, 0.9);
-    hiss(c, o, 'bandpass', 500, 200, t, 0.4, 0.28);
-  },
-  victory: (c, o, t) => [523, 659, 784, 1047].forEach((f, i) => { tone(c, o, 'triangle', f, f, t + i * 0.11, 0.7, 0.3); tone(c, o, 'sine', f * 2, f * 2, t + i * 0.11, 0.5, 0.1); }),
-  defeat: (c, o, t) => {
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.connect(o);
-    [392, 349, 294, 196].forEach((f, i) => tone(c, lp, 'sawtooth', f, f * 0.98, t + i * 0.16, 0.6, 0.25));
-  },
-  error: (c, o, t) => tone(c, o, 'square', 130, 100, t, 0.14, 0.45),
-  turn: (c, o, t) => { tone(c, o, 'sine', 880, 880, t, 0.22, 0.16); tone(c, o, 'sine', 1320, 1320, t + 0.08, 0.26, 0.12); },
-  select: (c, o, t) => hiss(c, o, 'bandpass', 2000, 2000, t, 0.035, 0.5, 3),
+/** Metal rings with the uneven overtones of a struck blade (not a musical chord): ratio, loudness, decay factor. */
+const METAL: [number, number, number][] = [[1, 1, 1], [2.32, 0.55, 0.7], [4.25, 0.36, 0.5], [6.63, 0.22, 0.34], [9.38, 0.12, 0.22]];
+const GLASS: [number, number, number][] = [[1, 1, 1], [2.76, 0.6, 0.6], [5.4, 0.4, 0.4], [8.93, 0.2, 0.25]];
+function ring(ctx: Ctx, out: AudioNode, t: number, f: number, dur: number, peak: number, partials = METAL) {
+  partials.forEach(([r, a, d]) => tone(ctx, out, 'sine', f * r, f * r * 0.998, t, dur * d, peak * a, 0.002));
+}
+/** Wind or breath: noise that swells and fades while its filter drifts. */
+function gust(ctx: Ctx, out: AudioNode, t: number, dur: number, peak: number, f0: number, f1: number, q = 0.8, type: BiquadFilterType = 'bandpass') {
+  const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  s.buffer = noiseBuffer(ctx);
+  f.type = type; f.Q.value = q;
+  f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(10, f1), t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + dur * 0.4);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(out);
+  s.start(t, 0.3); s.stop(t + dur + 0.02);
+}
+const horn = (ctx: Ctx, out: AudioNode, t: number, f: number, dur: number, peak: number, open = 1400) => {
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.5;
+  lp.frequency.setValueAtTime(open * 0.35, t); lp.frequency.exponentialRampToValueAtTime(open, t + 0.07); lp.frequency.exponentialRampToValueAtTime(open * 0.5, t + dur);
+  lp.connect(out);
+  tone(ctx, lp, 'sawtooth', f, f * 0.995, t, dur, peak, 0.05); tone(ctx, lp, 'sawtooth', f * 1.004, f, t, dur, peak * 0.6, 0.05);
 };
+
+const RECIPES: Record<SfxName, (c: Ctx, o: AudioNode, t: number) => void> = {
+  // a boot on flagstone
+  move: (c, o, t) => { hiss(c, o, 'lowpass', 1300, 420, t, 0.07, 0.9, 0.8); tone(c, o, 'sine', 110, 60, t, 0.09, 0.8); hiss(c, o, 'highpass', 3200, 3200, t, 0.015, 0.16); },
+  // a paw or hoof, softer and lower
+  beast: (c, o, t) => { hiss(c, o, 'lowpass', 700, 250, t, 0.08, 0.8); tone(c, o, 'sine', 85, 50, t, 0.1, 0.95); },
+  // a kill: steel drawn across steel ("sshring"), the blow, then the blade ringing
+  capture: (c, o, t) => {
+    gust(c, o, t, 0.2, 0.5, 1800, 8000, 1.4);
+    tone(c, o, 'sine', 120, 50, t + 0.1, 0.2, 0.6); hiss(c, o, 'lowpass', 900, 300, t + 0.1, 0.1, 0.55);
+    ring(c, o, t + 0.12, 1250, 0.9, 0.2); ring(c, o, t + 0.13, 1870, 0.5, 0.09);
+  },
+  // Hasim's leap: wind rushing past, cloth, a soft landing and one flash of the blade
+  backstab: (c, o, t) => {
+    gust(c, o, t, 0.5, 0.55, 250, 1900, 0.7);
+    gust(c, o, t + 0.04, 0.4, 0.14, 2600, 5200, 1.2, 'highpass');
+    [0.08, 0.15, 0.21, 0.28].forEach((d, i) => hiss(c, o, 'bandpass', 1100 + i * 140, 900, t + d, 0.035, 0.12, 2));
+    tone(c, o, 'sine', 100, 60, t + 0.42, 0.12, 0.45); hiss(c, o, 'lowpass', 600, 250, t + 0.42, 0.06, 0.35);
+    ring(c, o, t + 0.4, 2400, 0.3, 0.1);
+  },
+  // Magumba's shield: soft bells and a breath of air
+  grave: (c, o, t) => {
+    ring(c, o, t, 523, 1.2, 0.13, GLASS); ring(c, o, t + 0.09, 784, 1.0, 0.09, GLASS); ring(c, o, t + 0.18, 1046, 0.9, 0.06, GLASS);
+    gust(c, o, t, 0.7, 0.14, 1500, 3500, 2); tone(c, o, 'sine', 130, 130, t, 0.9, 0.1, 0.2);
+  },
+  // Plantae's roots: a snap, rustling, creaking wood
+  root: (c, o, t) => {
+    hiss(c, o, 'highpass', 2500, 2500, t, 0.02, 0.7);
+    gust(c, o, t, 0.45, 0.5, 600, 1400, 3); hiss(c, o, 'lowpass', 220, 100, t, 0.5, 0.65);
+    [0.05, 0.17, 0.29].forEach((d, i) => hiss(c, o, 'bandpass', 900 + i * 220, 1500 + i * 150, t + d, 0.09, 0.55, 14));
+  },
+  // the interrupt: a parry, steel clanging against steel
+  interrupt: (c, o, t) => {
+    hiss(c, o, 'highpass', 2500, 2500, t, 0.02, 0.6);
+    ring(c, o, t, 980, 0.6, 0.3); ring(c, o, t + 0.01, 1480, 0.35, 0.15);
+    tone(c, o, 'sine', 150, 70, t, 0.15, 0.55);
+  },
+  // Hexor's hammer: lightning cracks, then thunder rolls
+  storm: (c, o, t) => {
+    hiss(c, o, 'highpass', 800, 2600, t, 0.12, 0.9); hiss(c, o, 'bandpass', 4200, 4200, t, 0.05, 0.5, 0.7);
+    [0.04, 0.09, 0.13, 0.2].forEach((d) => hiss(c, o, 'highpass', 3500, 3500, t + d, 0.025, 0.35));
+    hiss(c, o, 'lowpass', 300, 60, t + 0.08, 1.3, 0.85); hiss(c, o, 'lowpass', 240, 55, t + 0.38, 0.9, 0.5); hiss(c, o, 'lowpass', 200, 50, t + 0.62, 0.9, 0.35);
+    tone(c, o, 'sine', 70, 30, t + 0.06, 0.8, 0.9);
+  },
+  // Aqna's ice: glass, frost crackle, a cold breath
+  ice: (c, o, t) => {
+    ring(c, o, t, 2200, 0.9, 0.11, GLASS); ring(c, o, t + 0.04, 3300, 0.6, 0.07, GLASS);
+    [0, 0.03, 0.06, 0.11, 0.17].forEach((d) => hiss(c, o, 'highpass', 6500, 6500, t + d, 0.02, 0.22));
+    gust(c, o, t, 0.5, 0.1, 3000, 6000, 2);
+  },
+  // Ge'nga calls the beast: a throat growl and a drum
+  summon: (c, o, t) => {
+    gust(c, o, t, 0.6, 0.5, 180, 420, 5); gust(c, o, t, 0.5, 0.22, 600, 900, 6);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400; lp.connect(o);
+    tone(c, lp, 'sawtooth', 80, 60, t, 0.55, 0.22, 0.04);
+    tone(c, o, 'sine', 70, 40, t, 0.45, 0.9); hiss(c, o, 'lowpass', 500, 200, t, 0.05, 0.4);
+  },
+  // a horn fanfare and a bell
+  victory: (c, o, t) => {
+    [[392, 0, 0.26], [523, 0.17, 0.26], [659, 0.34, 0.26], [784, 0.52, 0.8]].forEach(([f, d, l]) => horn(c, o, t + d, f, l, 0.2));
+    ring(c, o, t + 0.55, 1568, 1.2, 0.07, GLASS); tone(c, o, 'sine', 80, 45, t, 0.3, 0.5);
+  },
+  // a low horn falling, a heavy drum
+  defeat: (c, o, t) => {
+    [[196, 0, 0.5], [185, 0.28, 0.5], [165, 0.58, 0.9]].forEach(([f, d, l]) => horn(c, o, t + d, f, l, 0.2, 650));
+    tone(c, o, 'sine', 60, 35, t, 0.6, 0.8); hiss(c, o, 'lowpass', 400, 120, t, 0.25, 0.4);
+  },
+  // a dull knock on wood
+  error: (c, o, t) => { tone(c, o, 'sine', 160, 90, t, 0.09, 0.8); hiss(c, o, 'lowpass', 600, 250, t, 0.05, 0.6); },
+  // a soft bell
+  turn: (c, o, t) => { ring(c, o, t, 988, 0.6, 0.1, GLASS); ring(c, o, t + 0.07, 1480, 0.5, 0.07, GLASS); },
+  // a tiny tick of stone
+  select: (c, o, t) => hiss(c, o, 'bandpass', 2500, 2500, t, 0.03, 0.8, 4),
+};
+
+/** The shared output: everything goes through a little room (reverb), then a compressor. */
+function buildBus(ctx: Ctx, dest: AudioNode): AudioNode {
+  const input = ctx.createGain(), comp = ctx.createDynamicsCompressor();
+  const verb = ctx.createConvolver(), send = ctx.createGain();
+  const len = Math.floor(ctx.sampleRate * 1.4), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  let seed = 99;
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i++) { seed = (seed * 1664525 + 1013904223) >>> 0; d[i] = ((seed / 4294967296) * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  }
+  verb.buffer = ir; send.gain.value = 0.2;
+  input.connect(comp); input.connect(send); send.connect(verb); verb.connect(comp); comp.connect(dest);
+  return input;
+}
 
 // ---------- the live player ----------
 let ctx: AudioContext | null = null;
@@ -119,10 +177,9 @@ function ensure(): AudioContext | null {
   if (!AC) return null;
   try {
     ctx = new AC() as AudioContext;
-    const comp = ctx.createDynamicsCompressor();
     master = ctx.createGain(); master.gain.value = volume;
-    comp.connect(master); master.connect(ctx.destination);
-    bus = comp;
+    master.connect(ctx.destination);
+    bus = buildBus(ctx, master);
   } catch { ctx = null; }
   return ctx;
 }
@@ -155,8 +212,8 @@ export function setSfxVolume(v: number) {
 /** Render one effect offline and report how loud it is (used to check every recipe really makes sound). */
 export async function measureSfx(name: SfxName) {
   const off = new OfflineAudioContext(1, 44100 * 2, 44100);
-  const comp = off.createDynamicsCompressor(); comp.connect(off.destination);
-  RECIPES[name](off, comp, 0.01);
+  const bus = buildBus(off, off.destination);
+  RECIPES[name](off, bus, 0.01);
   const data = (await off.startRendering()).getChannelData(0);
   let peak = 0, sum = 0, last = 0;
   for (let i = 0; i < data.length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; sum += data[i] * data[i]; if (a > 0.001) last = i; }

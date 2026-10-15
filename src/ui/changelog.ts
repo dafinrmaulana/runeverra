@@ -19,7 +19,7 @@ export const CHANGELOG: Patch[] = [
       { tag: 'fix', text: 'The home screen now fits phone screens, and the demo\'s skill names no longer hide behind the characters.' },
       { tag: 'balance', text: 'Oasis Bazaar and Savanna Crossing have new obstacle spots, so obstacles now sit on both square colours. Heroes that only move on one colour (like Magumba) are no longer walled off.' },
       { tag: 'ui', text: 'Game controls fit on one line on phones: skill, undo and redo, full screen and menu (the last two are icon buttons).' },
-      { tag: 'new', text: 'Sound effects: every move, takedown and skill has its own sound (Hasim\'s slice, Magumba\'s shimmer, Plantae\'s creaking roots, the interrupt snap, Storm Hammer\'s boom, Aqna\'s glass, Ge\'nga\'s growl), plus a chime on your turn and a fanfare at the end. Turn them off or set the volume in Settings or the game menu.' },
+      { tag: 'new', text: 'Sound effects: steel shings and rings on a takedown, wind rushes past when Hasim leaps, thunder rolls for Storm Hammer, plus soft bells, creaking roots, glass, a growl, horn fanfares and a chime on your turn. Turn them off, set the volume or preview each one in Settings.' },
       { tag: 'new', text: 'Sharing the Runeverra link now shows a preview card, and the installed app and browser tab have a proper rune icon.' },
       { tag: 'new', text: 'The online room is now a teleport altar: a rune circle that glows sand while you wait, turns jade when your opponent steps through, and shows the room code in rune slots.' },
       { tag: 'ui', text: 'Setup screens keep their title and steps pinned to the top while you scroll, and the titles are shorter so they never wrap on small phones.' },

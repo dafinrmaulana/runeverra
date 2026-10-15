@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Switch } from './ui';
-import { sfx, sfxEnabled, sfxVolume, setSfxEnabled, setSfxVolume } from '../audio';
+import { sfx, type SfxName, sfxEnabled, sfxVolume, setSfxEnabled, setSfxVolume } from '../audio';
+
+const PREVIEW: [SfxName, string][] = [['move', 'Step'], ['capture', 'Takedown'], ['backstab', 'Backstab'], ['grave', 'Shield'], ['root', 'Roots'], ['interrupt', 'Interrupt'], ['storm', 'Storm'], ['ice', 'Ice'], ['summon', 'Summon'], ['victory', 'Win'], ['defeat', 'Lose']];
 
 /** Sound effects on/off and volume; remembered between visits. */
 export function SoundSetting() {
@@ -15,6 +17,12 @@ export function SoundSetting() {
           onChange={(e) => { const v = Number(e.target.value) / 100; setVol(v); setSfxVolume(v); }}
           onPointerUp={() => sfx('capture')} onKeyUp={() => sfx('capture')} />
       </label>
+      <details className="sound-preview">
+        <summary>Preview sounds</summary>
+        <div className="sound-preview-grid">
+          {PREVIEW.map(([id, label]) => <button key={id} type="button" className="btn tiny" disabled={!on} onClick={() => sfx(id)}>{label}</button>)}
+        </div>
+      </details>
     </div>
   );
 }

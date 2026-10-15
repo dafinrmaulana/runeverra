@@ -881,3 +881,6 @@ html { overflow-x: clip; }
 .sound-vol { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: .85rem; }
 .sound-vol.off { opacity: .5; }
 .sound-vol input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--sand); }
+
+.sound-preview summary { cursor: pointer; color: var(--sand); font-family: var(--f-mono); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; padding: 4px 0; }
+.sound-preview-grid { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; }
