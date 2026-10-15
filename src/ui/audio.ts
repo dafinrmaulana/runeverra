@@ -177,6 +177,11 @@ function buildBus(ctx: Ctx, dest: AudioNode): AudioNode {
   return input;
 }
 
+// ---------- shared with the music ----------
+export { tone, hiss, thump, horn, gust, grit };
+/** The live audio context (created on first use), for the music to build on. */
+export function audioContext() { return ensure(); }
+
 // ---------- the live player ----------
 let ctx: AudioContext | null = null;
 let bus: AudioNode | null = null;
