@@ -716,3 +716,14 @@ input, select, textarea { border-radius: 2px !important; }
 .skill-wrap.inline .sq-cost { min-width: 26px; font-size: .62rem; }
 .tokens .tn { display: inline-flex; align-items: center; }
 .tokens .tn .rune-ico { color: #ffd27a; margin-right: 3px; }
+
+/* ---------- status bar on narrow phones: the turn banner gets its own row, the two rune bars sit under it ---------- */
+@media (max-width: 440px) {
+  .statusbar { grid-template-columns: 1fr 1fr; grid-template-areas: "banner banner" "left right"; row-gap: 8px; column-gap: 8px; }
+  .statusbar > .turn-banner { grid-area: banner; justify-self: center; max-width: 100%; }
+  .statusbar > .sb-side.left { grid-area: left; }
+  .statusbar > .sb-side.right { grid-area: right; }
+  .statusbar .sb-side { min-width: 0; }
+  .statusbar .tokens { width: 100%; justify-content: center; padding-inline: 8px; }
+  .statusbar .tokens .tn { display: inline-flex; }
+}
