@@ -6,6 +6,7 @@
   "description": "Chess-based hero tactics: deterministic rules engine, bot, online rooms; React UI.",
   "scripts": {
     "dev": "vite",
+    "dev:lan": "vite --host",
     "build": "tsc -p tsconfig.json && vite build && node build.mjs",
     "test": "node --test test/*.test.js",
     "typecheck": "tsc -p tsconfig.json",

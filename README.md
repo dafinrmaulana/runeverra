@@ -9,6 +9,7 @@ Requires Node 18+.
 ```bash
 npm install
 npm run dev     # Vite dev server, http://localhost:5173
+npm run dev:lan # same, but reachable from a phone on the same Wi-Fi (opens on your computer's LAN address)
 npm test        # rules engine, bot and online helpers (node:test)
 npm run build   # type-check, then dist/index.html (single file, JS/CSS inlined) + dist/assets,
                 # dist/artifact.html (same page without the document skeleton)
