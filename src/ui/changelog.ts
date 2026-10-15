@@ -8,6 +8,16 @@ export const TAG_LABEL: Record<Tag, string> = { new: 'New', balance: 'Balance', 
 
 export const CHANGELOG: Patch[] = [
   {
+    version: '0.6.0', date: '2026-10-15', title: 'Home, chat and install',
+    entries: [
+      { tag: 'new', text: 'A new home screen with a live demo match, a clear "How to play" card for new players, and quick access to match review, patch notes and settings.' },
+      { tag: 'new', text: 'Online chat: type a message or tap a quick phrase. New messages pop up over the board, and you can mute chat any time.' },
+      { tag: 'new', text: 'Full screen board for bot and online games, so the board is bigger on your phone.' },
+      { tag: 'new', text: 'Install Runeverra as an app from Settings. Games against the bot and face to face also work offline.' },
+      { tag: 'new', text: 'Terms of Service, Privacy Policy and Copyright pages, with credits for the team and honorable mentions.' },
+    ],
+  },
+  {
     version: '0.5.0', date: '2026-10-15', title: 'Timed mode',
     entries: [
       { tag: 'new', text: 'Timed mode: pick a time for each player (3, 5, 10 minutes or your own number). Whoever runs out of time loses, so a match can no longer stall forever.' },
