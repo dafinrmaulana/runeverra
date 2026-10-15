@@ -15,15 +15,13 @@ import { ReplaysScreen } from './screens/ReplaysScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LATEST } from './changelog';
 import { HomeDemo } from './components/HomeDemo';
-import { RitualScene } from './components/RitualScene';
+import { Floor } from './components/Floor';
 import { resetTally } from './record';
 import { useInstall } from './pwa';
 import { Modal, Steps } from './components/ui';
 import { CursorPicker } from './cursor';
 import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
 import type { DescMode } from './components/HeroInfo';
-
-const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 type ModeKind = 'bot' | 'local' | 'online';
 type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays' | 'changelog' | 'legal';
@@ -35,6 +33,8 @@ const LEVEL_TEXT: Record<Level, string> = {
   normal: 'Looks two turns ahead and punishes loose pieces.',
   hard: 'Thinks longer and deeper. Plan your trades.',
 };
+
+const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 function useRoom() { useSyncExternalStore(room.subscribe, room.getVersion); return room; }
 
@@ -136,6 +136,8 @@ export function App() {
       : r.ready && r.match > r.started ? { label: 'Waiting for opponent…', disabled: true }
         : { label: r.oppReadyForNext() ? 'Accept rematch' : 'Rematch', disabled: !r.opp };
     return (
+      <>
+      <Floor mode="game" />
       <div className="app page" key="game">
         <GameScreen ctrl={ctrl} roomCode={online ? r.code : null} rematch={rematch}
           onRematch={() => (online ? r.setReady(true) : startLocal())}
@@ -143,15 +145,16 @@ export function App() {
           onHome={goHome}
           onReplays={() => { ctrl.destroy(); setCtrl(null); room.controller = null; if (online) r.setReady(false); setScreen('replays'); }} />
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    <Floor mode={screen === 'home' ? 'home' : 'dim'} />
     <div className="app">
       {screen === 'home' && (
         <div className="home page" key="home">
-          <div className="home-wall" aria-hidden="true"><RitualScene /></div>
-          <div className="home-atmo" aria-hidden="true" />
           <div className="home-front">
             <div className="home-hero">
               <h1 className="logo">Runeverra</h1>
@@ -352,6 +355,7 @@ export function App() {
         <button className="btn primary" type="button" onClick={() => setRules(false)}>Close</button>
       </Modal>
     </div>
+    </>
   );
 }
 
