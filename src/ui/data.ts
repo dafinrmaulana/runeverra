@@ -16,11 +16,11 @@ export const LOCKED = [
 ];
 export const other = (t: Team): Team => (t === 'p1' ? 'p2' : 'p1');
 
-export const tk = (n: number) => `${n} token${n === 1 ? '' : 's'}`;
+export const tk = (n: number) => `${n} rune${n === 1 ? '' : 's'}`;
 
 type Skill = { type: string; cost: number; reactionCost?: number; range?: number; cooldown?: number; name: string; text: string; key: string };
 
-/** Short cost label for a skill, e.g. "Active · 2 tokens". */
+/** Short cost label for a skill, e.g. "Active · 2 runes". */
 export function costLabel(sk: Skill) {
   if (sk.type === 'active') return `Active · ${tk(sk.cost)}${sk.reactionCost ? ` · interrupt ${sk.reactionCost}` : ''}`;
   if (sk.type === 'move') return sk.cost ? `Passive · ${tk(sk.cost)} per jump` : 'Signature move · free';
@@ -40,11 +40,11 @@ export const roleOf = (id: string) => {
 /** One-glance summaries for the short description mode. */
 export const SHORT: Record<string, { move: string; skill: string }> = {
   hasim: { move: 'Steps 1 square any way.', skill: 'Free jump over the unit next to him: kills what he jumps and what he lands on.' },
-  genga: { move: 'Steps 1 straight.', skill: 'His beast steps 1 any way, free, right after him. 3 tokens: summon it back once it falls.' },
-  magumba: { move: 'Steps 1 diagonally.', skill: '2 tokens: himself or an ally on his diagonals (up to 3) can\'t be touched until your next turn.' },
-  plantae: { move: 'Steps 1 straight.', skill: '3 tokens: root an enemy on her straight lines (up to 3), or cancel an enemy action there on their turn.' },
-  hexor: { move: 'Jumps in an L, like a knight.', skill: 'After a kill, 2 tokens: slam everything around him 1 square back; enemies hitting terrain die.' },
-  aqna: { move: 'Moves up to 2 straight.', skill: 'A kill stores an ice charge (never stacks). Spend it anytime, 1 token: raise a block within 3 that nobody can pass.' },
+  genga: { move: 'Steps 1 straight.', skill: 'His beast steps 1 any way, free, right after him. 3 runes: summon it back once it falls.' },
+  magumba: { move: 'Steps 1 diagonally.', skill: '2 runes: himself or an ally on his diagonals (up to 3) can\'t be touched until your next turn.' },
+  plantae: { move: 'Steps 1 straight.', skill: '3 runes: root an enemy on her straight lines (up to 3), or cancel an enemy action there on their turn.' },
+  hexor: { move: 'Jumps in an L, like a knight.', skill: 'After a kill, 2 runes: slam everything around him 1 square back; enemies hitting terrain die.' },
+  aqna: { move: 'Moves up to 2 straight.', skill: 'A kill stores an ice charge (never stacks). Spend it anytime, 1 rune: raise a block within 3 that nobody can pass.' },
 };
 
 /** 7×7 movement preview cells computed from the engine: 'me' | 'go' | 'jump' | ''. */

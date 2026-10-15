@@ -142,7 +142,7 @@ function Toast({ c, mirror }: { c: GameController; mirror?: boolean }) {
 }
 
 function Pips({ n }: { n: number }) {
-  return <span className="energy" title={`${n} of ${ENERGY.max} skill tokens`}>{Array.from({ length: ENERGY.max }, (_, i) => <i key={i} className={i < n ? 'on' : ''} />)}</span>;
+  return <span className="energy" title={`${n} of ${ENERGY.max} runes`}>{Array.from({ length: ENERGY.max }, (_, i) => <i key={i} className={i < n ? 'on' : ''} />)}</span>;
 }
 
 /** Who's who for the score: ['You', 'Bot'] or ['Ivory', 'Ember'], in a's-then-b's order. */
@@ -182,7 +182,7 @@ function SeatScore({ c, team }: { c: GameController; team: Team }) {
   );
 }
 
-/** A side's skill tokens, labelled. */
+/** A side's skill runes, labelled. */
 function Clock({ c, team }: { c: GameController; team: Team }) {
   if (!c.timed() || !c.clock) return null;
   const ms = c.timeLeft(team);
@@ -450,7 +450,7 @@ function SeatPanel({ c, team, threats }: { c: GameController; team: Team; threat
       <div className="seat-top">
         <span className={`team-badge ${team}`}>{TEAM_NAMES[team]}</span>
         {c.showScore && <SeatScore c={c} team={team} />}
-        <Tokens c={c} team={team} who="Tokens" />
+        <Tokens c={c} team={team} who="Runes" />
         <span className="count">{heroes} heroes</span>
         <span className="grow" />
         <span className={`seat-status${mine ? ' go' : ''}`}>{statusFor(c, team)}</span>

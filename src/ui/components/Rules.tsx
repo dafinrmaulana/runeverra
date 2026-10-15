@@ -17,15 +17,15 @@ export function Rules() {
         <li><b>Assassin</b> (Hasim): 1 square any way, plus a free Backstab jump.</li>
         <li><b>Support</b> (Plantae, Magumba): steps 1 (Plantae straight, Magumba diagonally). Plantae's Aggressive Root reaches a 3x3 block right in front of her; Magumba's Empty Grave reaches a fan ahead of him, 2 squares deep. Neither is blocked by what's in between.</li>
       </ul>
-      <h3>Skill tokens</h3>
+      <h3>Skill runes</h3>
       <ul>
-        <li>Each side starts with 4 tokens (the maximum). They don't refill each turn.</li>
-        <li>+1 token for killing an enemy creep, +1 when your creep reaches the far side.</li>
+        <li>Each side starts with 4 runes (the maximum). They don't refill each turn.</li>
+        <li>+1 rune for killing an enemy creep, +1 when your creep reaches the far side.</li>
         <li>Costs: ice 1 · Empty Grave 2 · Storm Hammer 2 · summon beast 3 · Aggressive Root 3 (interrupt 3). Backstab and beast moves are free.</li>
-        <li>Aqna's kills store an ice charge instead of using it right away — never more than one at a time. Spend it whenever you like, on any later turn, for 1 token.</li>
+        <li>Aqna's kills store an ice charge instead of using it right away — never more than one at a time. Spend it whenever you like, on any later turn, for 1 rune.</li>
       </ul>
       <h3>Interrupt</h3>
-      <p>When an enemy unit in the 3x3 block in front of your Plantae acts — nothing in between stops it — you may cancel that action for 3 tokens. The skill then recharges for 3 turns.</p>
+      <p>When an enemy unit in the 3x3 block in front of your Plantae acts — nothing in between stops it — you may cancel that action for 3 runes. The skill then recharges for 3 turns.</p>
       <h3>Time (optional)</h3>
       <p>Classic has no clock. In a timed match each player gets the same time in total (3, 5, 10 minutes or your own). The clock runs for whoever is deciding, and the player who runs out of time loses. Undo is off.</p>
       <h3>Score (optional)</h3>

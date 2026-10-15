@@ -26,7 +26,7 @@ function teamScore(s, team) {
     if (u.kind === 'creep') { v += 8 * (team === 'p1' ? 6 - u.pos.r : u.pos.r - 1); continue; }
     v += 5 * (3.5 - Math.max(Math.abs(u.pos.r - 3.5), Math.abs(u.pos.c - 3.5)));
   }
-  // Every hero spends tokens now; banked tokens are worth a little (diminishing past 2).
+  // Every hero spends runes now; banked runes are worth a little (diminishing past 2).
   const e = s.energy[team];
   v += 16 * Math.min(e, 2) + 8 * Math.max(0, e - 2);
   return v;

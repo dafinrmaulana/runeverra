@@ -44,7 +44,7 @@ const DEMOS: Record<string, Demo> = {
       { text: '…then his beast takes a free step, 1 square in any direction. No jumps, no special moves.', show: { live: 'p1-beast' }, ms: 2200 },
       { text: 'The beast steps forward.', act: mv('p1-beast', 'e3'), ms: 1500 },
       { text: 'If an enemy brings the beast down…', act: mv('p2-hexor', 'e3'), ms: 2000 },
-      { text: 'Wild Company (3 tokens): its reach is every square next to Ge\'nga.', show: { live: 'p1-genga', armed: true }, ms: 2200 },
+      { text: 'Wild Company (3 runes): its reach is every square next to Ge\'nga.', show: { live: 'p1-genga', armed: true }, ms: 2200 },
       { text: 'The beast is summoned back.', act: sk('p1-genga', { skill: 'summon', to: sq('c4') }), ms: 2400 },
     ],
   },
@@ -52,7 +52,7 @@ const DEMOS: Record<string, Demo> = {
     setup: () => scene('savanna', [U('p1', 'magumba', 'c3'), U('p1', 'hasim', 'e5'), U('p2', 'aqna', 'e7'), KEEP]),
     steps: [
       { text: 'Magumba steps 1 square diagonally.', show: { live: 'p1-magumba' }, ms: 2200 },
-      { text: 'Empty Grave (2 tokens) covers a fan ahead of him, 2 squares deep — nothing in between blocks it.', show: { live: 'p1-magumba', armed: true }, ms: 2800 },
+      { text: 'Empty Grave (2 runes) covers a fan ahead of him, 2 squares deep — nothing in between blocks it.', show: { live: 'p1-magumba', armed: true }, ms: 2800 },
       { text: 'He shields Hasim until his next turn.', act: sk('p1-magumba', { skill: 'grave', targetId: 'p1-hasim' }), ms: 2200 },
       { text: 'Aqna goes for Hasim…', show: { live: 'p2-aqna' }, ms: 1500 },
       { text: '…and the shield throws her back. Attacks on Hasim are negated until Magumba\'s next turn.', bounce: { by: 'p2-aqna', target: 'p1-hasim' }, ms: 3000 },
@@ -62,7 +62,7 @@ const DEMOS: Record<string, Demo> = {
     setup: () => scene('jungle', [U('p1', 'plantae', 'd3'), U('p2', 'hexor', 'd6'), U('p2', 'aqna', 'f5'), KEEP]),
     steps: [
       { text: 'Plantae steps 1 square straight. The green squares are her reach: a 3x3 block right in front of her, unblocked by anything in between.', show: { live: 'p1-plantae' }, ms: 2800 },
-      { text: 'Aggressive Root (3 tokens): Hexor is in the block, no matter what\'s between them. Aqna, outside it, can\'t be targeted.', show: { live: 'p1-plantae', armed: true }, ms: 2600 },
+      { text: 'Aggressive Root (3 runes): Hexor is in the block, no matter what\'s between them. Aqna, outside it, can\'t be targeted.', show: { live: 'p1-plantae', armed: true }, ms: 2600 },
       { text: 'Hexor is rooted: he can\'t act on his next turn.', act: sk('p1-plantae', { skill: 'root', targetId: 'p2-hexor' }), ms: 2400 },
       {
         text: 'On the enemy turn it works as an interrupt…',
@@ -70,7 +70,7 @@ const DEMOS: Record<string, Demo> = {
         ms: 1500,
       },
       { text: 'Ge\'nga acts inside her block: Plantae may answer.', act: mv('p2-genga', 'd6'), ms: 2400 },
-      { text: 'Interrupt (3 tokens): the action is negated. Then the skill recharges for 3 turns.', act: { type: 'react', use: true }, ms: 2800 },
+      { text: 'Interrupt (3 runes): the action is negated. Then the skill recharges for 3 turns.', act: { type: 'react', use: true }, ms: 2800 },
     ],
   },
   hexor: {
@@ -78,7 +78,7 @@ const DEMOS: Record<string, Demo> = {
     steps: [
       { text: 'Hexor jumps in an L, like a chess knight, over anything.', show: { live: 'p1-hexor' }, ms: 2400 },
       { text: 'He captures Aqna…', act: mv('p1-hexor', 'e7'), ms: 1600 },
-      { text: 'Storm Hammer (2 tokens): pick a pattern, + or X.', ms: 1800 },
+      { text: 'Storm Hammer (2 runes): pick a pattern, + or X.', ms: 1800 },
       { text: 'Slam +: the 4 straight squares around him are pushed 2 squares. Magumba slides 2; the edge and the rock block the others, so they slip into an empty square beside them — never eliminated.', act: { type: 'storm', pattern: 'plus' }, ms: 3200 },
     ],
   },
@@ -87,7 +87,7 @@ const DEMOS: Record<string, Demo> = {
     steps: [
       { text: 'Aqna moves up to 2 squares in a straight line.', show: { live: 'p1-aqna' }, ms: 2200 },
       { text: 'She eliminates Hasim and stores an ice charge — never more than one at a time.', act: mv('p1-aqna', 'd5'), ms: 2000 },
-      { text: 'Spend it whenever you like, even turns later: Icy Step (1 token) then reaches every square within 3 of her.', ms: 2400 },
+      { text: 'Spend it whenever you like, even turns later: Icy Step (1 rune) then reaches every square within 3 of her.', ms: 2400 },
       { text: 'An ice block rises. Nobody can enter it, not even her.', act: { type: 'ice', to: sq('f4') }, ms: 2600 },
     ],
   },

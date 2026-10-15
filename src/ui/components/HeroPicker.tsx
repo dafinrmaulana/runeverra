@@ -73,7 +73,7 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
                 <span className="htile-text">
                   <b>{h.name}</b>
                   <span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span>
-                  <span className="sk">{h.skill.name} <span className="cost" title="Token cost">{costChip(h.skill)}</span></span>
+                  <span className="sk">{h.skill.name} <span className="cost" title="Rune cost">{costChip(h.skill)}</span></span>
                 </span>
               </button>
               <button type="button" className="info-btn" aria-label={`About ${h.name}`} onClick={() => setModal(id)} title="Hero details">i</button>

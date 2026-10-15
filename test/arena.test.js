@@ -73,7 +73,7 @@ test('Hasim Backstab: free signature move in any direction; kills jumped enemy a
   assert.equal(s.units['p2-aqna'].alive, false);
   assert.equal(s.units['p2-plantae'].alive, false);
   assert.deepEqual(s.units['p1-hasim'].pos, sq('d6'));
-  assert.equal(s.energy.p1, 0, 'costs no tokens');
+  assert.equal(s.energy.p1, 0, 'costs no runes');
   // over an ally: no kill; over terrain: allowed
   let t = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'c5', 'p2-genga': 'h8' }, { blocks: { d5: 'pillar' } });
   t = act(t, mv('p1-hasim', 'b6'));
@@ -89,12 +89,12 @@ test('Hasim Backstab: free signature move in any direction; kills jumped enemy a
   reject(t3, mv('p1-hasim', 'b6')); // c5 is empty
 });
 
-test('Ge\'nga: the beast follow-up is free; Wild Company (3 tokens) summons a fallen beast', () => {
+test('Ge\'nga: the beast follow-up is free; Wild Company (3 runes) summons a fallen beast', () => {
   let s = setup({ 'p2-genga': 'd8', 'p2-beast': 'd7', 'p2-plantae': 'h8', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 0 } });
   assert.match(reject(s, mv('p2-beast', 'c6')), /after Ge'nga/);
   assert.match(reject(s, mv('p2-genga', 'b8')), /./, 'Ge\'nga steps only 1 square');
   s = act(s, mv('p2-genga', 'c8'));
-  assert.equal(s.phase, 'beast', 'offered with 0 tokens: it is free');
+  assert.equal(s.phase, 'beast', 'offered with 0 runes: it is free');
   assert.equal(s.current, 'p2');
   assert.ok(listActions(s).some((a) => a.type === 'skip'));
   s = act(s, mv('p2-beast', 'c6'));
@@ -104,11 +104,11 @@ test('Ge\'nga: the beast follow-up is free; Wild Company (3 tokens) summons a fa
   const alive = setup({ 'p2-genga': 'd8', 'p2-beast': 'd7', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 4 } });
   assert.ok(!listActions(alive).some((a) => a.type === 'skill'));
   assert.match(reject(alive, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('c8') }), /still alive/);
-  // beast killed: Ge'nga can summon it next to him for 3 tokens, which ends the turn
+  // beast killed: Ge'nga can summon it next to him for 3 runes, which ends the turn
   let k = setup({ 'p2-genga': 'd8', 'p2-beast': 'd6', 'p1-aqna': 'd4', 'p1-hasim': 'a1' }, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 0, p2: 2 } });
   k = act(k, mv('p1-aqna', 'd6'));
   assert.equal(k.units['p2-beast'].alive, false);
-  assert.match(reject(k, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('c8') }), /needs 3 tokens/);
+  assert.match(reject(k, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('c8') }), /needs 3 runes/);
   k.energy.p2 = 3;
   const spots = listActions(k).filter((a) => a.type === 'skill' && a.skill === 'summon');
   assert.equal(spots.length, 5, 'empty squares around d8');
@@ -125,9 +125,9 @@ test('Ge\'nga: the beast follow-up is free; Wild Company (3 tokens) summons a fa
   assert.equal(f.units['p2-beast'].alive, false);
 });
 
-test('Magumba Empty Grave: costs 2 tokens, protects an ally from captures until caster\'s next turn', () => {
+test('Magumba Empty Grave: costs 2 runes, protects an ally from captures until caster\'s next turn', () => {
   let s = setup({ 'p1-magumba': 'c3', 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'd6', 'p2-plantae': 'h8' }, { p1: ['magumba', 'hasim', 'hexor', 'aqna'], energy: { p1: 1, p2: 0 } });
-  assert.match(reject(s, { type: 'skill', unitId: 'p1-magumba', skill: 'grave', targetId: 'p1-hasim' }), /needs 2 tokens/);
+  assert.match(reject(s, { type: 'skill', unitId: 'p1-magumba', skill: 'grave', targetId: 'p1-hasim' }), /needs 2 runes/);
   s.energy.p1 = 2;
   s = act(s, { type: 'skill', unitId: 'p1-magumba', skill: 'grave', targetId: 'p1-hasim' });
   assert.equal(s.energy.p1, 0);
@@ -140,7 +140,7 @@ test('Magumba Empty Grave: costs 2 tokens, protects an ally from captures until 
 test('Plantae Aggressive Root: 3 tokens, roots a target for its next turn', () => {
   assert.equal(HEROES.plantae.skill.cost, 3);
   let s = setup({ 'p2-plantae': 'd6', 'p2-aqna': 'h8', 'p1-hexor': 'd4', 'p1-hasim': 'a1' }, { current: 'p2', energy: { p1: 0, p2: 2 } });
-  assert.match(reject(s, { type: 'skill', unitId: 'p2-plantae', skill: 'root', targetId: 'p1-hexor' }), /needs 3 tokens/);
+  assert.match(reject(s, { type: 'skill', unitId: 'p2-plantae', skill: 'root', targetId: 'p1-hexor' }), /needs 3 runes/);
   s.energy.p2 = 3;
   s = act(s, { type: 'skill', unitId: 'p2-plantae', skill: 'root', targetId: 'p1-hexor' });
   assert.equal(s.energy.p2, 0);

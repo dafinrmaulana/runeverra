@@ -40,7 +40,7 @@ public/assets/            Character portraits and card art
 2. **Bot:** pick Easy / Normal / Hard. **Online:** create a room or join with a code.
 3. **Heroes:** teams start empty. Heroes are listed in two columns; the ⓘ button opens its description full screen (Short or Detail, both with the move pattern); hovering shows nothing. Tap a hero to add it, tap a slot to remove it, or use Random / Clear. Against the bot you choose your side (**Ivory** moves first, **Ember** second; playing Ember turns the board so your side is at the bottom), and its team can be **Blind** (picked in secret, revealed when the match starts), **Shuffle** (random, visible) or **Pick manually**. Face to face, Player 2's picker is turned 180° for the player across the table.
 4. **Battlefield:** map and creeps. Online, the host picks and both press Ready.
-5. **Game:** above the board, your tokens on the left, the opponent's on the right and a turn banner in the middle (team-coloured, with an arrow toward whoever is acting). Below it: a square skill button with the skill's glyph, gold and shining when ready (its cost, effect and readiness slide in as a card underneath), undo/redo (not online), the menu, the turn number and last message, then the selected unit as an accordion whose short line also lists active effects (Shielded, Rooted, Recharging, In danger). Decisions (interrupt, slam, beast, ice) appear as a toast docked under the board, never over it. The threats overlay is a switch in the menu; the teams list is collapsed in the side panel. Face to face, each player's fixed-height panel shows only their own tokens, status and selected unit (tap it for full details), and Ember's toasts appear in Ember's panel.
+5. **Game:** above the board, your runes on the left, the opponent's on the right and a turn banner in the middle (team-coloured, with an arrow toward whoever is acting). Below it: a square skill button with the skill's glyph, gold and shining when ready (its cost, effect and readiness slide in as a card underneath), undo/redo (not online), the menu, the turn number and last message, then the selected unit as an accordion whose short line also lists active effects (Shielded, Rooted, Recharging, In danger). Decisions (interrupt, slam, beast, ice) appear as a toast docked under the board, never over it. The threats overlay is a switch in the menu; the teams list is collapsed in the side panel. Face to face, each player's fixed-height panel shows only their own runes, status and selected unit (tap it for full details), and Ember's toasts appear in Ember's panel.
 
 Screens, modals, toasts and accordions fade or drop in; the hero details card opens full screen.
 
@@ -56,9 +56,9 @@ Heroes are data in `HEROES` (src/arena.js): name, class, role, movement rules, s
 | Assassin | Hasim | 1 square in any direction, plus the Backstab jump (free signature move) |
 | Support | Plantae, Magumba | 1 square (Plantae straight, Magumba diagonally); the skill follows the same lines up to 3 squares, stopped by terrain or the first unit |
 
-### Skill tokens
+### Skill runes
 
-Each team has 4 heroes and at most 4 tokens. Both sides start full (4) and tokens do **not** refill each turn: the only income is +1 for killing an enemy creep (last hit) and +1 when your creep reaches the far rank. Every skill, passive or active, costs tokens according to its impact:
+Each team has 4 heroes and at most 4 runes. Both sides start full (4) and runes do **not** refill each turn: the only income is +1 for killing an enemy creep (last hit) and +1 when your creep reaches the far rank. Every skill, passive or active, costs runes according to its impact:
 
 | Hero | Skill | Type | Cost | What it does |
 |---|---|---|---|---|
@@ -83,11 +83,11 @@ Paid follow-ups (ice, Storm Hammer) are offered only when you can afford them, a
 Each side starts with 4 pawn-like creeps on its second rank in the flank lanes (files a, b, g, h), facing the enemy's creeps. Map terrain only sits in the four centre files (c–f), so obstacles never block a lane; heroes start on c1–f1 (Ivory) and c8–f8 (Ember). Settings live in `CREEPS` (src/arena.js) and can be switched off on the setup screen (`createMatch({ creeps: false })`).
 
 - You move them yourself, like chess pawns, and moving one uses your turn: 1 square forward onto an empty square, or capture an enemy diagonally in front. Never back or sideways. (An earlier version marched them automatically; that made the board hard to predict, so it was dropped.)
-- Eliminating an enemy creep gives the killer's side +1 token (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +1 token.
+- Eliminating an enemy creep gives the killer's side +1 rune (last hit). A creep that reaches the far rank breaks through: it leaves the board and its side gains +1 rune.
 - Creeps don't count for victory, but a creep capture can eliminate a hero and win the match.
 - They interact with every skill: Hasim jumps them, Hexor pushes them, Aqna's kills on them raise ice, Plantae can root or interrupt them, Magumba can ward them.
 
-Bot Normal vs Normal, 24 games each, 3-hero rules (before the token redesign):
+Bot Normal vs Normal, 24 games each, 3-hero rules (before the rune redesign):
 
 | | Ivory–Ember | Unfinished at 300 actions | Median length | First hero kill (median turn) |
 |---|---|---|---|---|
@@ -109,7 +109,7 @@ Plantae's team vs a team without Plantae, bot Normal vs Normal, 20–24 games ea
 | cooldown 3, max 1 interrupt | 7 | 5 | 8 |
 | cooldown 3, interrupt also skips your next turn | 2 | 13–14 | 5 |
 
-Plantae without the skill loses 0–5, so its strength was the interrupt itself: each one cancels a whole enemy turn. Skipping your whole next turn overcorrected, so the current rule (4-hero teams) is: interrupt costs 3 tokens, no per-match cap, and only Plantae itself is rooted on your next turn. Results below.
+Plantae without the skill loses 0–5, so its strength was the interrupt itself: each one cancels a whole enemy turn. Skipping your whole next turn overcorrected, so the current rule (4-hero teams) is: interrupt costs 3 runes, no per-match cap, and only Plantae itself is rooted on your next turn. Results below.
 
 ## Maps
 
@@ -147,19 +147,19 @@ Phases: `main` → optional `storm` (after a Hexor capture), `beast` (after Ge'n
 
 Bot Normal, random maps, 300-action limit, run several at a time on 2 cores (shallower search than in the browser).
 
-| Token rule | Games | Ivory | Ember | Unfinished | Plantae team vs other |
+| Rune rule | Games | Ivory | Ember | Unfinished | Plantae team vs other |
 |---|---|---|---|---|---|
 | start 1, +1 per turn, creep kill +1, breach +2 | 16 + 16 | 5 | 6 | 5 | 8–3, 5 unfinished |
 | **start 4, no refill, creep kill +1, breach +1 (current)** | 8 + 8 | 0 | 2 | 6 | 0–1, 7 unfinished |
 
-- With no refill, tokens run out early and skills almost disappear from the midgame (about 1–2 skill uses per game after the opening spend). Plantae interrupted once in 8 games instead of about 3 times per game.
-- Matches stall far more often: most games end without a winner. An anti-stall rule matters even more now; creep income is the only way to get tokens back, so pushing creeps is the main route to skills.
+- With no refill, runes run out early and skills almost disappear from the midgame (about 1–2 skill uses per game after the opening spend). Plantae interrupted once in 8 games instead of about 3 times per game.
+- Matches stall far more often: most games end without a winner. An anti-stall rule matters even more now; creep income is the only way to get runes back, so pushing creeps is the main route to skills.
 - Small samples; treat as direction, not as numbers.
 
 ## Tests
 
-- `npm test`: 29 tests (engine 21, bot 4, online 4): roles and movement, every skill's token cost, follow-up phases offered only when affordable, the Plantae hole, Storm Hammer chains and edge kills, ice limit, token cap, win condition, random-play invariants, bot legality.
-- Browser click-through: 4-pick setup with role and cost labels, Storm Hammer slam prompt, interrupt then Plantae rooted, no Backstab without tokens, phone width without horizontal scroll.
+- `npm test`: 29 tests (engine 21, bot 4, online 4): roles and movement, every skill's rune cost, follow-up phases offered only when affordable, the Plantae hole, Storm Hammer chains and edge kills, ice limit, rune cap, win condition, random-play invariants, bot legality.
+- Browser click-through: 4-pick setup with role and cost labels, Storm Hammer slam prompt, interrupt then Plantae rooted, no Backstab without runes, phone width without horizontal scroll.
 
 ## Known limitations
 

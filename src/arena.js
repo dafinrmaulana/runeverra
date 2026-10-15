@@ -5,14 +5,14 @@
 export const BOARD_SIZE = 8;
 export const TEAMS = ['p1', 'p2'];
 export const TEAM_NAMES = { p1: 'Ivory', p2: 'Ember' };
-// Skill tokens ("energy" in code): every skill costs tokens according to its impact.
+// Skill runes ("energy" in code): every skill costs runes according to its impact.
 export const ENERGY = { start: 4, perTurn: 0, max: 4 };
 export const TEAM_SIZE = 4;
 export const ICE_LIMIT = 10;
 // Creeps: pawn-like minions moved by their player (moving one uses the turn's action).
 //   files: the flank lanes; both sides' creeps start on these files (second rank) and face each other.
 //   Map terrain never sits on these files, so creeps are only ever blocked by units.
-//   lastHit: tokens for eliminating an enemy creep; breach: tokens when a creep reaches the far rank
+//   lastHit: runes for eliminating an enemy creep; breach: runes when a creep reaches the far rank
 export const CREEPS = { files: ['a', 'b', 'g', 'h'], lastHit: 1, breach: 1 };
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -49,7 +49,7 @@ export const HEROES = {
     moveText: 'Steps 1 square in any direction.',
     skill: {
       key: 'backstab', name: 'Backstab', type: 'move', cost: 0,
-      text: 'Signature move, free (no tokens): jumps in any direction over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',
+      text: 'Signature move, free (no runes): jumps in any direction over one adjacent unit or object. An enemy jumped over is eliminated; an enemy on the landing square is eliminated too.',
     },
   },
   genga: {
@@ -58,7 +58,7 @@ export const HEROES = {
     moveText: 'Steps 1 square straight.',
     skill: {
       key: 'summon', name: 'Wild Company', type: 'active', cost: 3, range: 1,
-      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also step 1 square in any direction (free; it can capture, but has no special moves). Active: once the beast has fallen, spend 3 tokens to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
+      text: 'Starts the match with a beast at his side. Right after Ge\'nga acts, the beast may also step 1 square in any direction (free; it can capture, but has no special moves). Active: once the beast has fallen, spend 3 runes to summon it again on an empty square next to Ge\'nga. If Ge\'nga falls, the beast flees.',
     },
   },
   magumba: {
@@ -76,7 +76,7 @@ export const HEROES = {
     moveText: 'Steps 1 square straight.',
     skill: {
       key: 'root', name: 'Aggressive Root', type: 'active', cost: 3, range: 3, reach: { cells: ROOT_PATTERN }, reaction: true, reactionCost: 3, cooldown: 3,
-      text: 'Roots an enemy in the 3x3 block right in front of her — never beside or behind her, and nothing in between blocks it. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 tokens), when an enemy in that block acts: that action is negated. After either use, it recharges for 3 of your turns.',
+      text: 'Roots an enemy in the 3x3 block right in front of her — never beside or behind her, and nothing in between blocks it. It can\'t act on its next turn. It can instead be cast during the opponent\'s turn (3 runes), when an enemy in that block acts: that action is negated. After either use, it recharges for 3 of your turns.',
     },
   },
   hexor: {
@@ -85,7 +85,7 @@ export const HEROES = {
     moveText: 'Jumps in an L, like a chess knight.',
     skill: {
       key: 'storm', name: 'Storm Hammer', type: 'follow', cost: 2, range: 1,
-      text: 'After Hexor eliminates an enemy, you may spend tokens to slam: pick a pattern, + (straight) or X (diagonal), and every unit on those 4 squares around him is pushed 2 squares away. If terrain, the board edge or another unit is in the way, it stops on the last empty square; if it can\'t move straight at all, it slides into an empty square beside it instead (holding its ground only when there is none). Nobody is ever eliminated by the slam itself.',
+      text: 'After Hexor eliminates an enemy, you may spend runes to slam: pick a pattern, + (straight) or X (diagonal), and every unit on those 4 squares around him is pushed 2 squares away. If terrain, the board edge or another unit is in the way, it stops on the last empty square; if it can\'t move straight at all, it slides into an empty square beside it instead (holding its ground only when there is none). Nobody is ever eliminated by the slam itself.',
     },
   },
   aqna: {
@@ -94,7 +94,7 @@ export const HEROES = {
     moveText: 'Moves up to 2 squares straight.',
     skill: {
       key: 'icy', name: 'Icy Step', type: 'active', cost: 1, range: 3, charge: true,
-      text: `When she eliminates an enemy she gains an ice charge (one at most; charges don't stack). Spend it with 1 token to raise an ice block up to 3 squares away: right after the kill, or later as her action on any turn you like. Nobody can enter ice, including her. Up to ${ICE_LIMIT} blocks; after that her oldest block moves to the new spot.`,
+      text: `When she eliminates an enemy she gains an ice charge (one at most; charges don't stack). Spend it with 1 rune to raise an ice block up to 3 squares away: right after the kill, or later as her action on any turn you like. Nobody can enter ice, including her. Up to ${ICE_LIMIT} blocks; after that her oldest block moves to the new spot.`,
     },
   },
 };
@@ -127,9 +127,9 @@ export const samePos = (a, b) => a.r === b.r && a.c === b.c;
 export const chebyshev = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
 export const squareName = (p) => `${FILES[p.c]}${BOARD_SIZE - p.r}`;
 // Log helpers: why a skill could be used.
-const tokens = (n) => (n ? `${n} token${n > 1 ? 's' : ''}` : 'free');
+const tokens = (n) => (n ? `${n} rune${n > 1 ? 's' : ''}` : 'free');
 const dist = (a, b) => { const d = chebyshev(a.pos, b.pos); return `${d} square${d === 1 ? '' : 's'} away`; };
-const left = (s, team) => `(${tokens(s.energy[team]).replace('free', 'no tokens')} left)`;
+const left = (s, team) => `(${tokens(s.energy[team]).replace('free', 'no runes')} left)`;
 export const parseSquare = (n) => ({ c: FILES.indexOf(n[0]), r: BOARD_SIZE - Number(n[1]) });
 export const key = (p) => `${p.r},${p.c}`;
 const other = (t) => (t === 'p1' ? 'p2' : 'p1');
@@ -419,7 +419,7 @@ function explain(s, a) {
     if (!a.to || !inBounds(a.to)) return 'That square is off the board.';
     if (blockAt(s, a.to)) return 'Nobody can enter terrain.';
     const opt = moveOptions(s, u).find((x) => samePos(x.to, a.to));
-    if (opt && opt.cost > s.energy[u.team]) return `Backstab costs ${opt.cost} token; you have ${s.energy[u.team]}.`;
+    if (opt && opt.cost > s.energy[u.team]) return `Backstab costs ${opt.cost} rune; you have ${s.energy[u.team]}.`;
     const o = unitAt(s, a.to);
     if (o && o.team === u.team) return `${squareName(a.to)} is occupied by your own unit.`;
     if (o && o.warded) return `${label(o)} is protected by Empty Grave.`;
@@ -429,7 +429,7 @@ function explain(s, a) {
     const sk = HEROES[u.hero].skill;
     if (sk.type !== 'active') return `${sk.name} is passive; it triggers on its own.`;
     if (skillCooldown(u) > 0) return `${sk.name} is recharging: ready in ${skillCooldown(u)} turn${skillCooldown(u) > 1 ? 's' : ''}.`;
-    if (s.energy[u.team] < sk.cost) return `${sk.name} needs ${sk.cost} tokens; you have ${s.energy[u.team]}.`;
+    if (s.energy[u.team] < sk.cost) return `${sk.name} needs ${sk.cost} runes; you have ${s.energy[u.team]}.`;
     if (sk.key === 'icy') {
       if (!u.iceCharge) return 'Icy Step needs an ice charge: Aqna stores one when she eliminates an enemy (one at a time).';
       return 'Ice must go on an empty square within 3 of Aqna.';
@@ -462,7 +462,7 @@ function eliminate(s, u, lines, by = null) {
   lines.push(`${label(u)} is eliminated on ${squareName(u.pos)}.`);
   if (u.kind === 'creep' && by && by !== u.team) {
     s.energy[by] = Math.min(ENERGY.max, s.energy[by] + CREEPS.lastHit);
-    lines.push(`${TEAM_NAMES[by]} gains ${CREEPS.lastHit} token for the kill.`);
+    lines.push(`${TEAM_NAMES[by]} gains ${CREEPS.lastHit} rune for the kill.`);
   }
   if (u.kind === 'hero' && u.hero === 'genga') {
     const b = beastOf(s, u);
@@ -547,7 +547,7 @@ function resolveMove(s, action, lines, last) {
     u.alive = false;
     s.energy[u.team] = Math.min(ENERGY.max, s.energy[u.team] + CREEPS.breach);
     last.breach = true;
-    lines.push(`${label(u)} breaks through on ${squareName(u.pos)}: +${CREEPS.breach} tokens.`);
+    lines.push(`${label(u)} breaks through on ${squareName(u.pos)}: +${CREEPS.breach} runes.`);
   }
   return { killed: victims.length };
 }
@@ -710,7 +710,7 @@ function finishUnitAction(s, action, last, lines) {
   return continueTurn(s, { actorId: actor.id, wasBeast, killed });
 }
 
-/** Follow-ups after a unit action: Aqna's ice (costs a token), Ge'nga's beast (free). */
+/** Follow-ups after a unit action: Aqna's ice (costs a rune), Ge'nga's beast (free). */
 function continueTurn(s, { actorId, wasBeast, killed }) {
   const actor = s.units[actorId];
   if (!wasBeast && actor.alive && actor.hero === 'aqna' && actor.kind === 'hero' && killed > 0) actor.iceCharge = 1; // never more than one

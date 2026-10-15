@@ -174,7 +174,7 @@ export function App() {
               </div>
               <button type="button" className={`learn-card${seenRules ? '' : ' fresh'}`} onClick={() => { setRules(true); setSeenRules(true); }}>
                 <span className="learn-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4zM20 5h-6" /><path d="M20 5v12h-6" /></svg></span>
-                <span><b>How to play</b><small>{seenRules ? 'Heroes, skills and tokens' : 'New here? Learn the rules in a minute'}</small></span>
+                <span><b>How to play</b><small>{seenRules ? 'Heroes, skills and runes' : 'New here? Learn the rules in a minute'}</small></span>
                 {!seenRules && <span className="new-dot" aria-label="New">Start here</span>}
               </button>
               <div className="home-grid">

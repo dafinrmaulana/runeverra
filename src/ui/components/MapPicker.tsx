@@ -37,7 +37,7 @@ export function MapPicker({ map, creeps, onMap, onCreeps, readOnly }: Props) {
         })}
       </div>
       <Switch checked={creeps} disabled={readOnly} onChange={(v) => onCreeps?.(v)}
-        label={<><b>Creeps</b> · four pawns per side on the flank lanes; killing one or breaking through gives a token</>} />
+        label={<><b>Creeps</b> · four pawns per side on the flank lanes; killing one or breaking through gives a rune</>} />
     </div>
   );
 }
