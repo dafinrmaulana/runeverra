@@ -7,6 +7,7 @@ import { room } from './online';
 import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
 import { ClockPicker } from './components/ClockPicker';
+import { Tour } from './components/Tour';
 import { ChatButton } from './components/Chat';
 import { LegalScreen, type LegalDoc } from './screens/LegalScreen';
 import { Rules } from './components/Rules';
@@ -56,6 +57,7 @@ export function App() {
   const [desc, setDesc] = useState<DescMode>(pref('desc', 'short'));
   const [ctrl, setCtrl] = useState<GameController | null>(null);
   const [rules, setRules] = useState(false);
+  const [tour, setTour] = useState(false);
   const [settings, setSettings] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
   const [seenRules, setSeenRules] = useState<boolean>(pref('seenRules', false));
@@ -175,7 +177,7 @@ export function App() {
                   <small>{r.available === false ? 'Available on the published page only' : 'Play a friend with a room code'}</small>
                 </button>
               </div>
-              <button type="button" className={`learn-card${seenRules ? '' : ' fresh'}`} onClick={() => { setRules(true); setSeenRules(true); }}>
+              <button type="button" className={`learn-card${seenRules ? '' : ' fresh'}`} onClick={() => { if (seenRules) setRules(true); else setTour(true); setSeenRules(true); }}>
                 <span className="learn-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4zM20 5h-6" /><path d="M20 5v12h-6" /></svg></span>
                 <span><b>How to play</b><small>{seenRules ? 'Heroes, skills and runes' : 'New here? Learn the rules in a minute'}</small></span>
                 {!seenRules && <span className="new-dot" aria-label="New">Start here</span>}
@@ -357,8 +359,12 @@ export function App() {
         </div>
       </Modal>
 
+      <Tour open={tour} onClose={() => setTour(false)}
+        onFullRules={() => { setTour(false); setRules(true); }}
+        onPlay={() => { setTour(false); choose('bot'); }} />
+
       <Modal open={rules} onClose={() => setRules(false)} label="How to play" className="wide">
-        <Rules />
+        <Rules onTour={() => { setRules(false); setTour(true); }} />
         <button className="btn primary" type="button" onClick={() => setRules(false)}>Close</button>
       </Modal>
     </div>

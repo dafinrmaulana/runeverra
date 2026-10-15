@@ -1,7 +1,8 @@
 /** How to play: the rules in plain words. */
-export function Rules() {
+export function Rules({ onTour }: { onTour?: () => void }) {
   return (
     <div className="rules-body">
+      {onTour && <button type="button" className="btn primary tour-link" onClick={onTour}>Take the guided tour</button>}
       <h3>Goal</h3>
       <p>Eliminate all four enemy heroes. Beasts and creeps don't count.</p>
       <h3>Your turn</h3>
@@ -27,7 +28,7 @@ export function Rules() {
       <h3>Interrupt</h3>
       <p>When an enemy unit in the 3x3 block in front of your Plantae acts — nothing in between stops it — you may cancel that action for 3 runes. The skill then recharges for 3 turns.</p>
       <h3>Time (optional)</h3>
-      <p>Classic has no clock. In a timed match each player gets the same time in total (3, 5, 10 minutes or your own). The clock runs for whoever is deciding, and the player who runs out of time loses. Undo is off.</p>
+      <p>Classic has no clock. In a timed match each player gets the same time in total (3 or 5 minutes, or your own). The clock runs for whoever is deciding, and the player who runs out of time loses. Undo is off.</p>
       <h3>Score (optional)</h3>
       <p>Counts wins for each side across rematches: against the bot per difficulty, face to face Ivory against Ember, online per room. Turn it on or off, or reset it, from the in-game menu.</p>
       <h3>Creeps</h3>

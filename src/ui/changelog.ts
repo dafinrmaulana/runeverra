@@ -10,6 +10,8 @@ export const CHANGELOG: Patch[] = [
   {
     version: '0.6.0', date: '2026-10-15', title: 'Home, chat and install',
     entries: [
+      { tag: 'new', text: 'A guided tour for new players in How to play: the goal, your first move on a real board, the skill every hero has, and what runes are for. Each step is a sentence or two.' },
+      { tag: 'ui', text: 'Time options are now Classic, 3 min and 5 min (fill the row), plus a full-width box for your own number of minutes.' },
       { tag: 'new', text: 'A new home screen with a live demo match, a clear "How to play" card for new players, and quick access to match review, patch notes and settings.' },
       { tag: 'new', text: 'Online chat: type a message or tap a quick phrase. New messages pop up over the board, and you can mute chat any time.' },
       { tag: 'new', text: 'Full screen board for bot and online games, so the board is bigger on your phone.' },
