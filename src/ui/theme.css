@@ -817,3 +817,8 @@ html { overflow-x: clip; }
 /* Mobile browsers grow and shrink their address bar while you scroll, which resizes the viewport.
    The floor is pinned to the LARGEST viewport (lvh) and the page minimum to the SMALLEST (svh),
    so nothing behind the content rescales mid-scroll. */
+
+/* patch notes: the tag sits inline at the start of the line, so the text can use the full width */
+.patch li { display: block; line-height: 1.5; }
+.patch .ptag { display: inline-block; min-width: 0; margin-right: 8px; padding: 0 6px; font-size: .68rem; line-height: 1.5; vertical-align: .1em; }
+.patch li > span:last-child { display: inline; }
