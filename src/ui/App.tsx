@@ -13,6 +13,7 @@ import { ReplaysScreen } from './screens/ReplaysScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LATEST } from './changelog';
 import { resetTally } from './record';
+import { useInstall } from './pwa';
 import { Modal, Steps } from './components/ui';
 import { CursorPicker } from './cursor';
 import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
@@ -50,6 +51,7 @@ export function App() {
   const [settings, setSettings] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
   const r = useRoom();
+  const pwa = useInstall();
 
   useEffect(() => { setPref('desc', desc); }, [desc]);
   useEffect(() => { setPref('level', level); setPref('botTeam', botTeam); setPref('side', side); }, [level, botTeam, side]);
@@ -300,6 +302,13 @@ export function App() {
         <div className="settings">
           <h3>Mouse cursor</h3>
           <CursorPicker />
+          {pwa.kind === 'prompt' && (
+            <div className="install-row"><h3>Install app</h3><p className="note">Add Runeverra to your home screen. Bot and face to face games also work offline.</p>
+              <button className="btn" type="button" onClick={() => pwa.install()}>Install Runeverra</button></div>
+          )}
+          {pwa.kind === 'ios' && (
+            <div className="install-row"><h3>Install app</h3><p className="note">In Safari, tap Share, then Add to Home Screen.</p></div>
+          )}
           <button className="btn primary" type="button" onClick={() => setSettings(false)}>Done</button>
         </div>
       </Modal>

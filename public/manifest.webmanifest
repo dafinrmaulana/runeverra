@@ -1,0 +1,16 @@
+{
+  "name": "Runeverra",
+  "short_name": "Runeverra",
+  "description": "Pick four heroes, choose a map and fight on an 8x8 board. Deterministic tactics, no dice.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#221c18",
+  "theme_color": "#221c18",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

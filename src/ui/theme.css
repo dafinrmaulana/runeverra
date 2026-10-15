@@ -534,3 +534,6 @@ input, select, textarea { border-radius: 2px !important; }
 .game-screen.focus .ledger, .game-screen.focus .sel-acc, .game-screen.focus .sel-empty, .game-screen.focus .score-strip { display: none; }
 .game-screen.focus .stage { grid-template-columns: minmax(0, 1fr); }
 .game-screen.focus .board-wrap { width: min(100%, calc(100dvh - 200px), 900px); }
+
+.install-row { margin: 14px 0 6px; }
+.install-row h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .07em; color: var(--sand); font-size: .95rem; margin: 0 0 6px; }
