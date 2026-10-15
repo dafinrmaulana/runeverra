@@ -1,5 +1,6 @@
 import { HEROES, CLASSES, createMatch, skillReach } from '../../arena.js';
-import { SHORT, costLabel, costChip, roleOf, moveCells } from '../data';
+import { SHORT, costLabel, roleOf, moveCells } from '../data';
+import { CostChip } from './Rune';
 import { HeroDemo } from './HeroDemo';
 
 export type DescMode = 'short' | 'detail';
@@ -49,7 +50,7 @@ export function HeroInfo({ id, mode }: { id: string; mode: DescMode }) {
       <div className="hinfo short">
         <div className="hinfo-head"><b>{h.name}</b><span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span></div>
         <div className="hinfo-move"><MoveDiagram hero={id} size={8} /><span><span className="lbl">Move</span>{s.move}</span></div>
-        <div className="hinfo-move"><RangeDiagram hero={id} size={8} /><p><span className="lbl">{sk.name}</span>{s.skill} <span className="cost">{costChip(sk)}</span>{sk.range ? <span className="range-note"> {reachText(sk)}</span> : null}</p></div>
+        <div className="hinfo-move"><RangeDiagram hero={id} size={8} /><p><span className="lbl">{sk.name}</span>{s.skill} <CostChip sk={sk} />{sk.range ? <span className="range-note"> {reachText(sk)}</span> : null}</p></div>
         <HeroDemo hero={id} />
       </div>
     );

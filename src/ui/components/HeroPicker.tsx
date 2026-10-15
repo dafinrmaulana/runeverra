@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { HEROES, TEAM_NAMES } from '../../arena.js';
-import { HERO_IDS, ICON, ART, costChip, roleOf, randomTeam, type HeroId, type Team } from '../data';
+import { CostChip } from './Rune';
+import { HERO_IDS, ICON, ART, roleOf, randomTeam, type HeroId, type Team } from '../data';
 import { HeroInfo, type DescMode } from './HeroInfo';
 import { Modal } from './ui';
 
@@ -73,7 +74,7 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
                 <span className="htile-text">
                   <b>{h.name}</b>
                   <span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span>
-                  <span className="sk">{h.skill.name} <span className="cost" title="Rune cost">{costChip(h.skill)}</span></span>
+                  <span className="sk">{h.skill.name} <CostChip sk={h.skill} /></span>
                 </span>
               </button>
               <button type="button" className="info-btn" aria-label={`About ${h.name}`} onClick={() => setModal(id)} title="Hero details">i</button>

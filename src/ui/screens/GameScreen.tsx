@@ -8,12 +8,13 @@ import {
   squareName, skillCooldown, skillActions, getThreats, beastOf,
 } from '../../arena.js';
 import { type GameController } from '../game/controller';
-import { ICON, ART, MAP_ART, SHORT, costLabel, costChip, other, tk, type Team } from '../data';
+import { ICON, ART, MAP_ART, SHORT, costLabel, other, tk, type Team } from '../data';
 import { BEAST_SVG, CREEP_SVG } from '../game/board.js';
 import { Rules } from '../components/Rules';
 import { MoveDiagram, RangeDiagram } from '../components/HeroInfo';
 import { Modal, Switch, Accordion } from '../components/ui';
 import { ChatButton, ChatBubble } from '../components/Chat';
+import { Rune, CostChip } from '../components/Rune';
 
 const TEAM_NAMES = TN as Record<string, string>;
 
@@ -195,7 +196,7 @@ function Tokens({ c, team, who, active }: { c: GameController; team: Team; who: 
   return (
     <span className={`tokens ${team}${active ? ' active' : ''}`}>
       <span className={`team-dot ${team}`} /><span className="who">{who}</span>
-      <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span><Clock c={c} team={team} />
+      <Pips n={n} /><span className="tn"><Rune />{n}/{ENERGY.max}</span><Clock c={c} team={team} />
     </span>
   );
 }
@@ -265,7 +266,7 @@ function SelTrigger({ c, u, threats }: { c: GameController; u: any; threats: Set
       <span className="sel-text">
         <span className="sel-name"><span className={`team-dot ${u.team}`} />{d.name}
           <span className="sub">{hero && d.role ? (ROLES as any)[d.role] : d.title} · {squareName(u.pos)}</span>
-          {sk && <span className="cost">{costChip(sk)}</span>}
+          {sk && <CostChip sk={sk} />}
           {fx.map((f) => <span key={f.k} className={`fx-pill ${f.k}`} title={f.text}>{f.label}</span>)}</span>
         <span className="sel-short">{hero ? <><b>{sk.name}:</b> {shortLine(u)}</> : shortLine(u)}</span>
         {fx.length > 0 && <span className="sel-fx">{fx.map((f) => f.text).join(' ')}</span>}
@@ -377,7 +378,7 @@ function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
         onClick={() => (usable ? c.armSkill() : sk && c.say(state, 'err'))}
         aria-label={sk ? `${sk.name}${active ? `, ${tk(sk.cost)}` : ''}. ${state}` : 'Skill'}>
         <span className="glyph" dangerouslySetInnerHTML={{ __html: SKILL_ICON[sk?.key] || SKILL_ICON.none }} />
-        {sk && <span className="sq-cost">{costChip(sk)}</span>}
+        {sk && <CostChip sk={sk} className="sq-cost" />}
         {block && sk && <span className={`sq-block ${block}`} dangerouslySetInnerHTML={{ __html: BLOCK_ICON[block] + (block === 'cooldown' ? `<b>${cd}</b>` : '') }} />}
       </button>
       <div className="skill-pop" role="note">

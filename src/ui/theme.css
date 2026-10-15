@@ -708,3 +708,11 @@ input, select, textarea { border-radius: 2px !important; }
   .clock-opts { gap: 6px; }
   .clock-opts .btn { padding-inline: 10px; font-size: .8rem; }
 }
+
+/* ---------- rune glyph in costs ---------- */
+.rune-ico { width: 1.05em; height: 1.05em; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vertical-align: -.16em; margin-right: 2px; }
+.cost { display: inline-flex; align-items: center; white-space: nowrap; padding: 0 6px 0 4px; }
+.sq-cost, .skill-sq .sq-cost, .skill-sq.ready .sq-cost, .skill-sq.armed .sq-cost { display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-width: 30px; padding: 0 5px 0 3px; white-space: nowrap; }
+.skill-wrap.inline .sq-cost { min-width: 26px; font-size: .62rem; }
+.tokens .tn { display: inline-flex; align-items: center; }
+.tokens .tn .rune-ico { color: #ffd27a; margin-right: 3px; }
