@@ -318,7 +318,7 @@ export function App() {
             )}
             <Switch checked={kind === 'online' ? r.creeps : creeps} disabled={kind === 'online' && r.side === 'p2'}
               onChange={(v) => (kind === 'online' ? r.setMap(r.map, v) : setCreeps(v))}
-              label={<><b>Creeps</b> · four pawns per side on the flank lanes; killing one or breaking through gives a rune</>} />
+              label={<><b>Creeps</b><small>Pawns that earn runes</small></>} />
           </section>
           <h3 className="section-h">Battlefield</h3>
           <MapPicker

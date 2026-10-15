@@ -785,3 +785,7 @@ input, select, textarea { border-radius: 2px !important; }
 .tour-actions.stack { flex-direction: column; margin-top: 8px; }
 .btn.primary.glow { animation: learnpulse 1.8s ease-in-out infinite; }
 .rules-body .tour-link { width: 100%; margin-bottom: 8px; }
+
+/* switch labels: a title with its hint underneath */
+.switch > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.switch small { display: block; color: var(--muted); font-size: .78rem; line-height: 1.3; }
