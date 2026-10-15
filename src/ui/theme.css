@@ -818,7 +818,23 @@ html { overflow-x: clip; }
    The floor is pinned to the LARGEST viewport (lvh) and the page minimum to the SMALLEST (svh),
    so nothing behind the content rescales mid-scroll. */
 
-/* patch notes: the tag sits inline at the start of the line, so the text can use the full width */
-.patch li { display: block; line-height: 1.5; }
-.patch .ptag { display: inline-block; min-width: 0; margin-right: 8px; padding: 0 6px; font-size: .68rem; line-height: 1.5; vertical-align: .1em; }
-.patch li > span:last-child { display: inline; }
+/* ---------- patch notes: tag on top, the description under it, a rule between entries ---------- */
+.patch ul { gap: 0; padding-top: 0; }
+.patch li { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); line-height: 1.5; }
+.patch li:first-child { padding-top: 8px; }
+.patch li:last-child { border-bottom: 0; padding-bottom: 2px; }
+.patch .ptag { display: inline-block; min-width: 0; margin: 0; padding: 0 7px; font-size: .68rem; line-height: 1.6; }
+.patch li > span:last-child { display: block; }
+
+/* ---------- smooth scrolling on phones ----------
+   A blur behind a bar that sits over an animating background has to be recomputed every frame; drop it.
+   While the page scrolls the background animations pause, and on touch screens the heavier effects are left out. */
+.step-foot { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(20, 16, 13, .97); }
+.setup-top::before { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(20, 16, 13, .97); }
+.floor { contain: layout paint style; }
+.floor.is-scrolling .ring, .floor.is-scrolling .floor-fog i { animation-play-state: paused; }
+@media (pointer: coarse) {
+  .floor-lit { display: none; }
+  .ring { filter: none; }
+  .floor-fog .g3, .floor-fog .g4, .floor-fog .g6 { display: none; }
+}

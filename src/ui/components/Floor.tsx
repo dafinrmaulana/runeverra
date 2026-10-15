@@ -138,8 +138,16 @@ export function Floor({ mode }: { mode: FloorMode }) {
       x = e.clientX; y = e.clientY;
       if (!raf) raf = requestAnimationFrame(() => { raf = 0; el.style.setProperty('--mx', `${x}px`); el.style.setProperty('--my', `${y}px`); el.classList.add('touched'); });
     };
+    // Pause the background motion while the page is being scrolled: less work per frame, no dropped tiles.
+    let idle = 0;
+    const scrolling = () => {
+      el.classList.add('is-scrolling');
+      clearTimeout(idle);
+      idle = window.setTimeout(() => el.classList.remove('is-scrolling'), 160);
+    };
+    window.addEventListener('scroll', scrolling, { passive: true });
     window.addEventListener('pointermove', move, { passive: true });
-    return () => { window.removeEventListener('pointermove', move); cancelAnimationFrame(raf); };
+    return () => { window.removeEventListener('scroll', scrolling); clearTimeout(idle); window.removeEventListener('pointermove', move); cancelAnimationFrame(raf); };
   }, []);
 
   return (
