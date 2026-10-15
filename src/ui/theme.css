@@ -594,6 +594,7 @@ input, select, textarea { border-radius: 2px !important; }
 .learn-ico svg, .util-card svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .learn-ico { color: var(--sand); display: grid; }
 .new-dot { margin-left: auto; background: var(--leaf); color: var(--ink); padding: 1px 8px; border-radius: 2px; font: 700 .7rem/1.6 var(--f-mono); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.home-menu { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 .home-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .util-card { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; position: relative; background: rgba(44, 37, 32, .92); border: 1px solid var(--line); border-radius: 2px; color: var(--bone); cursor: pointer; font-size: .85rem; }
 .util-card:hover { border-color: var(--line-hi); color: var(--sand); }
@@ -605,9 +606,8 @@ input, select, textarea { border-radius: 2px !important; }
   /* the brand gets its own full-width row, so a wide logo can never run under the demo */
   .home-hero { grid-column: 1 / -1; grid-row: 1; margin-bottom: 4px; }
   .home-hero .logo { font-size: clamp(2.8rem, 6vw, 5rem); }
-  .home-demo { grid-column: 2; grid-row: 2 / span 3; }
-  .mode-list { grid-column: 1; grid-row: 2; }
-  .learn-card { grid-column: 1; grid-row: 3; }
-  .home-grid { grid-column: 1; grid-row: 4; }
-  .home-foot { grid-column: 1 / -1; grid-row: 5; }
+  .home-demo { grid-column: 2; }
+  .home-demo { grid-row: 2; }
+  .home-menu { grid-column: 1; grid-row: 2; align-self: stretch; justify-content: center; }
+  .home-foot { grid-column: 1 / -1; grid-row: 3; }
 }

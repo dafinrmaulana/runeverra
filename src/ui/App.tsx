@@ -159,34 +159,36 @@ export function App() {
               <p className="tagline">Pick four heroes. Outsmart one opponent. No dice, no luck.</p>
             </div>
             <HomeDemo />
-            <div className="mode-list">
-              <button type="button" className="mode-card primary" onClick={() => choose('bot')}>
-                <b>Play vs Bot</b><small>Easy, Normal or Hard</small>
+            <div className="home-menu">
+              <div className="mode-list">
+                <button type="button" className="mode-card primary" onClick={() => choose('bot')}>
+                  <b>Play vs Bot</b><small>Easy, Normal or Hard</small>
+                </button>
+                <button type="button" className="mode-card" onClick={() => choose('local')}>
+                  <b>Face to face</b><small>Two players, one screen</small>
+                </button>
+                <button type="button" className="mode-card" onClick={() => choose('online')} disabled={r.available === false}>
+                  <b>Online room</b>
+                  <small>{r.available === false ? 'Available on the published page only' : 'Play a friend with a room code'}</small>
+                </button>
+              </div>
+              <button type="button" className={`learn-card${seenRules ? '' : ' fresh'}`} onClick={() => { setRules(true); setSeenRules(true); }}>
+                <span className="learn-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4zM20 5h-6" /><path d="M20 5v12h-6" /></svg></span>
+                <span><b>How to play</b><small>{seenRules ? 'Heroes, skills and tokens' : 'New here? Learn the rules in a minute'}</small></span>
+                {!seenRules && <span className="new-dot" aria-label="New">Start here</span>}
               </button>
-              <button type="button" className="mode-card" onClick={() => choose('local')}>
-                <b>Face to face</b><small>Two players, one screen</small>
-              </button>
-              <button type="button" className="mode-card" onClick={() => choose('online')} disabled={r.available === false}>
-                <b>Online room</b>
-                <small>{r.available === false ? 'Available on the published page only' : 'Play a friend with a room code'}</small>
-              </button>
-            </div>
-            <button type="button" className={`learn-card${seenRules ? '' : ' fresh'}`} onClick={() => { setRules(true); setSeenRules(true); }}>
-              <span className="learn-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4zM20 5h-6" /><path d="M20 5v12h-6" /></svg></span>
-              <span><b>How to play</b><small>{seenRules ? 'Heroes, skills and tokens' : 'New here? Learn the rules in a minute'}</small></span>
-              {!seenRules && <span className="new-dot" aria-label="New">Start here</span>}
-            </button>
-            <div className="home-grid">
-              <button type="button" className="util-card" onClick={() => setScreen('replays')}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M10 8.5v7l5.5-3.5z" /></svg><span>Match review</span>
-              </button>
-              <button type="button" className="util-card" onClick={() => { setScreen('changelog'); setSeenVer(LATEST.version); }}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" /><path d="M9 11h7M9 15h7" /></svg><span>Patch notes</span>
-                {seenVer !== LATEST.version && <span className="new-dot" aria-label="New">New</span>}
-              </button>
-              <button type="button" className="util-card" onClick={() => setSettings(true)}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg><span>Settings</span>
-              </button>
+              <div className="home-grid">
+                <button type="button" className="util-card" onClick={() => setScreen('replays')}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M10 8.5v7l5.5-3.5z" /></svg><span>Match review</span>
+                </button>
+                <button type="button" className="util-card" onClick={() => { setScreen('changelog'); setSeenVer(LATEST.version); }}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" /><path d="M9 11h7M9 15h7" /></svg><span>Patch notes</span>
+                  {seenVer !== LATEST.version && <span className="new-dot" aria-label="New">New</span>}
+                </button>
+                <button type="button" className="util-card" onClick={() => setSettings(true)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg><span>Settings</span>
+                </button>
+              </div>
             </div>
             <footer className="home-foot">
               <span className="legal-links"><button type="button" className="linklike" onClick={() => openLegal('terms')}>Terms</button> · <button type="button" className="linklike" onClick={() => openLegal('privacy')}>Privacy</button> · <button type="button" className="linklike" onClick={() => openLegal('copyright')}>Copyright</button> · v{LATEST.version}</span>
