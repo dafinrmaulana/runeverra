@@ -18,7 +18,7 @@ import { HomeDemo } from './components/HomeDemo';
 import { Floor } from './components/Floor';
 import { resetTally } from './record';
 import { useInstall } from './pwa';
-import { Modal, Steps } from './components/ui';
+import { Modal, Steps, Switch } from './components/ui';
 import { CursorPicker } from './cursor';
 import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
 import type { DescMode } from './components/HeroInfo';
@@ -307,16 +307,23 @@ export function App() {
           {screen === 'map' && <div className="setup-body page" key="map">
           {kind === 'online' && r.side === 'p2' && <p className="note">The host (Ivory) picks the battlefield and the time. You see their choice here.</p>}
           {kind === 'online' && <OppCard compact />}
+          <section className="match-options" aria-label="Match options">
+            <h3>Match options</h3>
+            {(kind !== 'online' || r.canTime) && (
+              <ClockPicker minutes={kind === 'online' ? r.clockMin : clockMin}
+                readOnly={kind === 'online' && r.side === 'p2'}
+                onChange={(m) => (kind === 'online' ? r.setClock(m) : setClockMin(m))} />
+            )}
+            <Switch checked={kind === 'online' ? r.creeps : creeps} disabled={kind === 'online' && r.side === 'p2'}
+              onChange={(v) => (kind === 'online' ? r.setMap(r.map, v) : setCreeps(v))}
+              label={<><b>Creeps</b> · four pawns per side on the flank lanes; killing one or breaking through gives a rune</>} />
+          </section>
+          <h3 className="section-h">Battlefield</h3>
           <MapPicker
             map={kind === 'online' ? r.map : map} creeps={kind === 'online' ? r.creeps : creeps}
             readOnly={kind === 'online' && r.side === 'p2'}
             onMap={(m) => (kind === 'online' ? r.setMap(m, r.creeps) : setMap(m))}
-            onCreeps={(v) => (kind === 'online' ? r.setMap(r.map, v) : setCreeps(v))} />
-          {(kind !== 'online' || r.canTime) && (
-            <ClockPicker minutes={kind === 'online' ? r.clockMin : clockMin}
-              readOnly={kind === 'online' && r.side === 'p2'}
-              onChange={(m) => (kind === 'online' ? r.setClock(m) : setClockMin(m))} />
-          )}
+          />
           </div>}
         </Setup>
       )}

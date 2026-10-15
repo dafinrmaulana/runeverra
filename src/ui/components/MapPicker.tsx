@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { MAPS, SLOTS, CREEPS, createMatch } from '../../arena.js';
 import { MAP_IDS } from '../data';
-import { Switch } from './ui';
 
 function MiniMap({ id, creeps }: { id: string; creeps: boolean }) {
   const blocks = useMemo(() => createMatch({ map: id }).blocks as Record<string, unknown>, [id]);
@@ -19,9 +18,9 @@ function MiniMap({ id, creeps }: { id: string; creeps: boolean }) {
   return <span className={`mini theme-${(MAPS as any)[id].theme}`}>{cells}</span>;
 }
 
-type Props = { map: string; creeps: boolean; onMap?: (m: string) => void; onCreeps?: (c: boolean) => void; readOnly?: boolean };
+type Props = { map: string; creeps: boolean; onMap?: (m: string) => void; readOnly?: boolean };
 
-export function MapPicker({ map, creeps, onMap, onCreeps, readOnly }: Props) {
+export function MapPicker({ map, creeps, onMap, readOnly }: Props) {
   return (
     <div className="mappicker">
       <div className="maps">
@@ -36,8 +35,6 @@ export function MapPicker({ map, creeps, onMap, onCreeps, readOnly }: Props) {
           );
         })}
       </div>
-      <Switch checked={creeps} disabled={readOnly} onChange={(v) => onCreeps?.(v)}
-        label={<><b>Creeps</b> · four pawns per side on the flank lanes; killing one or breaking through gives a rune</>} />
     </div>
   );
 }

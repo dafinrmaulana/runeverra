@@ -689,3 +689,22 @@ input, select, textarea { border-radius: 2px !important; }
 .over-sub { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
 .over-sub .btn { padding-inline: 8px; }
 .overlay .final-score { margin-bottom: 14px; }
+
+/* ---------- battlefield step: options first, maps in at most two columns ---------- */
+.match-options { display: grid; gap: 12px; padding: 12px 14px; margin-bottom: 14px; background: rgba(44, 37, 32, .9); border: 1px solid var(--line-hi); border-radius: 2px; }
+.match-options h3, .section-h { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .07em; color: var(--sand); font-size: .95rem; margin: 0; }
+.match-options .clockpicker { margin-top: 0; }
+.match-options .clockpicker h3 { font-size: .8rem; color: var(--muted); margin-bottom: 8px; }
+.section-h { margin: 4px 0 8px; }
+/* the time buttons and the minutes box share one height */
+.clock-opts .btn, .clock-custom input { box-sizing: border-box; height: 40px; padding-block: 0; line-height: 1; }
+.clock-opts .btn { display: inline-flex; align-items: center; }
+.clock-custom input { display: block; width: 8.5ch; padding-inline: 10px; }
+@media (max-width: 640px) {
+  .maps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .maptile { padding: 8px; gap: 6px; }
+  .maptile b { font-size: .85rem; }
+  .maptile span { font-size: .72rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .clock-opts { gap: 6px; }
+  .clock-opts .btn { padding-inline: 10px; font-size: .8rem; }
+}
