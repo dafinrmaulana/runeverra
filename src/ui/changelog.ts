@@ -20,6 +20,7 @@ export const CHANGELOG: Patch[] = [
       { tag: 'balance', text: 'Oasis Bazaar and Savanna Crossing have new obstacle spots, so obstacles now sit on both square colours. Heroes that only move on one colour (like Magumba) are no longer walled off.' },
       { tag: 'ui', text: 'Game controls fit on one line on phones: skill, undo and redo, full screen and menu (the last two are icon buttons).' },
       { tag: 'ui', text: 'Setup screens keep their title and steps pinned to the top while you scroll, and the titles are shorter so they never wrap on small phones.' },
+      { tag: 'fix', text: 'On phones, the background no longer shakes when the browser address bar slides in and out while you scroll.' },
       { tag: 'fix', text: 'On small phone screens the turn banner no longer overlaps the rune bars: it gets its own row above them.' },
       { tag: 'ui', text: 'Skill costs now show a rune symbol next to the number, so it is clear the number is runes.' },
       { tag: 'ui', text: 'Battlefield screen: time and creeps are now at the top in one "Match options" box, and the maps show in two columns on phones.' },

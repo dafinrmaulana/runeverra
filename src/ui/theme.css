@@ -613,8 +613,8 @@ input, select, textarea { border-radius: 2px !important; }
 }
 
 /* ---------- the floor: mossy stone, a turning rune circle, pointer light (behind every screen) ---------- */
-:root { --D: calc(max(100vw, 100vh) * .4667); }
-.floor { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #14100d; --mx: 50vw; --my: 50vh; }
+:root { --D: calc(max(100vw, 100vh) * .4667); --D: calc(max(100vw, 100lvh) * .4667); }
+.floor { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0; pointer-events: none; overflow: hidden; background: #14100d; --mx: 50vw; --my: 50vh; }
 .app { position: relative; z-index: 1; }
 .floor-stone { position: absolute; inset: 0; width: 100%; height: 100%; display: block; transition: opacity .9s ease; }
 .floor.f-dim .floor-stone, .floor.f-game .floor-stone { opacity: 0; }
@@ -643,8 +643,8 @@ input, select, textarea { border-radius: 2px !important; }
 @keyframes floorspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ring { animation: none !important; } }
 /* ---------- home: responsive column, demo caption under the board ---------- */
-.home { min-height: 100dvh; padding: 0; display: block; }
-.home-front { box-sizing: border-box; width: 100%; max-width: 100%; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: start; gap: 14px; padding: max(2.5vh, 12px) 12px max(2.5vh, 18px); overflow-x: clip; }
+.home { min-height: 100vh; min-height: 100svh; padding: 0; display: block; }
+.home-front { box-sizing: border-box; width: 100%; max-width: 100%; min-height: 100vh; min-height: 100svh; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: start; gap: 14px; padding: max(2.5vh, 12px) 12px max(2.5vh, 18px); overflow-x: clip; }
 .home-front > * { width: 100%; max-width: 560px; min-width: 0; }
 .home-hero { padding-top: 4px; }
 .logo { font-size: clamp(2rem, 11.5vw, 3.6rem); letter-spacing: .07em; }
@@ -813,3 +813,7 @@ html { overflow-x: clip; }
 .learn-card > span { text-align: center; }
 .learn-card .learn-ico svg { width: 22px; height: 22px; }
 .learn-card .new-dot { position: absolute; top: 8px; right: 8px; margin: 0; }
+
+/* Mobile browsers grow and shrink their address bar while you scroll, which resizes the viewport.
+   The floor is pinned to the LARGEST viewport (lvh) and the page minimum to the SMALLEST (svh),
+   so nothing behind the content rescales mid-scroll. */
