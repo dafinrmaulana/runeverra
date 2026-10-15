@@ -15,7 +15,7 @@ export const CHANGELOG: Patch[] = [
       { tag: 'new', text: 'Full screen board for bot and online games, so the board is bigger on your phone.' },
       { tag: 'new', text: 'Install Runeverra as an app from Settings. Games against the bot and face to face also work offline.' },
       { tag: 'ui', text: 'Skill tokens are now called runes, everywhere in the game.' },
-      { tag: 'ui', text: 'An epic new home screen backdrop: rays of light, glowing embers and a slowly turning rune circle over the hero art.' },
+      { tag: 'ui', text: 'A new home screen backdrop: a ritual ground at night with a turning rune circle, glowing standing stones, a beam of light and an aurora.' },
       { tag: 'new', text: 'Terms of Service, Privacy Policy and Copyright pages, with credits for the team and honorable mentions.' },
     ],
   },

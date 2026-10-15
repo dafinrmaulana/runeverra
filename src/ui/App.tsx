@@ -15,6 +15,7 @@ import { ReplaysScreen } from './screens/ReplaysScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LATEST } from './changelog';
 import { HomeDemo } from './components/HomeDemo';
+import { RitualScene } from './components/RitualScene';
 import { resetTally } from './record';
 import { useInstall } from './pwa';
 import { Modal, Steps } from './components/ui';
@@ -149,10 +150,8 @@ export function App() {
     <div className="app">
       {screen === 'home' && (
         <div className="home page" key="home">
-          <div className="home-wall" aria-hidden="true">
-            {HOME_WALL.map((h) => <div key={h} className="wall-col" style={{ backgroundImage: `url(${ART(h)})` }} />)}
-          </div>
-          <div className="home-atmo" aria-hidden="true"><i className="ring" /></div>
+          <div className="home-wall" aria-hidden="true"><RitualScene /></div>
+          <div className="home-atmo" aria-hidden="true" />
           <div className="home-front">
             <div className="home-hero">
               <h1 className="logo">Runeverra</h1>

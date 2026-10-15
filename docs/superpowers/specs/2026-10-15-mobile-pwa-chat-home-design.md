@@ -30,7 +30,7 @@ Six independent parts, built in order. Each is its own commit group (caveman-com
 
 ## B3. Legal
 - Screen `legal` with Terms of Service, Privacy Policy, Copyright & credits; opened from the home footer and Settings; deep links `#terms`, `#privacy`, `#copyright`.
-- All identity facts live in `src/ui/legal-config.ts`: operator "Runeverra, by Agung Nugroho and Dafi Nurrohman Maulana", contact `dafinamulana18@gmail.com`, country Indonesia, site `https://runeverra.daffi.my.id`.
+- All identity facts live in `src/ui/legal-config.ts`: operator "Runeverra, by Agung Nugroho and Dafi Nurrohman Maulana", contact `dafinmaulana18@gmail.com`, country Indonesia, site `https://runeverra.daffi.my.id`.
 - Credits: Agung Nugroho (https://www.instagram.com/heavysmokerashtray/) — Founder, Director, Designer (concept, game and hero design, rules). Dafi Nurrohman Maulana (https://daffi.my.id) — Developer. Honorable mentions (input, testing, balancing and character ideas): Petra Emmanuello Saerang (https://www.instagram.com/petra._.q/) and Santo Gunawan a.k.a. SATAN (https://www.instagram.com/blvccrainbow6/). Hero art: made by the team (© Runeverra). Third party: React, Vite, ws (MIT); Cinzel, Barlow, Barlow Condensed (SIL OFL 1.1).
 - Privacy facts (must stay true to the code): preferences, scores and replays live in the browser; the relay keeps room code, seat token, picks, moves and chat in memory only while the room lives (dropped ~5 min after empty); no accounts, cookies, ads or analytics; server/proxy logs may hold IP and time. Indonesian law (incl. UU PDP) referenced for governing law. Drafts are not legal advice; the page footer of the PR notes say to have them reviewed before monetising.
 

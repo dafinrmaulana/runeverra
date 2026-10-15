@@ -2,7 +2,7 @@
 export const LEGAL = {
   product: 'Runeverra',
   operator: 'Runeverra, by Agung Nugroho and Dafi Nurrohman Maulana',
-  contactEmail: 'dafinamulana18@gmail.com',
+  contactEmail: 'dafinmaulana18@gmail.com',
   country: 'Indonesia',
   siteUrl: 'https://runeverra.daffi.my.id',
   effective: '2026-10-15',
