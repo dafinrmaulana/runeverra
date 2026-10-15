@@ -6,6 +6,7 @@ import { GameController, type Mode } from './game/controller';
 import { room } from './online';
 import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
+import { ClockPicker } from './components/ClockPicker';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
 import { ReplaysScreen } from './screens/ReplaysScreen';
@@ -42,6 +43,7 @@ export function App() {
   const [picks, setPicks] = useState<Record<Team, HeroId[]>>({ p1: [], p2: [] });
   const [map, setMap] = useState<string>(pref('map', 'oasis'));
   const [creeps, setCreeps] = useState<boolean>(pref('creeps', true));
+  const [clockMin, setClockMin] = useState<number>(pref('clockMin', 0));
   const [desc, setDesc] = useState<DescMode>(pref('desc', 'short'));
   const [ctrl, setCtrl] = useState<GameController | null>(null);
   const [rules, setRules] = useState(false);
@@ -52,6 +54,7 @@ export function App() {
   useEffect(() => { setPref('desc', desc); }, [desc]);
   useEffect(() => { setPref('level', level); setPref('botTeam', botTeam); setPref('side', side); }, [level, botTeam, side]);
   useEffect(() => { setPref('map', map); setPref('creeps', creeps); }, [map, creeps]);
+  useEffect(() => { setPref('clockMin', clockMin); }, [clockMin]);
 
   // Online: check the room capability once; a reloaded tab rejoins its room.
   useEffect(() => {
@@ -85,7 +88,7 @@ export function App() {
   }
 
   function startLocal() {
-    const game = matchFromConfig({ p1: teamOf('p1'), p2: teamOf('p2'), map, creeps });
+    const game = matchFromConfig({ p1: teamOf('p1'), p2: teamOf('p2'), map, creeps, clockMs: clockMin * 60000 });
     const mode: Mode = kind === 'bot' ? { kind: 'bot', level, side } : { kind: 'local' };
     ctrl?.destroy();
     const c = new GameController(mode, game);
@@ -264,13 +267,18 @@ export function App() {
           )}
           </div>}
           {screen === 'map' && <div className="setup-body page" key="map">
-          {kind === 'online' && r.side === 'p2' && <p className="note">The host (Ivory) picks the battlefield. You see their choice here.</p>}
+          {kind === 'online' && r.side === 'p2' && <p className="note">The host (Ivory) picks the battlefield and the time. You see their choice here.</p>}
           {kind === 'online' && <OppCard compact />}
           <MapPicker
             map={kind === 'online' ? r.map : map} creeps={kind === 'online' ? r.creeps : creeps}
             readOnly={kind === 'online' && r.side === 'p2'}
             onMap={(m) => (kind === 'online' ? r.setMap(m, r.creeps) : setMap(m))}
             onCreeps={(v) => (kind === 'online' ? r.setMap(r.map, v) : setCreeps(v))} />
+          {(kind !== 'online' || r.canTime) && (
+            <ClockPicker minutes={kind === 'online' ? r.clockMin : clockMin}
+              readOnly={kind === 'online' && r.side === 'p2'}
+              onChange={(m) => (kind === 'online' ? r.setClock(m) : setClockMin(m))} />
+          )}
           </div>}
         </Setup>
       )}

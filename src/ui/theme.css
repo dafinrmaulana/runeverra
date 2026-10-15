@@ -512,3 +512,12 @@ input, select, textarea { border-radius: 2px !important; }
 .conn-block > div { display: flex; flex-direction: column; gap: 4px; max-width: 28ch; }
 .conn-block b { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .07em; color: var(--sand); font-size: 1.05rem; }
 .conn-block span { color: var(--bone); font-size: .9rem; }
+
+/* ---------- setup: match time ---------- */
+.clockpicker { margin-top: 16px; }
+.clockpicker h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .07em; color: var(--sand); font-size: .95rem; margin: 0 0 8px; }
+.clock-opts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.clock-opts .btn[aria-pressed="true"] { border-color: var(--sand); color: var(--sand); }
+.clock-custom { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.clock-custom input { width: 6ch; background: var(--panel-hi); color: var(--bone); border: 1px solid var(--line-hi); border-radius: 2px; padding: 8px; font: inherit; }
+.clock-custom.on input { border-color: var(--sand); }
