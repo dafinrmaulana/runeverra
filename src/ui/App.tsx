@@ -227,7 +227,7 @@ export function App() {
       )}
 
       {(screen === 'heroes' || screen === 'map') && (
-        <Setup chat={kind === 'online'} title={screen === 'heroes' ? 'Choose heroes' : 'Choose battlefield'} step={screen === 'heroes' ? 1 : 2}
+        <Setup chat={kind === 'online'} title={screen === 'heroes' ? 'Heroes' : 'Battlefield'} step={screen === 'heroes' ? 1 : 2}
           onBack={() => setScreen(screen === 'map' ? 'heroes' : kind === 'online' ? 'room' : 'home')}
           next={screen === 'heroes' ? {
             label: 'Next: battlefield',
@@ -388,15 +388,17 @@ type SetupProps = {
 function Setup({ title, step, onBack, children, next, chat }: SetupProps) {
   return (
     <div className="setup">
-      <header className="step-head">
-        <button type="button" className="back-btn" onClick={onBack} aria-label="Back">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </button>
-        <h2>{title}</h2>
-        {chat && <span className="grow" />}
-        {chat && <ChatButton />}
-      </header>
-      {step && <Steps steps={['Heroes', 'Battlefield', 'Fight']} current={step} />}
+      <div className="setup-top">
+        <header className="step-head">
+          <button type="button" className="back-btn" onClick={onBack} aria-label="Back">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          <h2>{title}</h2>
+          {chat && <span className="grow" />}
+          {chat && <ChatButton />}
+        </header>
+        {step && <Steps steps={['Heroes', 'Battlefield', 'Fight']} current={step} />}
+      </div>
       {children}
       {next && (
         <footer className="step-foot">
