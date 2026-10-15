@@ -8,6 +8,7 @@ import { HeroPicker } from './components/HeroPicker';
 import { MapPicker } from './components/MapPicker';
 import { ClockPicker } from './components/ClockPicker';
 import { ChatButton } from './components/Chat';
+import { LegalScreen, type LegalDoc } from './screens/LegalScreen';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
 import { ReplaysScreen } from './screens/ReplaysScreen';
@@ -23,7 +24,7 @@ import type { DescMode } from './components/HeroInfo';
 const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 type ModeKind = 'bot' | 'local' | 'online';
-type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays' | 'changelog';
+type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays' | 'changelog' | 'legal';
 type Level = 'easy' | 'normal' | 'hard';
 type BotTeam = 'hidden' | 'shuffle' | 'manual';
 
@@ -36,7 +37,11 @@ const LEVEL_TEXT: Record<Level, string> = {
 function useRoom() { useSyncExternalStore(room.subscribe, room.getVersion); return room; }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>('home');
+  const hashDoc = (): LegalDoc | null => { const h = location.hash.slice(1); return h === 'terms' || h === 'privacy' || h === 'copyright' ? h : null; };
+  const [legalDoc, setLegalDoc] = useState<LegalDoc>(hashDoc() || 'terms');
+  const [screen, setScreen] = useState<Screen>(hashDoc() ? 'legal' : 'home');
+  const openLegal = (d: LegalDoc) => { setLegalDoc(d); setScreen('legal'); try { history.replaceState(null, '', `#${d}`); } catch { /* ignore */ } };
+  const closeLegal = () => { setScreen('home'); try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ } };
   const [kind, setKind] = useState<ModeKind>('bot');
   const [level, setLevel] = useState<Level>(pref('level', 'normal'));
   const [botTeam, setBotTeam] = useState<BotTeam>(pref('botTeam', 'hidden'));
@@ -166,6 +171,7 @@ export function App() {
               <button type="button" className="btn ghost" onClick={() => setScreen('replays')}>Match review</button>
               <button type="button" className="btn ghost" onClick={() => setScreen('changelog')}>Patch notes · v{LATEST.version}</button>
               <button type="button" className="btn ghost" onClick={() => setSettings(true)}>Settings</button>
+              <span className="legal-links"><button type="button" className="linklike" onClick={() => openLegal('terms')}>Terms</button> · <button type="button" className="linklike" onClick={() => openLegal('privacy')}>Privacy</button> · <button type="button" className="linklike" onClick={() => openLegal('copyright')}>Copyright</button></span>
             </div>
           </div>
         </div>
@@ -174,6 +180,12 @@ export function App() {
       {screen === 'replays' && (
         <Setup title="Match review" onBack={() => setScreen('home')}>
           <div className="setup-body page" key="replays"><ReplaysScreen /></div>
+        </Setup>
+      )}
+
+      {screen === 'legal' && (
+        <Setup title="Legal" onBack={closeLegal}>
+          <div className="setup-body page" key="legal"><LegalScreen doc={legalDoc} onDoc={openLegal} /></div>
         </Setup>
       )}
 
@@ -310,6 +322,7 @@ export function App() {
           {pwa.kind === 'ios' && (
             <div className="install-row"><h3>Install app</h3><p className="note">In Safari, tap Share, then Add to Home Screen.</p></div>
           )}
+          <p className="legal-links"><button type="button" className="linklike" onClick={() => { setSettings(false); openLegal('terms'); }}>Terms</button> · <button type="button" className="linklike" onClick={() => { setSettings(false); openLegal('privacy'); }}>Privacy</button> · <button type="button" className="linklike" onClick={() => { setSettings(false); openLegal('copyright'); }}>Copyright</button></p>
           <button className="btn primary" type="button" onClick={() => setSettings(false)}>Done</button>
         </div>
       </Modal>
