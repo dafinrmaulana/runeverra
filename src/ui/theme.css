@@ -528,3 +528,9 @@ input, select, textarea { border-radius: 2px !important; }
 .clock.low { color: var(--blood); }
 .clock.low.running { animation: clockpulse 1s ease-in-out infinite; }
 @keyframes clockpulse { 50% { opacity: .45; } }
+
+/* ---------- full screen board (bot / online) ---------- */
+.focus-btn[aria-pressed="true"] { border-color: var(--sand); color: var(--sand); }
+.game-screen.focus .ledger, .game-screen.focus .sel-acc, .game-screen.focus .sel-empty, .game-screen.focus .score-strip { display: none; }
+.game-screen.focus .stage { grid-template-columns: minmax(0, 1fr); }
+.game-screen.focus .board-wrap { width: min(100%, calc(100dvh - 200px), 900px); }

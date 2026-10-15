@@ -395,7 +395,7 @@ function SkillButton({ c, inline }: { c: GameController; inline?: boolean }) {
   );
 }
 
-function Controls({ c, onMenu, roomCode, local }: { c: GameController; onMenu: () => void; roomCode?: string | null; local?: boolean }) {
+function Controls({ c, onMenu, roomCode, local, focus, onFocus }: { c: GameController; onMenu: () => void; roomCode?: string | null; local?: boolean; focus?: boolean; onFocus?: () => void }) {
   return (
     <div className="controls">
       <div className="controls-row">
@@ -409,6 +409,11 @@ function Controls({ c, onMenu, roomCode, local }: { c: GameController; onMenu: (
             <button className="btn icon" type="button" disabled={!c.canRedo()} onClick={() => c.redo()} title="Redo (Ctrl+Shift+Z)">
               Redo<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg></button>
           </span>
+        )}
+        {onFocus && (
+          <button className="btn icon focus-btn" type="button" onClick={onFocus} aria-pressed={!!focus} aria-label={focus ? 'Exit full screen board' : 'Full screen board'} title={focus ? 'Exit full screen' : 'Full screen board'}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">{focus ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}</svg>
+          </button>
         )}
         {!local && <button className="btn icon-btn" type="button" onClick={onMenu}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>Menu</button>}
       </div>
@@ -482,6 +487,15 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   useEffect(() => { (window as any).__hgCtrl = ctrl; }, [ctrl]); // test hook: inspect/drive the match from devtools
   const host = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState(false);
+  const [focus, setFocus] = useState(false); // full screen board (bot / online): panels hide, the board grows
+  useEffect(() => {
+    // Also ask the browser for real full screen where it exists (not iPhone Safari); the layout works without it.
+    const el = document.documentElement as any;
+    const standalone = window.matchMedia?.('(display-mode: standalone)').matches;
+    if (focus && !standalone && !document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    if (!focus && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  }, [focus]);
+  useEffect(() => () => { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); }, []);
   const [rules, setRules] = useState(false);
   const local = c.mode.kind === 'local';
   const g = c.game;
@@ -565,7 +579,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   );
 
   return (
-    <div className="game-screen">
+    <div className={`game-screen${focus ? ' focus' : ''}`}>
       {local ? (
         <div className="faceoff">
           {/* the top seat grows away from the board, so the board stays put */}
@@ -579,7 +593,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           <section aria-label="Board" className="board-col">
             {topbar}
             {board}
-            <Controls c={c} onMenu={() => setMenu(true)} roomCode={roomCode} />
+            <Controls c={c} onMenu={() => setMenu(true)} roomCode={roomCode} focus={focus} onFocus={() => setFocus((f) => !f)} />
             <SelectedAccordion c={c} threats={threats} />
           </section>
           <aside className="ledger">
