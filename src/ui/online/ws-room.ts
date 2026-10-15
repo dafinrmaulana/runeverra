@@ -6,7 +6,6 @@
 // says and forward the player's own intent — no move-index replay, no presence polling.
 // Its public shape intentionally matches RoomClient so App.tsx works with either.
 import { HEROES } from '../../arena.js';
-import { actionAt } from '../../online.js';
 import { type Team, type HeroId } from '../data';
 import type { GameController } from '../game/controller';
 
@@ -73,23 +72,34 @@ export class WsRoomClient {
     ws.onmessage = (ev) => this.onMessage(ws, JSON.parse(ev.data));
     ws.onclose = () => {
       const was = this.room === ws;
-      if (!was) return;
-      this.room = null;
-      if (this.controller) this.controller.peerHere = false;
-      this.changed();
-      this.controller?.refresh();
-      // try to win back the seat quietly, a few times, before giving up
+      if (was) {
+        this.room = null;
+        if (this.controller) this.controller.selfOffline = true;
+        this.changed();
+        this.controller?.refresh();
+      } else if (this.room) return; // a stale socket closing after we already reconnected
+      this.joining = false;
+      // keep trying to win the seat back, backing off a little each time
       if (this.code && this.token && this.side) this.scheduleReconnect();
     };
     ws.onerror = () => {};
   }
 
-  private scheduleReconnect(delay = 1500) {
+  private retries = 0;
+  private scheduleReconnect() {
     if (this.reconnectTimer) return;
+    const delay = Math.min(1000 * 1.6 ** this.retries++, 8000);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       if (this.code && this.token && this.side && !this.room) this.rejoin();
     }, delay);
+  }
+
+  /** The tab came back or the network returned: don't wait out the backoff. */
+  nudge() {
+    if (!this.code || !this.token || !this.side || this.room) return;
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    this.rejoin();
   }
 
   async create() {
@@ -144,17 +154,10 @@ export class WsRoomClient {
     };
   }
 
-  /** The state the controller was in just before its most recent local move: the index
-   *  GameController hands to onLocalMove was computed against this, not against
-   *  controller.game, which has already moved on by the time we're called. */
-  private preMoveGame: any = null;
-
-  /** Our own decision on this screen (an index into listActions, like room.ts expects). */
-  localMove(index: number) {
-    if (!this.controller || !this.preMoveGame) return;
-    const action = actionAt(this.preMoveGame, index);
+  /** Our own decision on this screen. The server gets the action itself (not an index into a
+   *  list we would have to keep in step), so a run of our own decisions can never drift. */
+  localMove(_index: number, action?: any) {
     if (action) this.send({ t: 'action', action });
-    this.preMoveGame = this.controller.game; // controller already applied it; that's our new baseline
   }
 
   private send(msg: Record<string, unknown>) {
@@ -165,6 +168,8 @@ export class WsRoomClient {
     if (!msg || typeof msg.t !== 'string') return;
     if (msg.t === 'joined') {
       this.room = ws; this.joining = false; this.code = msg.code; this.side = msg.side; this.token = msg.token;
+      this.retries = 0;
+      if (this.controller) { this.controller.selfOffline = false; this.controller.refresh(); }
       this.save();
       this.changed();
       return;
@@ -192,26 +197,27 @@ export class WsRoomClient {
     }
     if (msg.t === 'start') {
       this.started = this.match = msg.match;
-      this.preMoveGame = msg.game;
       this.onStart?.(msg.game, msg.fresh);
       this.changed();
       return;
     }
     if (msg.t === 'sync') {
       this.started = this.match = msg.match;
-      this.preMoveGame = msg.game;
       if (this.controller) { this.controller.setGame(msg.game); this.controller.say('Back in the match.', 'ok'); }
       else this.onStart?.(msg.game, false);
       this.changed();
       return;
     }
     if (msg.t === 'move') {
-      // the opponent's validated move: replay it through the normal commit path so it
-      // animates like any other move, then this becomes our new pre-move reference too.
-      if (this.controller?.commit(msg.action, 'remote')) this.preMoveGame = this.controller.game;
+      // the opponent's validated move: replay it through the normal commit path so it animates like any other move.
+      this.controller?.commit(msg.action, 'remote');
       return;
     }
   }
 }
 
 export const wsRoom = new WsRoomClient();
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => wsRoom.nudge());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wsRoom.nudge(); });
+}

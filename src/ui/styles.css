@@ -365,7 +365,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .mode-card .mi { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-size: 1.3rem; background: var(--ink); border: 1px solid var(--line); color: var(--brass); flex: none; }
 .mode-card b { display: block; font-size: 1.08rem; }
 .mode-card small { color: var(--muted); font-size: .86rem; }
-.home-foot { display: flex; gap: 8px; }
+.home-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 /* step layout */
 .step { display: grid; gap: 16px; padding-bottom: 76px; }

@@ -54,8 +54,6 @@ function statusFor(c: GameController, team?: Team) {
   }
   const d = c.decider()!;
   if (c.mode.kind === 'online') {
-    if (!c.peerHere) return 'Opponent disconnected · waiting';
-    if (c.peerLeft) return 'Opponent left the match';
     return c.deciderIsHuman() ? 'Your turn' : 'Opponent\'s turn';
   }
   if (g.phase === 'react' && c.deciderIsHuman() && (!team || d === team)) return 'Interrupt?';
@@ -535,10 +533,22 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
     </div>
   );
 
+  // Online: a lost connection blocks the board with its own notice instead of crowding the status bar.
+  const offline = c.mode.kind === 'online' && !over && (c.selfOffline || !c.peerHere || c.peerLeft);
+  const offlineNotice = offline && (
+    <div className="conn-block" role="alert">
+      <div>
+        <b>{c.selfOffline ? 'Connection lost' : c.peerLeft ? 'Opponent left' : 'Opponent disconnected'}</b>
+        <span>{c.selfOffline ? 'Reconnecting… the match is paused.' : 'The match is paused until they return.'}</span>
+      </div>
+    </div>
+  );
+
   const board = (
     <div className="board-host-wrap">
       <div className="board-host" ref={host} />
       {overlay}
+      {offlineNotice}
       <Toast c={c} mirror={local && g.status === 'playing' && c.decider() === 'p2'} />
     </div>
   );

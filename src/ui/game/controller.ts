@@ -14,7 +14,7 @@ import { saveReplay } from '../replays';
 export type Mode =
   | { kind: 'bot'; level: 'easy' | 'normal' | 'hard'; side: Team }
   | { kind: 'local' }
-  | { kind: 'online'; side: Team; onLocalMove: (index: number) => void };
+  | { kind: 'online'; side: Team; onLocalMove: (index: number, action: any) => void };
 
 export type Source = 'me' | 'bot' | 'remote';
 type Pos = { r: number; c: number };
@@ -39,6 +39,8 @@ export class GameController {
   /** True while the online opponent is connected (set by the room client). */
   peerHere = true;
   peerLeft = false;
+  /** Online: this screen's own connection to the server is down (reconnecting). */
+  selfOffline = false;
   private board: ReturnType<typeof createBoard> | null = null;
   private listeners = new Set<() => void>();
   private botTimer: ReturnType<typeof setTimeout> | null = null;
@@ -107,7 +109,7 @@ export class GameController {
     if (!res.ok) { this.say(res.reason || 'Not allowed.', 'err'); this.render({}); return false; }
     const before = this.game;
     if (src === 'me' && !online) { this.history.push(before); this.future = []; }
-    if (online && src === 'me') (this.mode as any).onLocalMove(idx);
+    if (online && src === 'me') (this.mode as any).onLocalMove(idx, action);
     this.game = res.state;
     this.clearSel();
     const g = this.game;

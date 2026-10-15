@@ -9,6 +9,9 @@ import { MapPicker } from './components/MapPicker';
 import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
 import { ReplaysScreen } from './screens/ReplaysScreen';
+import { ChangelogScreen } from './screens/ChangelogScreen';
+import { LATEST } from './changelog';
+import { resetTally } from './record';
 import { Modal, Steps } from './components/ui';
 import { CursorPicker } from './cursor';
 import { ART, ICON, pref, setPref, type HeroId, type Team } from './data';
@@ -17,7 +20,7 @@ import type { DescMode } from './components/HeroInfo';
 const HOME_WALL: HeroId[] = ['hasim', 'genga', 'magumba', 'plantae', 'hexor', 'aqna'];
 
 type ModeKind = 'bot' | 'local' | 'online';
-type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays';
+type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays' | 'changelog';
 type Level = 'easy' | 'normal' | 'hard';
 type BotTeam = 'hidden' | 'shuffle' | 'manual';
 
@@ -55,7 +58,7 @@ export function App() {
     room.onStart = (game, fresh) => {
       setCtrl((old) => {
         old?.destroy();
-        const c = new GameController({ kind: 'online', side: room.side!, onLocalMove: (i) => room.localMove(i) }, game);
+        const c = new GameController({ kind: 'online', side: room.side!, onLocalMove: (i, a) => room.localMove(i, a) }, game);
         c.say(`Online match in room ${room.code}. You play ${TEAM_NAMES[room.side!]}; Ivory moves first.`, 'ok');
         c.series = `room-${room.code}`;
         room.controller = c;
@@ -99,11 +102,13 @@ export function App() {
   function choose(k: ModeKind) {
     if (k === 'bot') { setDiffOpen(true); return; } // difficulty first, in a dialog over home
     setKind(k);
+    if (k === 'local') resetTally('local'); // a new game from home starts the score over
     setPicks({ p1: [], p2: [] });
     setScreen(k === 'online' ? 'room' : 'heroes');
   }
   function startBot(l: Level) {
     setLevel(l); setDiffOpen(false);
+    resetTally(`bot-${l}`); // a new game from home starts the score over
     setKind('bot'); setPicks({ p1: [], p2: [] }); setScreen('heroes');
   }
 
@@ -135,7 +140,7 @@ export function App() {
             <div className="home-hero">
               <h1 className="logo">Runeverra</h1>
               <span className="rune-rule" aria-hidden="true" />
-              <p className="tagline">Pick four heroes. Outthink one opponent. No dice, no luck.</p>
+              <p className="tagline">Pick four heroes. Outsmart one opponent. No dice, no luck.</p>
             </div>
             <div className="mode-list">
               <button type="button" className="mode-card primary" onClick={() => choose('bot')}>
@@ -152,6 +157,7 @@ export function App() {
             <div className="home-foot">
               <button type="button" className="btn ghost" onClick={() => setRules(true)}>How to play</button>
               <button type="button" className="btn ghost" onClick={() => setScreen('replays')}>Match review</button>
+              <button type="button" className="btn ghost" onClick={() => setScreen('changelog')}>Patch notes · v{LATEST.version}</button>
               <button type="button" className="btn ghost" onClick={() => setSettings(true)}>Settings</button>
             </div>
           </div>
@@ -161,6 +167,12 @@ export function App() {
       {screen === 'replays' && (
         <Setup title="Match review" onBack={() => setScreen('home')}>
           <div className="setup-body page" key="replays"><ReplaysScreen /></div>
+        </Setup>
+      )}
+
+      {screen === 'changelog' && (
+        <Setup title="Patch notes" onBack={() => setScreen('home')}>
+          <div className="setup-body page" key="changelog"><ChangelogScreen /></div>
         </Setup>
       )}
 

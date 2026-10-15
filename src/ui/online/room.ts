@@ -269,7 +269,7 @@ export class RoomClient {
   }
 
   /** Our own decision on this screen. */
-  localMove(index: number) {
+  localMove(index: number, _action?: any) {
     this.mine.push(index);
     this.applied[this.side!] += 1;
     this.publish();

@@ -115,6 +115,7 @@ function handleHello(ws, msg) {
     }
   }
   const seat = room.seats[side];
+  if (seat.ws && seat.ws !== ws) { const old = seat.ws; seat.ws = null; try { old.close(); } catch { /* gone */ } } // a half-dead socket from a dropped connection
   seat.ws = ws; seat.connected = true;
   ws.room = room.code; ws.side = side;
   if (room.cleanupAt) { clearTimeout(room.cleanupAt); room.cleanupAt = null; }
@@ -166,10 +167,22 @@ function handleAction(room, side, msg) {
   if (room.game.status !== 'playing') afterMatchEnds(room);
 }
 
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (!ws.alive) { ws.terminate(); continue; }
+    ws.alive = false;
+    try { ws.ping(); } catch { /* closing */ }
+  }
+}, 25000).unref();
+
 const server = createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('runeverra ws relay'); });
 const wss = new WebSocketServer({ server });
 
+// Proxies and phones drop idle sockets silently. Ping every 25s (browsers answer on their own);
+// a socket that missed the last ping is dead, so terminate it and let the player reconnect.
 wss.on('connection', (ws) => {
+  ws.alive = true;
+  ws.on('pong', () => { ws.alive = true; });
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw.toString()); } catch { return; }
@@ -186,7 +199,8 @@ wss.on('connection', (ws) => {
     const room = ws.room ? rooms.get(ws.room) : null;
     if (!room || !ws.side) return;
     const seat = room.seats[ws.side];
-    if (seat.ws === ws) { seat.connected = false; seat.ws = null; }
+    if (seat.ws !== ws) return; // an old socket closing after the player already came back: nothing changed
+    seat.connected = false; seat.ws = null;
     if (room.game && room.game.status === 'playing') broadcastOpponent(room, ws.side, false);
     else broadcastLobby(room); // lets the remaining side see the seat go empty
     scheduleCleanup(room);
