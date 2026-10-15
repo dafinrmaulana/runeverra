@@ -878,9 +878,10 @@ html { overflow-x: clip; }
 
 /* ---------- sound setting ---------- */
 .sound-setting { display: grid; gap: 8px; margin: 10px 0 4px; }
-.sound-vol { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: .85rem; }
-.sound-vol.off { opacity: .5; }
 .sound-vol input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--sand); }
 
-.sound-preview summary { cursor: pointer; color: var(--sand); font-family: var(--f-mono); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; padding: 4px 0; }
-.sound-preview-grid { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; }
+.sound-vol { display: grid; gap: 6px; color: var(--muted); }
+.sound-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.sound-title b { color: var(--bone); }
+.sound-title small { font-family: var(--f-mono); font-weight: 600; color: var(--sand); }
+.sound-vol input[type="range"] { width: 100%; accent-color: var(--sand); }
