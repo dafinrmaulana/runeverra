@@ -492,6 +492,8 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   useEffect(() => { (window as any).__hgCtrl = ctrl; }, [ctrl]); // test hook: inspect/drive the match from devtools
   const host = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState(false);
+  const [inSettings, setInSettings] = useState(false); // the pause menu's Settings page
+  const closeMenu = () => { setMenu(false); setInSettings(false); };
   const [focus, setFocus] = useState(false); // full screen board (bot / online): panels hide, the board grows
   useEffect(() => {
     // Also ask the browser for real full screen where it exists (not iPhone Safari); the layout works without it.
@@ -514,13 +516,13 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-      if (e.key === 'Escape') { if (menu) setMenu(false); else ctrl.escape(); }
+      if (e.key === 'Escape') { if (menu) { if (inSettings) setInSettings(false); else closeMenu(); } else ctrl.escape(); }
       if (e.key.toLowerCase() === 'q') ctrl.armSkill();
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) ctrl.redo(); else ctrl.undo(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctrl, menu]);
+  }, [ctrl, menu, inSettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const threats: Set<string> = c.showThreats && g.status === 'playing' ? getThreats(g, g.current) : new Set();
   const over = g.status !== 'playing';
@@ -616,20 +618,30 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
         </div>
       )}
 
-      <Modal open={menu} onClose={() => setMenu(false)} label="Menu" className="menu-card">
-        <h2>Paused</h2>
-        <button className="btn primary big" type="button" onClick={() => setMenu(false)}>Resume</button>
-        <div className="menu-setting"><Switch checked={c.showThreats} onChange={(v) => c.setThreats(v)} label={<><b>Show threats</b><small>Mark units an enemy can capture next turn</small></>} /></div>
-        <div className="menu-setting score-setting">
-          <Switch checked={c.showScore} onChange={(v) => c.setScore(v)} label={<><b>Show score</b><small>Wins for each side across rematches: {seriesLine(c)}</small></>} />
-          <button className="btn ghost" type="button" onClick={() => c.resetScore()} disabled={!c.tally().a && !c.tally().b}>Reset</button>
-        </div>
-        <div className="menu-setting"><SoundSetting /></div>
-        <div className="menu-setting cursor-setting"><b>Mouse cursor</b><CursorPicker /></div>
-        <button className="btn big" type="button" onClick={() => { setMenu(false); setRules(true); }}>How to play</button>
-        {c.mode.kind !== 'online' && <button className="btn big" type="button" onClick={() => { setMenu(false); onRematch(); }}>Restart match</button>}
-        <button className="btn big" type="button" onClick={() => { setMenu(false); onChangeHeroes(); }}>Change heroes</button>
-        <button className="btn big" type="button" onClick={() => { setMenu(false); onHome(); }}>{c.mode.kind === 'online' ? 'Leave room' : 'Quit to home'}</button>
+      <Modal open={menu} onClose={closeMenu} label={inSettings ? 'Settings' : 'Menu'} className="menu-card">
+        {inSettings ? (
+          <>
+            <h2>Settings</h2>
+            <div className="menu-setting"><Switch checked={c.showThreats} onChange={(v) => c.setThreats(v)} label={<><b>Show threats</b><small>Mark units an enemy can capture next turn</small></>} /></div>
+            <div className="menu-setting score-setting">
+              <Switch checked={c.showScore} onChange={(v) => c.setScore(v)} label={<><b>Show score</b><small>Wins for each side across rematches: {seriesLine(c)}</small></>} />
+              <button className="btn ghost" type="button" onClick={() => c.resetScore()} disabled={!c.tally().a && !c.tally().b}>Reset</button>
+            </div>
+            <div className="menu-setting"><SoundSetting /></div>
+            <div className="menu-setting cursor-setting"><b>Mouse cursor</b><CursorPicker /></div>
+            <button className="btn primary big" type="button" onClick={() => setInSettings(false)}>Back</button>
+          </>
+        ) : (
+          <>
+            <h2>Paused</h2>
+            <button className="btn primary big" type="button" onClick={closeMenu}>Resume</button>
+            <button className="btn big" type="button" onClick={() => setInSettings(true)}>Settings</button>
+            <button className="btn big" type="button" onClick={() => { closeMenu(); setRules(true); }}>How to play</button>
+            {c.mode.kind !== 'online' && <button className="btn big" type="button" onClick={() => { closeMenu(); onRematch(); }}>Restart match</button>}
+            <button className="btn big" type="button" onClick={() => { closeMenu(); onChangeHeroes(); }}>Change heroes</button>
+            <button className="btn big" type="button" onClick={() => { closeMenu(); onHome(); }}>{c.mode.kind === 'online' ? 'Leave room' : 'Quit to home'}</button>
+          </>
+        )}
       </Modal>
       <Modal open={rules} onClose={() => setRules(false)} label="How to play" className="wide">
         <Rules />
