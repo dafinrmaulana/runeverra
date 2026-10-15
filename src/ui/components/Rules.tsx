@@ -26,6 +26,8 @@ export function Rules() {
       </ul>
       <h3>Interrupt</h3>
       <p>When an enemy unit in the 3x3 block in front of your Plantae acts — nothing in between stops it — you may cancel that action for 3 tokens. The skill then recharges for 3 turns.</p>
+      <h3>Time (optional)</h3>
+      <p>Classic has no clock. In a timed match each player gets the same time in total (3, 5, 10 minutes or your own). The clock runs for whoever is deciding, and the player who runs out of time loses. Undo is off.</p>
       <h3>Score (optional)</h3>
       <p>Counts wins for each side across rematches: against the bot per difficulty, face to face Ivory against Ember, online per room. Turn it on or off, or reset it, from the in-game menu.</p>
       <h3>Creeps</h3>

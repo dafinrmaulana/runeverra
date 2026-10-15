@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CursorPicker } from '../cursor';
 import { sideA } from '../record';
+import { formatClock } from '../../clock.js';
 import { HeroDemo } from '../components/HeroDemo';
 import {
   HEROES, MAPS, TEAM_NAMES as TN, ENERGY, CREEPS, ROLES, label, heroDef, livingHeroes, moveOptions, samePos,
@@ -48,9 +49,10 @@ function useCtrl(ctrl: GameController) {
 function statusFor(c: GameController, team?: Team) {
   const g = c.game;
   if (g.status !== 'playing') {
-    if (c.mode.kind === 'online') return g.status === c.mode.side ? 'You win' : 'You lose';
-    if (c.mode.kind === 'bot') return g.status === c.botTeam() ? 'The bot wins' : 'You win';
-    return team ? (g.status === team ? 'You win' : 'You lose') : `${TEAM_NAMES[g.status]} wins`;
+    const on = c.timedOut() ? ' on time' : '';
+    if (c.mode.kind === 'online') return (g.status === c.mode.side ? 'You win' : 'You lose') + on;
+    if (c.mode.kind === 'bot') return (g.status === c.botTeam() ? 'The bot wins' : 'You win') + on;
+    return (team ? (g.status === team ? 'You win' : 'You lose') : `${TEAM_NAMES[g.status]} wins`) + on;
   }
   const d = c.decider()!;
   if (c.mode.kind === 'online') {
@@ -180,12 +182,19 @@ function SeatScore({ c, team }: { c: GameController; team: Team }) {
 }
 
 /** A side's skill tokens, labelled. */
+function Clock({ c, team }: { c: GameController; team: Team }) {
+  if (!c.timed() || !c.clock) return null;
+  const ms = c.timeLeft(team);
+  const running = c.clock.running === team && c.game.status === 'playing';
+  return <span className={`clock${running ? ' running' : ''}${ms < 30000 ? ' low' : ''}`} aria-label={`${TEAM_NAMES[team]} time left`}>{formatClock(ms)}</span>;
+}
+
 function Tokens({ c, team, who, active }: { c: GameController; team: Team; who: string; active?: boolean }) {
   const n = c.game.energy[team];
   return (
     <span className={`tokens ${team}${active ? ' active' : ''}`}>
       <span className={`team-dot ${team}`} /><span className="who">{who}</span>
-      <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span>
+      <Pips n={n} /><span className="tn">{n}/{ENERGY.max}</span><Clock c={c} team={team} />
     </span>
   );
 }
@@ -521,7 +530,9 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
     <div className="overlay win">
       <div>
         <h2>{local ? `${TEAM_NAMES[g.status]} wins` : status}</h2>
-        <p>{TEAM_NAMES[loser!]} has no heroes left · {livingHeroes(g, g.status).map((u: any) => (HEROES as any)[u.hero].name).join(', ')} still standing</p>
+        {c.timedOut()
+          ? <p>{TEAM_NAMES[loser!]} ran out of time</p>
+          : <p>{TEAM_NAMES[loser!]} has no heroes left · {livingHeroes(g, g.status).map((u: any) => (HEROES as any)[u.hero].name).join(', ')} still standing</p>}
         {c.showScore && <p className="final-score">{seriesLine(c)}</p>}
         <div className="row">
           <button className="btn primary" type="button" disabled={rematch.disabled} onClick={onRematch}>{rematch.label}</button>
