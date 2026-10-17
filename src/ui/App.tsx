@@ -323,6 +323,10 @@ export function App() {
                     <b>Adventure</b>
                     <small>Quests against monsters</small>
                   </button>
+                  <button type="button" className="mode-card" disabled>
+                    <b>Trials Of The Ancient</b>
+                    <small>Coming soon</small>
+                  </button>
                   <button type="button" className="mode-card" onClick={() => choose('local')}>
                     <b>Face to face</b>
                     <small>Two players, one screen</small>
