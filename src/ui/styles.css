@@ -705,6 +705,30 @@ canvas.layer {
 .piece.p1.beast .token {
   background: #e9dcc0;
 }
+/* Adventure: monsters (Ember's side) and the caravan (Ivory's) */
+.piece.monster .token,
+.piece.caravan .token {
+  width: 66%;
+  height: 66%;
+  border-radius: 30%;
+  background: #6e2a18;
+  box-shadow:
+    0 0 0 2.5px var(--ember),
+    0 0 0 4px rgba(20, 18, 14, 0.55),
+    0 5px 5px -1px rgba(0, 0, 0, 0.45);
+}
+.piece.monster .token svg,
+.piece.caravan .token svg {
+  width: 80%;
+  height: 80%;
+}
+.piece.caravan .token {
+  background: #e9dcc0;
+  box-shadow:
+    0 0 0 2.5px var(--ivory),
+    0 0 0 4px rgba(20, 18, 14, 0.55),
+    0 5px 5px -1px rgba(0, 0, 0, 0.45);
+}
 .piece .tag {
   position: absolute;
   bottom: -9%;
@@ -2845,14 +2869,18 @@ a.btn {
 .toast .row.choice-row > .btn:last-child {
   grid-column: 1 / -1;
 }
-@media (max-width: 380px) {
+/* phones: one choice per line, full width, so each keeps its padding and stays on one line */
+@media (max-width: 420px) {
+  .toast .row.choice-row {
+    grid-template-columns: 1fr;
+  }
   .toast .row.choice-row > .btn {
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
-    font-size: 0.74rem;
-    white-space: normal;
-    text-align: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .toast .row.choice-row > .btn:last-child {
+    justify-content: center;
   }
 }
 
@@ -4451,4 +4479,29 @@ a.btn {
   margin: 4px 0 8px;
   font-size: 0.82rem;
   color: #f2d48a;
+}
+
+/* Adventure: the level's goal under the status bar */
+.quest-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: 6px auto 0;
+  padding: 6px 12px;
+  max-width: 640px;
+  border-radius: 8px;
+  background: rgba(242, 212, 138, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(242, 212, 138, 0.3);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.quest-strip b {
+  color: #f2d48a;
+}
+.quest-round {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
 }
