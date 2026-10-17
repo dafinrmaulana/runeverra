@@ -515,7 +515,7 @@ export class GameController {
     else if (u.kind === 'beast' && u.moved && g.phase !== 'beast')
       this.say("The beast only acts right after Ge'nga.", 'err');
     else if (u.kind === 'beast' && !u.moved && g.phase === 'main')
-      this.say("The beast hasn't moved yet: it may take one step on its own as your turn.");
+      this.say("The beast hasn't moved yet: pick how it moves (kept all match). This first move may be your turn.");
     else if (u.rooted) this.say(`${label(u)} is held by roots this turn.`, 'err');
     else this.say('');
     this.render({});

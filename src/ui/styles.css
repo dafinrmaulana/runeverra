@@ -2825,7 +2825,32 @@ a.btn {
   font-size: 0.8rem;
 }
 .toast .row {
-  flex: none;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+/* a choice of several options (the beast's move): one even grid across the toast, Skip/Cancel below */
+.toast .row.choice-row {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.toast .row.choice-row > .btn {
+  min-width: 0;
+  justify-content: center;
+  padding: 8px 6px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.toast .row.choice-row > .btn:last-child {
+  grid-column: 1 / -1;
+}
+@media (max-width: 380px) {
+  .toast .row.choice-row > .btn {
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.74rem;
+  }
 }
 
 /* controls under the board */

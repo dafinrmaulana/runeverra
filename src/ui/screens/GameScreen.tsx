@@ -217,7 +217,7 @@ function Toast({ controller, mirror }: { controller: GameController; mirror?: bo
     body = (
       <>
         <span className="pt">{text}</span>
-        <span className="row">
+        <span className={`row${g.phase === 'beast' && !g.units[g.pending!.unitId!]?.stride ? ' choice-row' : ''}`}>
           {g.phase === 'beast' && !g.units[g.pending!.unitId!]?.stride && (
             <BeastPatternButtons controller={controller} />
           )}
@@ -256,7 +256,7 @@ function Toast({ controller, mirror }: { controller: GameController; mirror?: bo
     body = (
       <>
         <span className="pt">How does the beast move? You pick once: it keeps this move all match.</span>
-        <span className="row">
+        <span className="row choice-row">
           <BeastPatternButtons controller={controller} />
           <button className="btn" type="button" onClick={() => controller.escape()}>
             Cancel
