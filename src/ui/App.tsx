@@ -315,13 +315,13 @@ export function App() {
               <HomeDemo />
               <div className="home-menu">
                 <div className="mode-list">
-                  <button type="button" className="mode-card primary" onClick={() => choose('bot')}>
-                    <b>Play vs Bot</b>
-                    <small>Easy, Normal or Hard</small>
-                  </button>
-                  <button type="button" className="mode-card" onClick={() => setScreen('adventure')}>
+                  <button type="button" className="mode-card primary" onClick={() => setScreen('adventure')}>
                     <b>Adventure</b>
                     <small>Quests against monsters</small>
+                  </button>
+                  <button type="button" className="mode-card" onClick={() => choose('bot')}>
+                    <b>Play vs Bot</b>
+                    <small>Easy, Normal or Hard</small>
                   </button>
                   <button type="button" className="mode-card" disabled>
                     <b>Trials Of The Ancient</b>
