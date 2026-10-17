@@ -1,4 +1,4 @@
-import { HEROES, CLASSES, ROLES, createMatch, skillReach } from '../../engine/index.ts';
+import { HEROES, CLASSES, ROLES, createMatch, inInnerReach, skillReach } from '../../engine/index.ts';
 import type { Skill } from '../../engine/index.ts';
 import { SHORT, costLabel, roleOf, moveCells, cssVars } from '../data';
 import { CostChip } from './Rune';
@@ -19,6 +19,8 @@ export function MoveDiagram({ hero, size = 7 }: { hero: string; size?: number })
 export function reachText(sk: Skill) {
   const n = `${sk.range} square${sk.range! > 1 ? 's' : ''}`;
   if (sk.reach?.cells) return `Reach: a fixed pattern facing forward, up to ${n} deep. Nothing blocks it.`;
+  if (sk.reach?.sight)
+    return `Reach: ${n} in any direction${sk.reach.inner ? ` (rose: ${sk.reach.inner.range} straight up, down, left and right, where it can strike an enemy; blue: blocks only)` : ''}. Terrain and allies hide what's behind them.`;
   if (sk.reach?.ray)
     return `Reach: ${n} along ${sk.reach.dirs!.length === 4 && sk.reach.dirs!.every(([rowStep, colStep]) => rowStep && colStep) ? 'the diagonals' : 'straight lines'}, blocked by the first unit or terrain.`;
   return `Reach: ${n} in any direction.`;
@@ -46,7 +48,9 @@ export function RangeDiagram({ hero, size = 7 }: { hero: string; size?: number }
   const cells = Array.from({ length: 49 }, (_, index) => {
     const r = Math.floor(index / 7),
       c = index % 7;
-    return r === 3 && c === 3 ? 'me' : reach.has(`${r},${c}`) ? 'zone' : '';
+    if (r === 3 && c === 3) return 'me';
+    if (!reach.has(`${r},${c}`)) return '';
+    return inInnerReach(me, { r, c }, sk) ? 'zone inner' : 'zone';
   });
   return (
     <span className="diag zone-diag" data-zone={sk.key} style={cssVars({ '--cell': `${size}px` })} aria-hidden="true">

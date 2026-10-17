@@ -2,7 +2,7 @@
 // the kill (the "ice" phase) or later as her skill.
 import type { Action, LastAction, Pos, State, Unit } from '../types.ts';
 import { ORTHO, chebyshev, key, other, squareName } from '../geometry.ts';
-import { skillReach } from '../skills.ts';
+import { inInnerReach, skillReach } from '../skills.ts';
 import { defineHero, definePhase } from '../registry.ts';
 import { blockAt, label, left, livingUnits, pushLog, tokens, unitAt } from '../state.ts';
 import { checkWinner, done, eliminate, endTurn } from '../turn.ts';
@@ -12,14 +12,14 @@ import { moveActions, moveOptions } from '../movement.ts';
 export const ICE_LIMIT = 10;
 /** Runes on top of Icy Step's cost when the ice hits an enemy (to freeze it, or to break its shield). */
 export const ICE_STRIKE_EXTRA = 1;
-/** How far the ice reaches an enemy; a block on an empty square reaches the whole skill range (3). */
-export const ICE_STRIKE_RANGE = 2;
+/** How far the ice strikes an enemy: straight lines (a plus, like her move, one square further); a block on an empty square reaches the whole 7x7 field. */
+export const ICE_STRIKE_RANGE = 3;
 
 const aqna = defineHero('aqna', {
   name: 'Aqna',
   title: 'Winter Hunter',
   cls: 'shield',
-  role: 'roam',
+  role: 'mage',
   value: 340,
   move: [{ kind: 'slide', dirs: ORTHO, range: 2 }],
   moveText: 'Moves up to 2 squares straight.',
@@ -29,24 +29,24 @@ const aqna = defineHero('aqna', {
     type: 'active',
     cost: 1,
     range: 3,
-    // every square within 3 (7x7) for a block, within 2 (5x5) to strike an enemy; terrain or her own units in the way hide what's behind
-    reach: { sight: true, label: 'ice field' },
+    // every square within 3 (7x7) for a block, up to 3 straight (a plus) to strike an enemy; terrain or her own units in the way hide what's behind
+    reach: { sight: true, label: 'ice field', inner: { dirs: ORTHO, range: ICE_STRIKE_RANGE } },
     charge: true,
-    text: `When she eliminates an enemy she gains an ice charge (one at most; charges don't stack). Spend it in her ice field: an ice block on an empty square within 3 of her, or a strike on an enemy within 2 (diagonals count as 1), except where terrain or one of her own units stands in the way; enemies don't block it. Right after the kill, or later as her action on any turn you like. On an empty square (1 rune), it raises an ice block nobody can enter, not even her (up to ${ICE_LIMIT}; after that her oldest block moves). On an enemy (2 runes), the ice freezes it, then shatters: the enemy is eliminated and the square stays open; an enemy shielded by Empty Grave only loses its shield. Cast as her action, it doesn't use up her turn: she may still move afterwards.`,
+    text: `When she eliminates an enemy she gains an ice charge (one at most; charges don't stack). Spend it in her ice field: an ice block on an empty square within 3 of her, or a strike on an enemy up to 3 squares straight (up, down, left or right, like her move but one further), except where terrain or one of her own units stands in the way; enemies don't block it. Right after the kill, or later as her action on any turn you like. On an empty square (1 rune), it raises an ice block nobody can enter, not even her (up to ${ICE_LIMIT}; after that her oldest block moves). On an enemy (2 runes), the ice freezes it, then shatters: the enemy is eliminated and the square stays open; an enemy shielded by Empty Grave only loses its shield. Cast as her action, it doesn't use up her turn: she may still move afterwards.`,
   },
   short: {
     move: 'Moves up to 2 straight.',
     skill:
-      'A kill stores an ice charge. An ice block within 3 (1 rune), or within 2 freeze an enemy until it shatters, or break its shield (2 runes). Allies and terrain block it. She can still move after.',
+      'A kill stores an ice charge. An ice block within 3 (1 rune), or up to 3 straight freeze an enemy until it shatters, or break its shield (2 runes). Allies and terrain block it. She can still move after.',
   },
   ui: {
     targets: 'square',
-    aim: 'Icy Step: tap an enemy to freeze and shatter it (2 runes), or an empty square for an ice block (1 rune).',
+    aim: 'Icy Step: rose squares can strike an enemy (freeze and shatter, 2 runes); blue ones only take an ice block (1 rune).',
     ready: 'Ice charge ready. Press to choose where to raise it (or Q) — or save it for a later turn.',
     unavailable: (_state, hero) =>
       hero.iceCharge
         ? {
-            text: 'No empty square within 3 or enemy within 2 of her (not hidden behind terrain or allies) she can afford.',
+            text: 'No empty square within 3 or enemy up to 3 straight from her (not hidden behind terrain or allies) she can afford.',
           }
         : {
             text: 'No ice charge yet: eliminate an enemy with her to store one (it keeps until spent, and never stacks).',
@@ -99,14 +99,14 @@ function iceSpots(state: State, hero: Unit): Pos[] {
   return skillReach(state, hero).filter((pos) => {
     if (blockAt(state, pos)) return false;
     const occupant = unitAt(state, pos);
-    if (occupant && (occupant.team === hero.team || chebyshev(pos, hero.pos) > ICE_STRIKE_RANGE)) return false;
+    if (occupant && (occupant.team === hero.team || !inInnerReach(hero, pos))) return false;
     return state.energy[hero.team] >= iceCost(state, pos);
   });
 }
 
 /** Why a spot was refused. */
 const iceRule = (state: State, hero: Unit) =>
-  `Ice goes where Aqna can see, not behind terrain or her allies: an empty square within 3 for ${tokens(aqna.skill.cost)}, or an enemy within 2 for ${tokens(aqna.skill.cost + ICE_STRIKE_EXTRA)} (you have ${state.energy[hero.team]}).`;
+  `Ice goes where Aqna can see, not behind terrain or her allies: an empty square within 3 for ${tokens(aqna.skill.cost)}, or an enemy up to 3 straight for ${tokens(aqna.skill.cost + ICE_STRIKE_EXTRA)} (you have ${state.energy[hero.team]}).`;
 
 /**
  * Spend the ice charge on `to`. On an enemy the ice freezes it, then shatters: the enemy is eliminated and
@@ -163,7 +163,7 @@ function raiseIce(state: State, hero: Unit, to: Pos) {
 definePhase('ice', {
   prompt: (state) =>
     `Icy Step (you have ${state.energy[state.current]}): an empty square for an ice block (${tokens(aqna.skill.cost)}), or an enemy to freeze and shatter (${tokens(aqna.skill.cost + ICE_STRIKE_EXTRA)}). Or skip.`,
-  hint: 'Pick a dashed square (a block within 3, an enemy within 2), or Skip.',
+  hint: 'Pick a dashed square (a block within 3, an enemy up to 3 straight), or Skip.',
   list(state) {
     const actions: Action[] = iceSpots(state, state.units[state.pending!.unitId!]).map((to) => ({ type: 'ice', to }));
     actions.push({ type: 'skip' });

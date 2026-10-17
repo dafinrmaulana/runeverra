@@ -15,6 +15,7 @@ import {
   moveOptions,
   skillReach,
   skillOf,
+  inInnerReach,
   isCommander,
 } from '../../engine/index.ts';
 import type { Action, Pos, State, Team, Unit } from '../../engine/index.ts';
@@ -32,7 +33,7 @@ const COMMANDER_SVG =
   '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5v13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.3 2.3h8.4l-2.2 2.8 2.2 2.8H4.3z" fill="currentColor"/></svg>';
 
 /** Squares tinted with the reach of the skill in play, and that skill's key (for its colour). */
-export type SkillZone = { cells: Set<string>; key: string };
+export type SkillZone = { cells: Set<string>; key: string; inner: Set<string> };
 
 /**
  * Where the skill in play reaches. The shape comes from the engine (`skillReach`), so a new hero's
@@ -45,10 +46,17 @@ export function skillZone(
   armed: boolean | undefined,
   ownReach = true,
 ): SkillZone | null {
-  const zoneOf = (caster: Unit | null): SkillZone | null =>
-    caster
-      ? { cells: new Set(skillReach(game, caster).map((pos) => `${pos.r},${pos.c}`)), key: skillOf(caster)!.key }
-      : null;
+  const zoneOf = (caster: Unit | null): SkillZone | null => {
+    if (!caster) return null;
+    const skill = skillOf(caster)!;
+    const squares = skillReach(game, caster);
+    return {
+      cells: new Set(squares.map((pos) => `${pos.r},${pos.c}`)),
+      key: skill.key,
+      // its stronger inner area (Aqna's strike range) gets its own colour
+      inner: new Set(squares.filter((pos) => inInnerReach(caster, pos, skill)).map((pos) => `${pos.r},${pos.c}`)),
+    };
+  };
   const pendingHero = (id: string | undefined) => {
     const unit = id ? game.units[id] : undefined;
     return unit && unit.kind === 'hero' ? unit : null;
@@ -290,7 +298,20 @@ export function createBoard(
     const pendingTo = pending
       ? pending.to || (pending.targetId ? game.units[pending.targetId]?.pos : null) || null
       : null;
-    const zone = skillZone(game, live, armed, view.ownReach ?? true);
+    let zone = skillZone(game, live, armed, view.ownReach ?? true);
+    // A skill aimed at squares (Aqna's ice, the summon): tint only the squares it can really take now,
+    // never ones hidden, held by an ally, under terrain, out of strike range or too dear.
+    const castSquares = [...skillActs, ...iceActs]
+      .filter((action) => action.to)
+      .map((action) => `${action.to!.r},${action.to!.c}`);
+    if (zone && castSquares.length) {
+      const open = new Set(castSquares);
+      zone = {
+        ...zone,
+        cells: new Set([...zone.cells].filter((square) => open.has(square))),
+        inner: new Set([...zone.inner].filter((square) => open.has(square))),
+      };
+    }
     const lastAction = game.lastAction;
     const movers = new Set(acts.filter((action) => action.type === 'move').map((action) => action.unitId));
     for (const cell of cells) {
@@ -312,7 +333,7 @@ export function createBoard(
         iceActs.some((action) => samePos(action.to!, pos)),
       );
       cell.classList.toggle('range', inZone);
-      if (inZone) cell.dataset.zone = zone!.key;
+      if (inZone) cell.dataset.zone = zone!.inner.has(`${pos.r},${pos.c}`) ? `${zone!.key}-inner` : zone!.key;
       else delete cell.dataset.zone;
       cell.classList.toggle('pending', !!pendingActor && samePos(pendingActor.pos, pos));
       cell.classList.toggle('pending-to', !!pendingTo && samePos(pendingTo, pos));

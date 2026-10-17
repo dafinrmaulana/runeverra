@@ -2,11 +2,12 @@
 // the engine only reads them while a match runs, never at load time.
 import type { HeroDef, PhaseDef, Unit, UnitDef } from './types.ts';
 
-// Roles describe how a hero moves: Roam, Fighter and Assassin move 2 (Hexor's L counts as 2 steps),
+// Roles describe how a hero plays: Roam, Fighter and Assassin move 2 (Hexor's L counts as 2 steps), a Mage wins with its skill,
 // Support moves 1 but reaches with its skill. A commander (HeroDef.commander) is a second role on top.
 export const ROLES: Record<string, string> = {
   roam: 'Roam',
   fighter: 'Fighter',
+  mage: 'Mage',
   assassin: 'Assassin',
   support: 'Support',
   commander: 'Commander',

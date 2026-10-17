@@ -34,11 +34,16 @@ export const CHANGELOG: Patch[] = [
         tag: 'balance',
         text: "Ge'nga is now a Fighter. On his beast's first move you pick how it moves for the whole match, summons included: 1 square any way, up to 2 straight, or up to 2 diagonally. That first move can be its own turn. A summoned beast eliminates an enemy on its square.",
       },
+      { tag: 'balance', text: 'Aqna is now a Mage.' },
       {
         tag: 'balance',
-        text: "Icy Step: an ice block on an empty square within 3 (1 rune), or within 2 an enemy frozen until it shatters, eliminated with no block left, or a shield broken (2 runes). Terrain and her own units in the way hide what's behind them. It no longer ends her turn: she may still move.",
+        text: "Icy Step: an ice block on an empty square within 3 (1 rune), or up to 3 straight an enemy frozen until it shatters, eliminated with no block left, or a shield broken (2 runes). Terrain and her own units in the way hide what's behind them. It no longer ends her turn: she may still move.",
       },
       { tag: 'ui', text: "Tapping an enemy no longer shows its skill's reach." },
+      {
+        tag: 'ui',
+        text: "Aqna's ice reach has two colours: rose where it can strike an enemy, blue where it only raises a block.",
+      },
       {
         tag: 'balance',
         text: 'Magumba now steps 1 square straight instead of diagonally. Empty Grave: the shielded unit still acts; the first attack on it breaks the shield instead, the attacker is thrown back and loses the turn. Unbroken, it lasts 3 of your turns.',

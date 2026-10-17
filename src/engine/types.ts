@@ -136,7 +136,15 @@ export type MoveRule = { kind: string; dirs?: Dir[]; range?: number; deltas?: Di
  * `ray`: lines along `dirs`, stopped by terrain and the first unit. `sight`: the square of `range`, minus
  * squares hidden behind terrain or the caster's own units. Neither: the whole square of `range`.
  */
-export type Reach = { cells?: Dir[]; label?: string; ray?: boolean; dirs?: Dir[]; sight?: boolean };
+export type Reach = {
+  cells?: Dir[];
+  label?: string;
+  ray?: boolean;
+  dirs?: Dir[];
+  sight?: boolean;
+  /** The squares along these lines, up to `range`, do more (Aqna's ice strikes enemies there): shown in their own colour. */
+  inner?: { dirs: Dir[]; range: number };
+};
 export type Skill = {
   key: string; // short id used in actions, effects and sounds: 'grave', 'root'…
   name: string;

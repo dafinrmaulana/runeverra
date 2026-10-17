@@ -75,7 +75,7 @@ test("setup: 4 heroes each, beast beside Ge'nga, symmetric map blocks, no first-
 });
 
 test('roles: Aqna slides 2, Assassin 1 in any direction plus Backstab, Support 1 and commands, Hexor an L, Fighter 2 any way', () => {
-  assert.equal(HEROES.aqna.role, 'roam');
+  assert.equal(HEROES.aqna.role, 'mage');
   assert.equal(HEROES.hexor.role, 'roam');
   assert.equal(HEROES.hasim.role, 'assassin');
   assert.equal(HEROES.genga.role, 'fighter');
@@ -826,15 +826,15 @@ test('commander: Plantae or Magumba leads (the first picked, if both); when it f
   assert.equal(t2.status, 'playing');
 });
 
-test('Aqna: a block within 3, an enemy within 2 (2 runes); allies and terrain hide what is behind them', () => {
+test('Aqna: a block within 3, an enemy up to 3 straight (2 runes); allies and terrain hide what is behind them', () => {
   const base = setup(
     {
       'p1-aqna': 'd4',
       'p1-hasim': 'd3', // her ally below: hides what is behind it
       'p2-aqna': 'd2', // behind that ally: hidden
-      'p2-genga': 'd6',
+      'p2-genga': 'd7', // 3 straight up: in strike range
       'p2-hasim': 'e4', // shielded, right beside her
-      'p2-plantae': 'g7', // in sight, but 3 away: too far to strike
+      'p2-plantae': 'e5', // diagonal: in the field, but never struck
     },
     { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 2, p2: 0 }, blocks: { b4: 'rock' } },
   );
@@ -846,17 +846,17 @@ test('Aqna: a block within 3, an enemy within 2 (2 runes); allies and terrain hi
       .filter((action) => action.type === 'skill')
       .map((action) => 'abcdefgh'[action.to.c] + (8 - action.to.r));
   const reach = names(base);
-  for (const name of ['d6', 'e4', 'd7', 'g4', 'a7', 'g1']) assert.ok(reach.includes(name), `${name} in reach`);
-  for (const name of ['d2', 'd1', 'a4', 'b4', 'g7', 'd3', 'h4'])
+  for (const name of ['d7', 'e4', 'd6', 'g4', 'a7', 'g1']) assert.ok(reach.includes(name), `${name} in reach`);
+  for (const name of ['d2', 'd1', 'a4', 'b4', 'e5', 'd3', 'h4'])
     assert.ok(!reach.includes(name), `${name} out of reach`);
   // with 1 rune only the empty squares (a block costs 1, an enemy 2)
   const poor = structuredClone(base);
   poor.energy.p1 = 1;
-  assert.ok(!names(poor).some((name) => ['d6', 'e4'].includes(name)), 'enemies cost 2');
+  assert.ok(!names(poor).some((name) => ['d7', 'e4'].includes(name)), 'enemies cost 2');
   // on an enemy: frozen, then shattered
-  let s = act(base, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('d6') });
+  let s = act(base, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('d7') });
   assert.equal(s.units['p2-genga'].alive, false, 'frozen, then shattered');
-  assert.equal(blockAt(s, sq('d6')), null, 'the ice breaks: no block is left');
+  assert.equal(blockAt(s, sq('d7')), null, 'the ice breaks: no block is left');
   assert.equal(s.lastAction.frozen, 'p2-genga');
   assert.equal(s.energy.p1, 1, '2 spent, +1 for the hero');
   // the ice doesn't use her turn: she may still move, or skip

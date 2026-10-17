@@ -98,3 +98,15 @@ export function skillActions(state: State, hero: Unit): Action[] {
   if (hooks?.skillActions) return hooks.skillActions(state, hero);
   return skillTargets(state, hero).map((targetId) => ({ type: 'skill', unitId: hero.id, skill: skill.key, targetId }));
 }
+
+/** Is `pos` in the stronger inner part of the caster's reach (along its `inner` lines, within their range)? */
+export function inInnerReach(caster: Unit, pos: Pos, skill: Skill | undefined = skillOf(caster)) {
+  const inner = skill?.reach?.inner;
+  if (!inner) return false;
+  const rows = pos.r - caster.pos.r,
+    cols = pos.c - caster.pos.c;
+  return inner.dirs.some(([dRow, dCol]) => {
+    for (let step = 1; step <= inner.range; step++) if (rows === dRow * step && cols === dCol * step) return true;
+    return false;
+  });
+}

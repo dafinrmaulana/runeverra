@@ -224,7 +224,7 @@ const DEMOS: Record<string, Demo> = {
         ms: 2000,
       },
       {
-        text: 'Spend it whenever you like: a block within 3, an enemy within 2. Her allies and terrain hide what is behind them.',
+        text: 'Spend it whenever you like: a block within 3, an enemy up to 3 straight. Her allies and terrain hide what is behind them.',
         show: { live: 'p1-aqna', armed: true },
         ms: 2400,
       },
