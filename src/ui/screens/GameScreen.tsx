@@ -11,6 +11,8 @@ import {
   CREEPS,
   ROLES,
   ENERGY,
+  questOf,
+  roundOf,
   isCommander,
   label,
   heroDef,
@@ -26,7 +28,7 @@ import {
 import type { BeastPattern, GameController } from '../game/controller';
 import type { Action, State, Unit } from '../../engine/index.ts';
 import { ICON, ART, MAP_ART, SHORT, costLabel, other, tk, type Team, cssVars } from '../data';
-import { BEAST_SVG, CREEP_SVG } from '../game/board.ts';
+import { BEAST_SVG, CREEP_SVG, UNIT_SVG } from '../game/board.ts';
 import { Rules } from '../components/Rules';
 import { MoveDiagram, RangeDiagram } from '../components/HeroInfo';
 import { Modal, Switch, Accordion } from '../components/ui';
@@ -117,6 +119,8 @@ type Props = {
   onChangeHeroes: () => void;
   onHome: () => void;
   onReplays?: () => void;
+  /** Adventure: play the next level (shown once this one is won). */
+  onNextLevel?: (() => void) | null;
 };
 
 function useCtrl(ctrl: GameController) {
@@ -126,6 +130,8 @@ function useCtrl(ctrl: GameController) {
 
 function statusFor(controller: GameController, team?: Team) {
   const g = controller.game;
+  if (g.status !== 'playing' && questOf(g)) return g.status === 'p1' ? 'Level complete' : 'Level failed';
+  if (questOf(g) && controller.deciderIsBot()) return 'Monsters are moving';
   if (g.status !== 'playing') {
     const on = controller.timedOut() ? ' on time' : '';
     if (controller.mode.kind === 'online') return (g.status === controller.mode.side ? 'You win' : 'You lose') + on;
@@ -357,6 +363,23 @@ function SeatScore({ controller, team }: { controller: GameController; team: Tea
   );
 }
 
+/** Adventure: the level's goal and the rounds played (out of its limit, if it has one). */
+function QuestStrip({ game }: { game: State }) {
+  const quest = questOf(game)!;
+  const limit = quest.goal.kind === 'survive' ? quest.goal.rounds : quest.rounds;
+  const round = Math.min(roundOf(game), limit ?? Infinity);
+  return (
+    <div className="quest-strip" role="status">
+      <b>{quest.name}</b>
+      <span>{quest.goalText}</span>
+      <span className="quest-round">
+        Round {round}
+        {limit ? ` / ${limit}` : ''}
+      </span>
+    </div>
+  );
+}
+
 /** A side's skill runes, labelled. */
 function Clock({ controller, team }: { controller: GameController; team: Team }) {
   if (!controller.timed() || !controller.clock) return null;
@@ -414,12 +437,12 @@ function TeamRoster({ controller, team, threats }: { controller: GameController;
               onClick={() => g.status === 'playing' && controller.select(unit.id)}
               aria-pressed={controller.selectedId === unit.id}
             >
-              {unit.kind === 'beast' ? (
-                <span className="bk" dangerouslySetInnerHTML={{ __html: BEAST_SVG }} />
+              {unit.kind !== 'hero' ? (
+                <span className="bk" dangerouslySetInnerHTML={{ __html: UNIT_SVG[unit.hero] ?? BEAST_SVG }} />
               ) : (
                 <img src={ICON(unit.hero)} alt="" />
               )}
-              <span>{unit.kind === 'beast' ? 'Beast' : HEROES[unit.hero].name}</span>
+              <span>{heroDef(unit).name}</span>
               {unit.warded && <span className="chip wd">grave</span>}
               {unit.rooted > 0 && <span className="chip rt">rooted</span>}
               {skillCooldown(unit) > 0 && (
@@ -470,6 +493,7 @@ function shortLine(unit: Unit) {
     return unit.stride
       ? `Moves free right after Ge'nga: ${STRIDE_TEXT[unit.stride] ?? '1 square any way'}, all match.`
       : 'First move: pick 1 any way, 2 straight or 2 diagonal; it keeps that move all match. May be its own turn.';
+  if (unit.kind !== 'hero') return heroDef(unit).moveText; // monsters, the caravan
   return SHORT[unit.hero]?.skill || '';
 }
 
@@ -509,7 +533,7 @@ function SelTrigger({ controller, unit, threats }: { controller: GameController;
       {hero ? (
         <img src={ICON(unit.hero)} alt="" className={fx.length ? 'has-fx' : ''} />
       ) : (
-        <span className="bk" dangerouslySetInnerHTML={{ __html: unit.kind === 'beast' ? BEAST_SVG : CREEP_SVG }} />
+        <span className="bk" dangerouslySetInnerHTML={{ __html: UNIT_SVG[unit.hero] ?? CREEP_SVG }} />
       )}
       <span className="sel-text">
         <span className="sel-name">
@@ -550,9 +574,9 @@ function SelDetail({ controller, unit }: { controller: GameController; unit: Uni
   const art =
     unit.kind === 'beast'
       ? ART('genga')
-      : unit.kind === 'creep'
-        ? ART(MAP_ART[MAPS[g.map].theme] || 'hexor')
-        : ART(unit.hero);
+      : unit.kind === 'hero'
+        ? ART(unit.hero)
+        : ART(MAP_ART[MAPS[g.map].theme] || 'hexor');
   return (
     <div className="sel-detail" style={cssVars({ '--art': `url(${art})` })}>
       <div className="sel-move">
@@ -924,7 +948,16 @@ function SeatPanel({ controller, team, threats }: { controller: GameController; 
   );
 }
 
-export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes, onHome, onReplays }: Props) {
+export function GameScreen({
+  ctrl,
+  roomCode,
+  rematch,
+  onRematch,
+  onChangeHeroes,
+  onHome,
+  onReplays,
+  onNextLevel,
+}: Props) {
   const c = useCtrl(ctrl);
   useEffect(() => {
     (window as unknown as { __hgCtrl?: GameController }).__hgCtrl = ctrl;
@@ -991,6 +1024,7 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
   const status = statusFor(c);
   const waiting = g.status === 'playing' && !c.deciderIsHuman();
 
+  const quest = questOf(g);
   const me: Team = c.viewer();
   const them = other(me);
   const topbar = !local && (
@@ -1014,12 +1048,12 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
           <Tokens
             controller={c}
             team={them}
-            who={c.mode.kind === 'bot' ? 'Bot' : 'Opponent'}
+            who={quest ? 'Monsters' : c.mode.kind === 'bot' ? 'Bot' : 'Opponent'}
             active={!over && c.decider() === them}
           />
         </span>
       </div>
-      {c.showScore && <ScoreStrip controller={c} />}
+      {quest ? <QuestStrip game={g} /> : c.showScore && <ScoreStrip controller={c} />}
     </>
   );
 
@@ -1027,7 +1061,9 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
     <div className="overlay win">
       <div>
         <h2>{local ? `${TEAM_NAMES[g.status]} wins` : status}</h2>
-        {c.timedOut() ? (
+        {quest ? (
+          <p>{g.log[g.log.length - 1]?.text}</p>
+        ) : c.timedOut() ? (
           <p>{TEAM_NAMES[loser!]} ran out of time</p>
         ) : (
           <p>
@@ -1038,14 +1074,19 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
             still standing
           </p>
         )}
-        {c.showScore && <p className="final-score">{seriesLine(c)}</p>}
+        {c.showScore && !quest && <p className="final-score">{seriesLine(c)}</p>}
         <div className="over-actions">
           <button className="btn primary big" type="button" disabled={rematch.disabled} onClick={onRematch}>
             {rematch.label}
           </button>
+          {quest && winner === 'p1' && onNextLevel && (
+            <button className="btn primary big" type="button" onClick={onNextLevel}>
+              Next level
+            </button>
+          )}
           <div className="over-sub">
             <button className="btn" type="button" onClick={onChangeHeroes}>
-              Change heroes
+              {quest ? 'Levels' : 'Change heroes'}
             </button>
             {onReplays && (
               <button className="btn" type="button" onClick={onReplays}>

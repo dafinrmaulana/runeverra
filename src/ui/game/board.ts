@@ -20,12 +20,12 @@ import {
 } from '../../engine/index.ts';
 import type { Action, Pos, State, Team, Unit } from '../../engine/index.ts';
 import { ICON, ART, MAP_ART } from '../data';
-import { TERRAIN_SVG, CREEP_SVG, BEAST_SVG } from './art';
+import { TERRAIN_SVG, CREEP_SVG, BEAST_SVG, UNIT_SVG } from './art';
 import { createAmbient } from './ambient';
 import { createEffects, type EffectPlan } from './effects';
 import { lungeBack } from './motion';
 
-export { TERRAIN_SVG, CREEP_SVG, BEAST_SVG } from './art';
+export { TERRAIN_SVG, CREEP_SVG, BEAST_SVG, UNIT_SVG } from './art';
 export { lungeBack } from './motion';
 
 /** The commander's mark on its piece: a war banner on its pole (the same as the picker's). */
@@ -477,6 +477,9 @@ export function createBoard(
     if (unit.kind === 'beast')
       el.innerHTML = `<div class="token" style="color:${unit.team === 'p1' ? '#5a3a1a' : '#f3d9a8'}">${BEAST_SVG}</div><span class="tag">${name}</span>`;
     else if (unit.kind === 'creep') el.innerHTML = `<div class="token">${CREEP_SVG}</div>`;
+    else if (unit.kind !== 'hero')
+      // Adventure monsters and the caravan: their drawing, with a name tag
+      el.innerHTML = `<div class="token" style="color:${unit.team === 'p1' ? '#5a3a1a' : '#f3d9a8'}">${UNIT_SVG[unit.hero] ?? CREEP_SVG}</div><span class="tag">${name}</span>`;
     else
       el.innerHTML = `<div class="token"><img src="${ICON(unit.hero)}" alt=""></div><span class="tag">${name}</span>${
         isCommander(unit)

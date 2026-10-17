@@ -952,13 +952,16 @@ canvas.layer {
   font-weight: 400;
   font-size: clamp(1.6rem, 5vw, 2.6rem);
   letter-spacing: 0.08em;
+  /* letter-spacing trails the last letter too: pad the start by the same so the title sits centred */
+  padding-left: 0.08em;
   margin: 0 0 4px;
   text-wrap: balance;
 }
 .overlay p {
-  margin: 0 0 16px;
+  margin: 0 auto 16px;
   color: var(--muted);
   max-width: 40ch;
+  text-wrap: balance;
 }
 .overlay .row {
   display: flex;
@@ -4504,4 +4507,108 @@ a.btn {
   font-family: var(--f-mono);
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+/* Adventure: the level list */
+.quest-list {
+  display: grid;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.quest-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #3a3f4c);
+  background: #1e1813;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.quest-card:hover:not(:disabled) {
+  border-color: #f2d48a;
+  background: #2a2119;
+}
+.quest-card.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.quest-card.done {
+  border-color: rgba(127, 208, 109, 0.6);
+}
+.quest-no {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(242, 212, 138, 0.16);
+  color: #f2d48a;
+  font-weight: 700;
+}
+.quest-card.done .quest-no {
+  background: rgba(127, 208, 109, 0.2);
+  color: #9be58a;
+}
+.quest-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.quest-body b {
+  font-size: 1.05rem;
+  color: #f3e6cf;
+}
+.quest-story {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.quest-goal {
+  color: #f2d48a;
+  font-size: 0.86rem;
+}
+.quest-sides {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.quest-heroes {
+  display: flex;
+  gap: 4px;
+}
+.quest-heroes img {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+.quest-vs {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.quest-monsters {
+  display: flex;
+  gap: 8px;
+}
+.quest-monster {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #ff9a7a;
+  font-size: 0.8rem;
+}
+.quest-monster svg {
+  width: 22px;
+  height: 22px;
 }

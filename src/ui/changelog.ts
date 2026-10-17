@@ -16,6 +16,18 @@ export const TAG_LABEL: Record<Tag, string> = { new: 'New', balance: 'Balance', 
 
 export const CHANGELOG: Patch[] = [
   {
+    version: '0.9.0',
+    date: '2026-10-17',
+    title: 'Adventure',
+    entries: [
+      {
+        tag: 'new',
+        text: 'Adventure: 5 hand-made levels against monsters (goblins, dire wolves, a brute), each with its own goal: escort a caravan, clear the monsters, hold out, slay the brute. Clear a level to open the next.',
+      },
+      { tag: 'ui', text: 'The end-of-match title and text are centred.' },
+    ],
+  },
+  {
     version: '0.8.0',
     date: '2026-10-17',
     title: 'Commanders',

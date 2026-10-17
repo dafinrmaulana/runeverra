@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { HEROES, MAPS, TEAM_NAMES } from '../engine/index.ts';
+import { HEROES, MAPS, TEAM_NAMES, createMatch, questById } from '../engine/index.ts';
 import { pickTeam, BOT_LEVELS } from '../engine/bot.ts';
 import { matchFromConfig } from '../online.ts';
 import { GameController, type Mode } from './game/controller';
@@ -16,6 +16,8 @@ import { Rules } from './components/Rules';
 import { GameScreen } from './screens/GameScreen';
 import { ReplaysScreen } from './screens/ReplaysScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
+import { AdventureScreen } from './screens/AdventureScreen';
+import { markCleared, nextQuest } from './quests';
 import { LATEST } from './changelog';
 import { HomeDemo } from './components/HomeDemo';
 import { Floor } from './components/Floor';
@@ -29,7 +31,7 @@ import { ICON, pickProblem, pref, setPref, type HeroId, type Team } from './data
 import type { DescMode } from './components/HeroInfo';
 
 type ModeKind = 'bot' | 'local' | 'online';
-type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays' | 'changelog' | 'legal';
+type Screen = 'home' | 'room' | 'heroes' | 'map' | 'game' | 'replays' | 'changelog' | 'legal' | 'adventure';
 type Level = 'easy' | 'normal' | 'hard';
 type BotTeam = 'hidden' | 'shuffle' | 'manual';
 
@@ -190,6 +192,29 @@ export function App() {
     setScreen('game');
   }
 
+  // ---------- Adventure ----------
+  const [questId, setQuestId] = useState<string | null>(null);
+  function startQuest(id: string) {
+    const quest = questById(id);
+    if (!quest) return;
+    ctrl?.destroy();
+    const c = new GameController({ kind: 'bot', level: 'normal', side: 'p1' }, createMatch({ quest: id }));
+    c.onFinish = (winner) => {
+      if (winner === 'p1') markCleared(id);
+    };
+    c.say(`${quest.name}: ${quest.story} ${quest.goalText}`, 'ok');
+    setKind('bot');
+    setQuestId(id);
+    setCtrl(c);
+    setScreen('game');
+  }
+  function leaveQuest() {
+    ctrl?.destroy();
+    setCtrl(null);
+    setQuestId(null);
+    setScreen('adventure');
+  }
+
   function goHome() {
     ctrl?.destroy();
     setCtrl(null);
@@ -217,6 +242,27 @@ export function App() {
   }
 
   // ---------- screens ----------
+  if (screen === 'game' && ctrl && questId) {
+    const next = nextQuest(questId);
+    return (
+      <>
+        <Floor mode="game" />
+        <div className="app page" key="game">
+          <GameScreen
+            ctrl={ctrl}
+            rematch={{ label: 'Try again', disabled: false }}
+            onRematch={() => startQuest(questId)}
+            onChangeHeroes={leaveQuest}
+            onHome={() => {
+              setQuestId(null);
+              goHome();
+            }}
+            onNextLevel={next ? () => startQuest(next) : null}
+          />
+        </div>
+      </>
+    );
+  }
   if (screen === 'game' && ctrl) {
     const online = kind === 'online';
     const rematch = !online
@@ -272,6 +318,10 @@ export function App() {
                   <button type="button" className="mode-card primary" onClick={() => choose('bot')}>
                     <b>Play vs Bot</b>
                     <small>Easy, Normal or Hard</small>
+                  </button>
+                  <button type="button" className="mode-card" onClick={() => setScreen('adventure')}>
+                    <b>Adventure</b>
+                    <small>Quests against monsters</small>
                   </button>
                   <button type="button" className="mode-card" onClick={() => choose('local')}>
                     <b>Face to face</b>
@@ -385,6 +435,14 @@ export function App() {
           <Setup title="Legal" onBack={closeLegal}>
             <div className="setup-body page" key="legal">
               <LegalScreen doc={legalDoc} onDoc={openLegal} />
+            </div>
+          </Setup>
+        )}
+
+        {screen === 'adventure' && (
+          <Setup title="Adventure" onBack={() => setScreen('home')}>
+            <div className="setup-body page" key="adventure">
+              <AdventureScreen onPlay={startQuest} />
             </div>
           </Setup>
         )}

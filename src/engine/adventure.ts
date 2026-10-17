@@ -73,7 +73,7 @@ export const QUESTS: Quest[] = [
     id: 'road-out',
     name: 'The Road Out',
     story: 'Goblins block the road out of the village. The merchants must get through.',
-    goalText: 'Bring the caravan to the far edge within 20 rounds.',
+    goalText: 'Bring the caravan to the far edge within 24 rounds.',
     map: 'field',
     heroes: [
       ['plantae', 'c1'],
@@ -83,18 +83,17 @@ export const QUESTS: Quest[] = [
     caravan: 'd1',
     monsters: [
       ['goblin', 'c6'],
-      ['goblin', 'e6'],
-      ['goblin', 'd7'],
+      ['goblin', 'f7'],
     ],
     energy: 4,
-    rounds: 20,
+    rounds: 24,
     goal: { kind: 'escort' },
   },
   {
     id: 'goblin-den',
     name: 'Goblin Den',
     story: 'The raiders came from the old ruins. Clear them out for good.',
-    goalText: 'Take down every monster within 25 rounds.',
+    goalText: 'Take down every monster within 30 rounds.',
     map: 'jungle',
     heroes: [
       ['magumba', 'd1'],
@@ -109,7 +108,7 @@ export const QUESTS: Quest[] = [
       ['wolf', 'e8'],
     ],
     energy: 4,
-    rounds: 25,
+    rounds: 30,
     goal: { kind: 'exterminate' },
   },
   {
@@ -138,7 +137,7 @@ export const QUESTS: Quest[] = [
     id: 'the-brute',
     name: 'The Brute',
     story: 'An ogre leads the raids now. Its hide turns the first blade: strike twice.',
-    goalText: 'Slay the Brute within 25 rounds.',
+    goalText: 'Slay the Brute within 30 rounds.',
     map: 'keep',
     heroes: [
       ['magumba', 'd1'],
@@ -153,14 +152,14 @@ export const QUESTS: Quest[] = [
       ['goblin', 'f7'],
     ],
     energy: 4,
-    rounds: 25,
+    rounds: 30,
     goal: { kind: 'slay', target: 'brute' },
   },
   {
     id: 'the-pass',
     name: 'The Pass',
     story: 'One last caravan must cross the desert pass, and the ogre waits at the top.',
-    goalText: 'Bring the caravan to the far edge within 24 rounds.',
+    goalText: 'Bring the caravan to the far edge within 28 rounds.',
     map: 'oasis',
     heroes: [
       ['plantae', 'd1'],
@@ -178,7 +177,7 @@ export const QUESTS: Quest[] = [
       ['brute', 'e8'],
     ],
     energy: 4,
-    rounds: 24,
+    rounds: 28,
     goal: { kind: 'escort' },
   },
 ];
@@ -247,8 +246,8 @@ const monstersLeft = (state: State) => livingUnits(state, 'p2').filter((unit) =>
 export function questResult(state: State, clock = false): { winner: Team; text: string } | null {
   const quest = questOf(state);
   if (!quest) return null;
-  const lost = (text: string) => ({ winner: 'p2' as Team, text: `${text} The level is lost.` });
-  const won = (text: string) => ({ winner: 'p1' as Team, text: `${text} Level complete!` });
+  const lost = (text: string) => ({ winner: 'p2' as Team, text });
+  const won = (text: string) => ({ winner: 'p1' as Team, text });
   const leader = Object.values(state.units).find((unit) => unit.team === 'p1' && isCommander(unit));
   if (leader && !leader.alive) return lost(`Your commander, ${heroDef(leader).name}, has fallen.`);
   if (!livingHeroes(state, 'p1').length) return lost('All your heroes have fallen.');
@@ -278,13 +277,20 @@ export function questScore(state: State, team: Team): number {
   if (!quest) return 0;
   const caravan = caravanOf(state);
   const monsters = monstersLeft(state);
-  const nearest = (target: Unit | undefined | null) =>
-    target && monsters.length ? Math.min(...monsters.map((monster) => chebyshev(monster.pos, target.pos))) : 0;
-  if (quest.goal.kind === 'escort' && caravan?.alive)
-    return team === 'p1' ? 60 * (7 - caravan.pos.r) : -12 * nearest(caravan);
-  if (quest.goal.kind === 'survive' && team === 'p2') {
-    const leader = Object.values(state.units).find((unit) => unit.team === 'p1' && isCommander(unit) && unit.alive);
-    return -12 * nearest(leader);
+  const heroes = livingHeroes(state, 'p1');
+  const gap = (from: Unit[], target: Unit | undefined | null) =>
+    target && from.length ? Math.min(...from.map((unit) => chebyshev(unit.pos, target.pos))) : 0;
+  // Monsters always press in: each one wants to be near a hero (they never hide from a fight).
+  const pressing = () => -15 * monsters.reduce((sum, monster) => sum + gap(heroes, monster), 0);
+  const goal = quest.goal;
+  if (goal.kind === 'escort' && caravan?.alive)
+    return team === 'p1' ? 60 * (7 - caravan.pos.r) : -12 * gap(monsters, caravan) + pressing();
+  if (goal.kind === 'survive') {
+    const leader = heroes.find((unit) => isCommander(unit));
+    return team === 'p2' ? -12 * gap(monsters, leader) + pressing() : 0;
   }
-  return 0;
+  if (team === 'p2') return pressing();
+  // The hunt: the heroes close in on what they must take down.
+  const prey = goal.kind === 'slay' ? monsters.filter((monster) => monster.hero === goal.target) : monsters;
+  return -20 * prey.reduce((sum, monster) => sum + gap(heroes, monster), 0);
 }

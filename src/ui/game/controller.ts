@@ -16,6 +16,7 @@ import {
   moveOptions,
   squareName,
   heroDef,
+  questById,
 } from '../../engine/index.ts';
 import { chooseAction } from '../../engine/bot.ts';
 import { actionIndex } from '../../online.ts';
@@ -58,6 +59,8 @@ export class GameController {
   showScore: boolean = pref('showScore', true);
   /** How the selected beast moves this time; null until the player picks. */
   beastPattern: BeastPattern | null = null;
+  /** Called once when the match ends, with the winner (the app marks Adventure levels cleared). */
+  onFinish: ((winner: Team) => void) | null = null;
   /** Which series this match counts toward (set by the app); '' = not counted. */
   series = '';
   private recorded = false;
@@ -281,6 +284,7 @@ export class GameController {
     if (before.status === 'playing' && g.status !== 'playing' && !this.recorded) {
       this.recorded = true; // an undo and a second finish don't count twice
       if (this.series) addResult(this.series, g.status === sideA(this.mode.kind, this.viewer()));
+      this.onFinish?.(g.status);
       const m = this.mode;
       saveReplay({
         kind: m.kind,
@@ -288,8 +292,9 @@ export class GameController {
         winner: g.status,
         setup: g.setup,
         trail: g.trail,
-        label:
-          m.kind === 'bot'
+        label: g.setup.quest
+          ? `Adventure · ${questById(g.setup.quest)?.name ?? g.setup.quest}`
+          : m.kind === 'bot'
             ? `vs Bot · ${m.level[0].toUpperCase()}${m.level.slice(1)}`
             : m.kind === 'local'
               ? 'Face to face'
