@@ -854,7 +854,7 @@ test('Aqna: a block within 3, an enemy up to 3 straight (2 runes); allies and te
   poor.energy.p1 = 1;
   assert.ok(!names(poor).some((name) => ['d7', 'e4'].includes(name)), 'enemies cost 2');
   // on an enemy: frozen, then shattered
-  let s = act(base, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('d7') });
+  const s = act(base, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('d7') });
   assert.equal(s.units['p2-genga'].alive, false, 'frozen, then shattered');
   assert.equal(blockAt(s, sq('d7')), null, 'the ice breaks: no block is left');
   assert.equal(s.lastAction.frozen, 'p2-genga');
