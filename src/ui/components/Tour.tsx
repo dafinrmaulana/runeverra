@@ -157,7 +157,7 @@ export function Tour({
     },
     {
       title: 'Skills cost runes',
-      text: 'You start with 4 runes and they do not refill. A skill spends runes (the cost is on its button). Take down enemy creeps, the small pawns, to earn more.',
+      text: 'You start with 4 runes and they do not refill. A skill spends runes (the cost is on its button). Take down enemy heroes and creeps (the small pawns) to earn more.',
       visual: RunesVisual,
     },
   ];

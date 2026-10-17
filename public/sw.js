@@ -19,6 +19,8 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Streamed media (the menu music) asks for byte ranges; a partial answer can't be cached, so let it through.
+  if (req.headers.has('range')) return;
 
   if (req.mode === 'navigate') {
     event.respondWith(

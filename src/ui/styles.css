@@ -523,18 +523,6 @@ h1 small {
 .cell.stab.capture::before {
   border-color: #fff;
 }
-.cell.ghost::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 16%;
-  height: 16%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  border: 2px solid var(--blood);
-  opacity: 0.8;
-}
 .cell.target {
   box-shadow: inset 0 0 0 3px var(--brass);
   animation: pulse 1.4s ease-in-out infinite;

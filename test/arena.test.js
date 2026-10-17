@@ -110,7 +110,7 @@ test('Hasim Backstab: free signature move in any direction; kills jumped enemy a
   assert.equal(s.units['p2-aqna'].alive, false);
   assert.equal(s.units['p2-plantae'].alive, false);
   assert.deepEqual(s.units['p1-hasim'].pos, sq('d6'));
-  assert.equal(s.energy.p1, 0, 'costs no runes');
+  assert.equal(s.energy.p1, 2, 'costs no runes; each hero it kills earns one');
   // over an ally: no kill; over terrain: allowed
   let t = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'c5', 'p2-genga': 'h8' }, { blocks: { d5: 'pillar' } });
   t = act(t, mv('p1-hasim', 'b6'));
@@ -339,7 +339,7 @@ test('Hexor Storm Hammer: optional 2-token slam after a capture; pick + or X, pu
   assert.equal(skipped.energy.p2, 0, 'tokens do not refill each turn');
   // + slam: only the 4 straight neighbours, each pushed 2 squares away from Hexor
   s = act(s, { type: 'storm', pattern: 'plus' });
-  assert.equal(s.energy.p1, 0);
+  assert.equal(s.energy.p1, 1, '2 runes + 1 for the kill, minus 2 for the slam');
   assert.equal(s.lastAction.kind, 'storm');
   assert.deepEqual(s.units['p2-hasim'].pos, sq('c2'), 'straight south of Hexor: pushed 2');
   assert.deepEqual(s.units['p2-plantae'].pos, sq('e5'), "straight east: Ge'nga on f5 is in the way, so 1 square only");
@@ -347,8 +347,8 @@ test('Hexor Storm Hammer: optional 2-token slam after a capture; pick + or X, pu
   assert.deepEqual(s.units['p1-magumba'].pos, sq('c6'), 'warded: holds');
   assert.deepEqual(s.units['p1-hasim'].pos, sq('b6'), 'diagonal to Hexor: outside the + pattern, untouched');
   assert.deepEqual(s.units['p2-beast'].pos, sq('d4'), 'diagonal to Hexor: outside the + pattern, untouched');
-  // not enough tokens: no storm phase
-  const poor = act(setup(pos, { blocks: { e3: 'rock' }, energy: { p1: 1, p2: 0 } }), mv('p1-hexor', 'c5'));
+  // not enough tokens (even with the kill's rune): no storm phase
+  const poor = act(setup(pos, { blocks: { e3: 'rock' }, energy: { p1: 0, p2: 0 } }), mv('p1-hexor', 'c5'));
   assert.equal(poor.phase, 'main');
   assert.equal(poor.current, 'p2');
   // X slam: the diagonal neighbours this time, pushing the beast toward the rock
@@ -375,7 +375,7 @@ test('Hexor Storm Hammer: optional 2-token slam after a capture; pick + or X, pu
 test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest moves at the limit', () => {
   const pos = { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-plantae': 'a5', 'p2-genga': 'h8' };
   const poor = act(setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'] }), mv('p1-aqna', 'a5'));
-  assert.equal(poor.phase, 'main', 'no token: no ice');
+  assert.equal(poor.phase, 'ice', "no runes before the kill: the hero kill's rune pays for the ice");
   let s = setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } });
   s = act(s, mv('p1-aqna', 'a5'));
   assert.equal(s.phase, 'ice');
@@ -383,7 +383,7 @@ test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest m
   s = act(s, { type: 'ice', to: sq('c5') });
   assert.equal(blockAt(s, sq('c5')).kind, 'ice');
   assert.equal(s.current, 'p2');
-  assert.equal(s.energy.p1, 0);
+  assert.equal(s.energy.p1, 1, '1 rune + 1 for the kill, minus 1 for the ice');
   const sl = moveOptions(s, s.units['p1-aqna']).map((option) => option.to);
   assert.ok(!sl.some((cell) => cell.c >= 2 && cell.r === sq('c5').r), 'her own ice blocks her slide');
   // limit
@@ -402,7 +402,7 @@ test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest m
   let u = setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } });
   u = act(act(u, mv('p1-aqna', 'a5')), { type: 'skip' });
   assert.equal(u.current, 'p2');
-  assert.equal(u.energy.p1, 1);
+  assert.equal(u.energy.p1, 2);
 });
 
 test('Aqna Icy Step: the charge is storable (not immediate) and never stacks', () => {
@@ -422,7 +422,7 @@ test('Aqna Icy Step: the charge is storable (not immediate) and never stacks', (
   s = act(s, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('c5') });
   assert.equal(blockAt(s, sq('c5')).kind, 'ice');
   assert.equal(s.units['p1-aqna'].iceCharge, 0, 'charge is spent');
-  assert.equal(s.energy.p1, 0, "1 token spent on her own turn, not the kill's turn");
+  assert.equal(s.energy.p1, 1, "1 token spent on her own turn, not the kill's turn");
 
   // charges never stack: a second kill while one is already held still leaves exactly one
   let t = setup(

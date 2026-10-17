@@ -28,6 +28,7 @@ import { BEAST_SVG, CREEP_SVG } from '../game/board.ts';
 import { Rules } from '../components/Rules';
 import { MoveDiagram, RangeDiagram } from '../components/HeroInfo';
 import { Modal, Switch, Accordion } from '../components/ui';
+import { useBack } from '../back';
 import { ChatButton, ChatBubble } from '../components/Chat';
 import { Rune, CostChip } from '../components/Rune';
 import { SoundSetting } from '../components/SoundSetting';
@@ -589,7 +590,7 @@ function skillStatus(controller: GameController) {
     state = `${sk!.name} is recharging: ready in ${cd} of your turn${cd > 1 ? 's' : ''}.`;
   } else if (tokens < sk!.cost) {
     block = 'tokens';
-    state = `${sk!.name} needs ${tk(sk!.cost)}; you have ${tokens}. Kill a creep or break through to earn more.`;
+    state = `${sk!.name} needs ${tk(sk!.cost)}; you have ${tokens}. Kill an enemy hero or creep, or break through, to earn more.`;
   } else if (!can) {
     const why = ui?.unavailable?.(g, u);
     block = why?.charge ? 'charge' : 'target';
@@ -772,6 +773,7 @@ function SeatPanel({ controller, team, threats }: { controller: GameController; 
   const last = g.log[g.log.length - 1];
   const sel = controller.selectedId ? g.units[controller.selectedId] : null;
   const [sheet, setSheet] = useState<'roster' | 'unit' | null>(null);
+  useBack(!!sheet, () => setSheet(null), 'dialog');
   const heroes = livingHeroes(g, team).length;
   useEffect(() => {
     if (sheet === 'unit' && (!sel || !sel.alive)) setSheet(null);
@@ -871,6 +873,9 @@ export function GameScreen({ ctrl, roomCode, rematch, onRematch, onChangeHeroes,
     [],
   );
   const [rules, setRules] = useState(false);
+  // The phone's back: leave full screen, else open the menu (never drop out of a match by accident).
+  useBack(true, () => (focus ? setFocus(false) : setMenu(true)), 'panel');
+  useBack(menu && inSettings, () => setInSettings(false), 'dialog');
   const local = c.mode.kind === 'local';
   const g = c.game;
 

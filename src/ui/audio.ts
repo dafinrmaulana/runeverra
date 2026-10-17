@@ -1,5 +1,6 @@
-// Sound effects, synthesised with Web Audio: no audio files, nothing to license, nothing to download.
-// Steel, wind, thunder and wood are built from filtered noise and the low, uneven overtones of struck metal;
+// Sound effects. The main ones are recorded files (public/assets/audio, see SAMPLES), loaded once on the first
+// touch; every sound also has a recipe synthesised with Web Audio, which plays until its file has loaded or
+// if it fails to. Steel, wind, thunder and wood are built from filtered noise and the low, uneven overtones of struck metal;
 // impacts are saturated and weighted to the bass, and the whole mix is darkened and put in a stone room, so it
 // sounds heavy and gritty rather than like bells and synth beeps.
 // Every recipe takes a context so it can also be rendered offline (used to check that each one makes sound).
@@ -10,11 +11,14 @@ export type SfxName =
   | 'beast'
   | 'capture'
   | 'backstab'
+  | 'slash'
   | 'grave'
   | 'root'
   | 'interrupt'
   | 'storm'
   | 'ice'
+  | 'shatter'
+  | 'shield'
   | 'summon'
   | 'victory'
   | 'defeat'
@@ -180,14 +184,22 @@ const RECIPES: Record<SfxName, (context: Ctx, output: AudioNode, time: number) =
     thump(context, output, time, 70, 38, 0.16, 1.0, 2);
     hiss(context, output, 'lowpass', 500, 180, time, 0.1, 0.8);
   },
-  // a kill: steel dragged across steel, a crunching blow, then the blade ringing low
+  // a takedown: a short rush of air, a heavy crunching blow, and the body hitting the stone
   capture: (context, output, time) => {
+    gust(context, output, time, 0.12, 0.45, 300, 1200, 0.9);
+    thump(context, output, time + 0.07, 120, 38, 0.3, 1.0, 6);
+    hiss(context, output, 'lowpass', 1600, 260, time + 0.07, 0.14, 0.9);
+    [0.08, 0.1, 0.13].forEach((delay, index) =>
+      hiss(context, output, 'bandpass', 900 - index * 150, 600, time + delay, 0.03, 0.45, 4),
+    );
+    thump(context, output, time + 0.3, 70, 34, 0.22, 0.7, 3);
+    hiss(context, output, 'lowpass', 600, 150, time + 0.3, 0.16, 0.5);
+  },
+  // Hasim's blade finding its mark after the leap: a blade whipping through the air
+  slash: (context, output, time) => {
     gust(context, output, time, 0.22, 0.6, 900, 5500, 1.3);
-    thump(context, output, time + 0.1, 100, 40, 0.24, 1.0, 5);
-    hiss(context, output, 'lowpass', 1200, 300, time + 0.1, 0.12, 0.85);
     hiss(context, output, 'bandpass', 700, 500, time + 0.1, 0.08, 0.6, 1);
-    ring(context, output, time + 0.11, 640, 1.0, 0.24);
-    ring(context, output, time + 0.12, 960, 0.6, 0.11);
+    ring(context, output, time + 0.11, 640, 0.8, 0.2);
   },
   // Hasim's leap: a hard wind, a thin blade, a heavy landing
   backstab: (context, output, time) => {
@@ -245,6 +257,20 @@ const RECIPES: Record<SfxName, (context: Ctx, output: AudioNode, time: number) =
     ring(context, output, time + 0.02, 1100, 0.5, 0.1);
     hiss(context, output, 'lowpass', 400, 110, time, 0.7, 0.55);
     thump(context, output, time + 0.02, 85, 45, 0.3, 0.7, 3);
+  },
+  // ice giving way: a sharp crack and shards falling
+  shatter: (context, output, time) => {
+    hiss(context, output, 'highpass', 4000, 2000, time, 0.1, 0.9);
+    [0.03, 0.08, 0.12, 0.19, 0.27, 0.36].forEach((delay, index) =>
+      hiss(context, output, 'bandpass', 3200 - index * 250, 3000 - index * 250, time + delay, 0.04, 0.4, 9),
+    );
+    ring(context, output, time, 1500, 0.4, 0.08);
+  },
+  // a blow glancing off a warded shield
+  shield: (context, output, time) => {
+    thump(context, output, time, 140, 70, 0.14, 0.9, 4);
+    ring(context, output, time, 420, 0.6, 0.3);
+    hiss(context, output, 'bandpass', 2400, 1800, time, 0.06, 0.5, 2);
   },
   // Ge'nga calls the beast: a roar from the chest and war drums
   summon: (context, output, time) => {
@@ -333,6 +359,51 @@ function buildBus(ctx: Ctx, dest: AudioNode): AudioNode {
   return input;
 }
 
+// Recorded sounds, by name, with a level to sit them with the rest. A name without a file plays its recipe.
+const SAMPLES: Partial<Record<SfxName, { file: string; level: number }>> = {
+  move: { file: 'move', level: 0.9 },
+  beast: { file: 'move', level: 0.7 },
+  slash: { file: 'slash', level: 0.9 },
+  backstab: { file: 'backstab', level: 1 },
+  grave: { file: 'grave', level: 0.85 },
+  root: { file: 'root', level: 0.9 },
+  interrupt: { file: 'root', level: 0.9 }, // Plantae's roots, cast on the enemy's turn
+  storm: { file: 'storm', level: 0.9 },
+  ice: { file: 'ice', level: 0.85 },
+  shatter: { file: 'shatter', level: 0.7 },
+  shield: { file: 'shield', level: 1 },
+};
+const sampleUrl = (file: string) => `assets/audio/${file}.mp3`;
+const buffers = new Map<string, AudioBuffer>();
+let loading = false;
+
+function loadSamples(context: AudioContext) {
+  if (loading || typeof fetch === 'undefined') return;
+  loading = true;
+  const files = new Set(Object.values(SAMPLES).map((sample) => sample!.file));
+  for (const file of files)
+    fetch(sampleUrl(file))
+      .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error(response.statusText))))
+      .then((data) => context.decodeAudioData(data))
+      .then((buffer) => buffers.set(file, buffer))
+      .catch(() => {}); // the recipe keeps playing instead
+}
+
+/** Play a recorded sound, if it is loaded. False when the recipe should play instead. */
+function playSample(context: AudioContext, output: AudioNode, name: SfxName) {
+  const sample = SAMPLES[name];
+  const buffer = sample && buffers.get(sample.file);
+  if (!sample || !buffer) return false;
+  const source = context.createBufferSource(),
+    gain = context.createGain();
+  source.buffer = buffer;
+  gain.gain.value = sample.level;
+  source.connect(gain);
+  gain.connect(output);
+  source.start(context.currentTime + 0.002);
+  return true;
+}
+
 // ---------- the live player ----------
 let ctx: AudioContext | null = null;
 let bus: AudioNode | null = null;
@@ -353,6 +424,7 @@ function ensure(): AudioContext | null {
     master.gain.value = volume;
     master.connect(ctx.destination);
     bus = buildBus(ctx, master);
+    loadSamples(ctx);
   } catch {
     ctx = null;
   }
@@ -370,6 +442,9 @@ if (typeof window !== 'undefined') {
   );
 }
 
+/** The shared audio context (made on first use; null without Web Audio), for the menu music. */
+export const audioContext = () => ensure();
+
 export function sfx(name: SfxName | null) {
   if (!name || volume <= 0 || (typeof document !== 'undefined' && document.hidden)) return;
   const c = ensure();
@@ -379,7 +454,7 @@ export function sfx(name: SfxName | null) {
   if (now - (lastPlayed.get(name) || 0) < 45) return; // never stack the same sound on itself
   lastPlayed.set(name, now);
   try {
-    RECIPES[name](c, bus, c.currentTime + 0.002);
+    if (!playSample(c, master!, name)) RECIPES[name](c, bus, c.currentTime + 0.002);
   } catch {
     /* a sound must never break the game */
   }

@@ -253,12 +253,10 @@ export class GameController {
 
   /** The sound of what just happened, then the end-of-match fanfare, then a chime when it is the player's turn. */
   private playSound(before: State, after: State, src: Source) {
-    sfx(
-      sfxFor(
-        after.lastAction && after.lastAction !== before.lastAction ? after.lastAction : null,
-        after.units,
-      ) as SfxName | null,
-    );
+    const fresh = after.lastAction && after.lastAction !== before.lastAction ? after.lastAction : null;
+    sfx(sfxFor(fresh, after.units) as SfxName | null);
+    if (fresh?.kind === 'backstab' && fresh.hits.length) window.setTimeout(() => sfx('slash'), 220); // his blade lands
+    if (fresh?.movedIce) window.setTimeout(() => sfx('shatter'), 120); // her oldest block breaks to make room
     if (before.status === 'playing' && after.status !== 'playing') {
       const mine = this.mode.kind === 'local' ? null : after.status === this.viewer();
       window.setTimeout(() => sfx(mine === null ? 'victory' : mine ? 'victory' : 'defeat'), 420);
@@ -303,7 +301,10 @@ export class GameController {
     const g = this.game;
     if (g.status !== 'playing' || !this.deciderIsHuman()) {
       const u = unitAt(g, pos);
-      if (u && g.status === 'playing') this.select(u.id); // inspect while waiting
+      if (g.status !== 'playing') return;
+      if (u && u.id !== this.selectedId)
+        this.select(u.id); // inspect while waiting
+      else this.escape(); // the same piece again, or an empty square: put it down
       return;
     }
     const acts = listActions(g);
@@ -338,6 +339,13 @@ export class GameController {
       const aims = HEROES[sel.hero].ui?.targets;
       if (occupant && occupant.team === sel.team && occupant.id !== sel.id && aims !== 'ally') {
         this.select(occupant.id);
+        return;
+      }
+      if (occupant && occupant.id === sel.id) {
+        // the caster again, and not a target of its own skill: put it down
+        this.clearSel();
+        this.say(`${sk.name} cancelled.`);
+        this.render({});
         return;
       }
       if (occupant && aims !== 'square') {
@@ -419,10 +427,9 @@ export class GameController {
       to: target.pos,
       lunge,
     });
-    this.say(
-      `${label(target)} is shielded by Empty Grave: ${label(attacker)} is thrown back. The shield lasts until its caster's next turn.`,
-      'err',
-    );
+    sfx('shield');
+    this.msg = `${label(target)} is shielded by Empty Grave: ${label(attacker)} is thrown back. The shield lasts until its caster's next turn.`;
+    this.msgKind = 'err'; // the shield's own sound, not the error thud
     this.render({});
   }
 
@@ -460,7 +467,8 @@ export class GameController {
     this.selectedId = id;
     this.armed = false;
     const u = g.units[id];
-    if (u.team !== g.current) this.say('Enemy unit. Red rings show where it can go.');
+    if (u.team !== g.current)
+      this.say(this.humanTeams().includes(u.team) ? `${label(u)} acts on its own turn.` : `Enemy unit: ${label(u)}.`);
     else if (u.kind === 'beast') this.say("The beast only acts right after Ge'nga.", 'err');
     else if (u.rooted) this.say(`${label(u)} is held by roots this turn.`, 'err');
     else this.say('');

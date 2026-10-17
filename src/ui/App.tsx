@@ -20,6 +20,8 @@ import { LATEST } from './changelog';
 import { HomeDemo } from './components/HomeDemo';
 import { Floor } from './components/Floor';
 import { resetTally } from './record';
+import { useBack } from './back';
+import { setMenuMusic } from './music';
 import { useInstall } from './pwa';
 import { Modal, Steps, Switch } from './components/ui';
 import { CursorPicker } from './cursor';
@@ -85,6 +87,26 @@ export function App() {
   const [seenVer, setSeenVer] = useState<string>(pref('seenVersion', ''));
   const r = useRoom();
   const pwa = useInstall();
+
+  // The phone's back goes to the screen before, like each screen's own Back button. (The match handles its own.)
+  useBack(
+    screen !== 'home' && screen !== 'game',
+    () => {
+      if (screen === 'legal') closeLegal();
+      else if (screen === 'room') {
+        room.leave();
+        setScreen('home');
+      } else if (screen === 'map') setScreen('heroes');
+      else if (screen === 'heroes') setScreen(kind === 'online' ? 'room' : 'home');
+      else setScreen('home');
+    },
+    'screen',
+  );
+
+  // The soundtrack plays on the menus and fades out for a match.
+  useEffect(() => {
+    setMenuMusic(screen !== 'game');
+  }, [screen]);
 
   // A new screen always opens at its top, not wherever the last one was scrolled to.
   useEffect(() => {

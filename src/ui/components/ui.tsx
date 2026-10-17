@@ -1,6 +1,7 @@
 // Small UI primitives with enter/exit transitions: Modal, Switch, Accordion, Steps.
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useBack } from '../back';
 
 /** Keep something mounted while it animates out. Returns [mounted, state]. */
 function usePresence(open: boolean, ms = 200): [boolean, 'in' | 'out'] {
@@ -28,6 +29,7 @@ type ModalProps = {
 /** A dialog over the whole screen: fades in, card drops in from above. */
 export function Modal({ open, onClose, label, children, className = '', full, mirrored }: ModalProps) {
   const [mounted, state] = usePresence(open);
+  useBack(open, onClose, 'dialog');
   useEffect(() => {
     if (!open) return;
     const k = (event: KeyboardEvent) => {

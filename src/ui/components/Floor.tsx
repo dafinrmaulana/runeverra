@@ -238,24 +238,45 @@ export function Rings({ lit }: { lit?: boolean }) {
 
 export function Floor({ mode }: { mode: FloorMode }) {
   const root = useRef<HTMLDivElement>(null);
+  const lamp = useRef<HTMLDivElement>(null);
+  const lampInner = useRef<HTMLDivElement>(null);
+  const modeNow = useRef(mode);
+  modeNow.current = mode;
 
   useEffect(() => {
     const el = root.current;
-    if (!el) return;
+    const light = lamp.current;
+    const inner = lampInner.current;
+    if (!el || !light || !inner) return;
     let raf = 0,
-      x = 0.5,
-      y = 0.5;
+      x = 0,
+      y = 0,
+      radius = 0;
+    // The lit circle must line up with the floor's own: give it the floor's size, and remember the lamp's.
+    const measure = () => {
+      inner.style.width = `${el.clientWidth}px`;
+      inner.style.height = `${el.clientHeight}px`;
+      radius = light.offsetWidth / 2;
+    };
+    measure();
+    // Only transforms change per move: the compositor slides the two layers, nothing is restyled or repainted.
+    const place = () => {
+      raf = 0;
+      light.style.transform = `translate3d(${x - radius}px, ${y - radius}px, 0)`;
+      inner.style.transform = `translate3d(${radius - x}px, ${radius - y}px, 0)`;
+      el.classList.add('touched');
+    };
     const move = (event: PointerEvent) => {
+      if (modeNow.current === 'game' || event.pointerType !== 'mouse') return; // no light during a match
       x = event.clientX;
       y = event.clientY;
-      if (!raf)
-        raf = requestAnimationFrame(() => {
-          raf = 0;
-          el.style.setProperty('--mx', `${x}px`);
-          el.style.setProperty('--my', `${y}px`);
-          el.classList.add('touched');
-        });
+      if (!raf) raf = requestAnimationFrame(place);
     };
+    const resized = () => {
+      measure();
+      if (el.classList.contains('touched') && !raf) raf = requestAnimationFrame(place);
+    };
+    window.addEventListener('resize', resized);
     // Pause the background motion while the page is being scrolled: less work per frame, no dropped tiles.
     let idle = 0;
     const scrolling = () => {
@@ -269,6 +290,7 @@ export function Floor({ mode }: { mode: FloorMode }) {
       window.removeEventListener('scroll', scrolling);
       clearTimeout(idle);
       window.removeEventListener('pointermove', move);
+      window.removeEventListener('resize', resized);
       cancelAnimationFrame(raf);
     };
   }, []);
@@ -285,8 +307,10 @@ export function Floor({ mode }: { mode: FloorMode }) {
         <i className="g5" />
         <i className="g6" />
       </div>
-      <div className="floor-lit">
-        <Rings lit />
+      <div className="floor-lit" ref={lamp}>
+        <div className="floor-lit-inner" ref={lampInner}>
+          <Rings lit />
+        </div>
       </div>
       <div className="floor-vignette" />
     </div>

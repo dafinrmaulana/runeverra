@@ -11,6 +11,14 @@ import { skillActions } from './skills.ts';
 //   Map terrain never sits on these files, so creeps are only ever blocked by units.
 //   lastHit: runes for eliminating an enemy creep; breach: runes when a creep reaches the far rank
 export const CREEPS = { files: ['a', 'b', 'g', 'h'], lastHit: 1, breach: 1 };
+/** Runes for eliminating an enemy hero. */
+export const HERO_BOUNTY = 1;
+
+/** Runes `byTeam` earns for eliminating `victim` (an enemy hero or creep; companions earn nothing). */
+export function bountyFor(victim: Unit, byTeam: Team | null) {
+  if (!byTeam || byTeam === victim.team) return 0;
+  return victim.kind === 'hero' ? HERO_BOUNTY : victim.kind === 'creep' ? CREEPS.lastHit : 0;
+}
 
 /** The successful Result for a state that has been fully updated. */
 export const done = (state: State): Result => ({ ok: true, state, reason: null });
@@ -18,16 +26,17 @@ export const done = (state: State): Result => ({ ok: true, state, reason: null }
 /** Units the side to move may act with in the main phase: heroes and creeps, never followers. */
 export const mainActors = (state: State) => livingUnits(state, state.current).filter((unit) => !heroDef(unit).follower);
 
-/** Take a unit off the board. `byTeam` earns the last-hit rune when the victim is a creep. */
+/** Take a unit off the board. `byTeam` earns runes when the victim is an enemy hero or creep. */
 export function eliminate(state: State, victim: Unit, logLines: string[], byTeam: Team | null = null) {
   if (!victim.alive) return;
   victim.alive = false;
   victim.rooted = 0;
   victim.warded = false;
   logLines.push(`${label(victim)} is eliminated on ${squareName(victim.pos)}.`);
-  if (victim.kind === 'creep' && byTeam && byTeam !== victim.team) {
-    gainRunes(state, byTeam, CREEPS.lastHit);
-    logLines.push(`${TEAM_NAMES[byTeam]} gains ${CREEPS.lastHit} rune for the kill.`);
+  const bounty = bountyFor(victim, byTeam);
+  if (bounty) {
+    gainRunes(state, byTeam!, bounty);
+    logLines.push(`${TEAM_NAMES[byTeam!]} gains ${bounty} rune${bounty > 1 ? 's' : ''} for the kill.`);
   }
   hooksOf(victim)?.onEliminated?.(state, victim, logLines);
 }

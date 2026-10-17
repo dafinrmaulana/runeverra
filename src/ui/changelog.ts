@@ -16,6 +16,29 @@ export const TAG_LABEL: Record<Tag, string> = { new: 'New', balance: 'Balance', 
 
 export const CHANGELOG: Patch[] = [
   {
+    version: '0.7.0',
+    date: '2026-10-17',
+    title: 'Music, new sounds and back button',
+    entries: [
+      { tag: 'new', text: 'Menu music, with its own volume in Settings. It fades out when a match starts.' },
+      {
+        tag: 'new',
+        text: 'New sounds for moves and skills: Backstab, Empty Grave, Aggressive Root, Storm Hammer and Icy Step. A blow that hits Empty Grave has its own sound.',
+      },
+      { tag: 'balance', text: 'Eliminating an enemy hero now gives +1 rune, like a creep.' },
+      {
+        tag: 'ui',
+        text: "Your phone's back button or back swipe now goes back one screen or closes the open window, instead of closing the game. In a match it opens the menu.",
+      },
+      { tag: 'ui', text: 'Tapping an enemy unit no longer shows where it can move.' },
+      {
+        tag: 'fix',
+        text: 'Tapping the selected unit again now always puts it down, also while waiting for your opponent.',
+      },
+      { tag: 'fix', text: 'Hovering on desktop is smooth again: the light under the mouse no longer slows the page.' },
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-10-15',
     title: 'Home, chat and install',

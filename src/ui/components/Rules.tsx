@@ -41,7 +41,7 @@ export function Rules({ onTour }: { onTour?: () => void }) {
       <h3>Skill runes</h3>
       <ul>
         <li>Each side starts with 4 runes (the maximum). They don't refill each turn.</li>
-        <li>+1 rune for killing an enemy creep, +1 when your creep reaches the far side.</li>
+        <li>+1 rune for killing an enemy hero or creep, +1 when your creep reaches the far side.</li>
         <li>
           Costs: ice 1 · Empty Grave 2 · Storm Hammer 2 · summon beast 3 · Aggressive Root 3 (interrupt 3). Backstab and
           beast moves are free.

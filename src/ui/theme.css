@@ -2559,8 +2559,6 @@ textarea {
   pointer-events: none;
   overflow: hidden;
   background: #14100d;
-  --mx: 50vw;
-  --my: 50vh;
 }
 .app {
   position: relative;
@@ -2641,29 +2639,36 @@ textarea {
 .ring.r3 {
   animation: floorspin 70s linear infinite;
 }
+/* The light under the pointer: a round lamp moved by transform (no repaint, no style work per move), and inside it
+   the lit circle moved the opposite way, so the circle stays put on the floor while the lamp slides over it. */
 .floor-lit {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  width: min(68vmin, 560px);
+  height: min(68vmin, 560px);
   opacity: 0;
   transition: opacity 0.6s;
-  -webkit-mask-image: radial-gradient(
-    circle min(34vmin, 280px) at var(--mx) var(--my),
-    #000 0%,
-    rgba(0, 0, 0, 0.55) 45%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    circle min(34vmin, 280px) at var(--mx) var(--my),
-    #000 0%,
-    rgba(0, 0, 0, 0.55) 45%,
-    transparent 100%
-  );
+  will-change: transform;
+  -webkit-mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 100%);
+}
+.floor-lit-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
 }
 .floor.touched .floor-lit {
   opacity: 1;
 }
 .floor.f-game .floor-lit {
   opacity: 0 !important;
+  visibility: hidden;
+}
+/* Behind a match the circle is faint: its glow isn't visible there, and blurring it on every turning frame is costly. */
+.floor.f-game .ring {
+  filter: none;
 }
 .floor-lit .ring {
   filter: drop-shadow(0 0 12px rgba(255, 226, 168, 0.85));

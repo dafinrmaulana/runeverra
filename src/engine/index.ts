@@ -25,7 +25,7 @@ export type { MapDef } from './maps.ts';
 export { livingUnits, livingHeroes, unitAt, blockAt, label, toMove, beastOf } from './state.ts';
 export { MOVE_RULES, moveOptions } from './movement.ts';
 export { skillCooldown, skillReach, inSkillReach, skillTargets, skillActions } from './skills.ts';
-export { CREEPS } from './turn.ts';
+export { CREEPS, HERO_BOUNTY, bountyFor } from './turn.ts';
 export { CREEP, SLOTS, createMatch } from './match.ts';
 export type { MatchOptions } from './match.ts';
 export { listActions, validateAction, applyAction, getThreats } from './rules.ts';

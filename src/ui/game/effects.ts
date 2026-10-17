@@ -5,7 +5,7 @@
 //   SKILL_FX[lastAction.kind]  the effect for a skill or capture (keyed like the engine's lastAction.kind)
 //   HERO_FX[hero id]           per-hero flourishes: death particles, capture strike, move touch
 // A new hero with a new skill adds one entry to each (see docs/heroes.md).
-import { CREEPS, MAPS, heroDef, livingHeroes } from '../../engine/index.ts';
+import { CREEPS, MAPS, bountyFor, heroDef, livingHeroes } from '../../engine/index.ts';
 import type { LastAction, Pos, State, Team, Unit } from '../../engine/index.ts';
 import { tk } from '../data';
 import { lungeBack } from './motion';
@@ -734,8 +734,8 @@ export function createEffects(canvas: HTMLCanvasElement, wrap: HTMLElement, view
       (unit) => unit.alive && !afterState.units[unit.id].alive && !(lastAction.breach && unit.id === lastAction.unitId),
     );
     for (const victim of victims) {
-      if (victim.kind === 'creep' && actor && actor.team !== victim.team)
-        after(420, () => text(victim.pos, `+${CREEPS.lastHit}`, COLORS.brass));
+      const bounty = actor ? bountyFor(victim, actor.team) : 0;
+      if (bounty) after(420, () => text(victim.pos, `+${bounty}`, COLORS.brass));
     }
     const eliminateAll = (delayMs: number, big = false) =>
       after(delayMs, () => victims.forEach((victim) => eliminated(before.units[victim.id], big)));

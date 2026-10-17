@@ -273,7 +273,6 @@ export function createBoard(
     const { acts, live, armed, threats } = view;
     const moveActs = live ? acts.filter((action) => action.type === 'move' && action.unitId === live.id) : [];
     const options = live ? moveOptions(game, live) : [];
-    const ghosts = live && live.team !== game.current ? options : []; // an enemy's moves, shown faintly
     const skillActs =
       live && armed ? acts.filter((action) => action.type === 'skill' && action.unitId === live.id) : [];
     const skillKey = live && live.kind === 'hero' ? HEROES[live.hero].skill.key : '';
@@ -290,14 +289,12 @@ export function createBoard(
       const pos = posOf(cell);
       const legalMove = moveActs.find((action) => samePos(action.to!, pos));
       const option = legalMove && options.find((candidate) => samePos(candidate.to, pos));
-      const ghost = ghosts.find((candidate) => samePos(candidate.to, pos));
       const isTarget = skillActs.some((action) => samePos(action.to || game.units[action.targetId!].pos, pos));
       const inZone = !!zone && zone.cells.has(`${pos.r},${pos.c}`);
       cell.classList.toggle('sel', !!live && samePos(live.pos, pos));
       cell.classList.toggle('move', !!option && !option.backstab && !option.kills.length);
-      cell.classList.toggle('capture', (!!option && option.kills.length > 0) || (!!ghost && ghost.kills.length > 0));
+      cell.classList.toggle('capture', !!option && option.kills.length > 0);
       cell.classList.toggle('stab', !!option && !!option.backstab);
-      cell.classList.toggle('ghost', !!ghost && !ghost.kills.length);
       cell.classList.toggle('target', isTarget);
       cell.classList.toggle('grave', isTarget && skillKey === 'grave');
       cell.classList.toggle('root', isTarget && skillKey === 'root');
