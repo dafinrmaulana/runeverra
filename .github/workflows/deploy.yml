@@ -41,6 +41,22 @@ jobs:
             set -euo pipefail
             export PATH="$NODE_BIN:$PATH"
 
+            # The relay runs server/ws-server.ts directly, so systemd's unit must point at it and use
+            # Node 22.18+. Check before touching anything: on failure the old site and relay keep running.
+            echo "::group::Preflight: relay unit"
+            exec_start=$(systemctl show -p ExecStart --value runeverra-ws)
+            relay_node=$(printf '%s' "$exec_start" | sed -n 's/.*path=\([^ ;]*\).*/\1/p')
+            if ! printf '%s' "$exec_start" | grep -q 'server/ws-server\.ts'; then
+              echo "::error::runeverra-ws ExecStart must run server/ws-server.ts (now: $exec_start). Update /etc/systemd/system/runeverra-ws.service and run: sudo systemctl daemon-reload"
+              exit 1
+            fi
+            if ! "$relay_node" -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 18) ? 0 : 1)'; then
+              echo "::error::$relay_node is $("$relay_node" -v); the relay needs Node 22.18 or newer."
+              exit 1
+            fi
+            echo "relay: $relay_node $("$relay_node" -v)"
+            echo "::endgroup::"
+
             cd "$APP_DIR"
 
             echo "::group::Checkout $COMMIT"

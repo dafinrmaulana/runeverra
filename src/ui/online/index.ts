@@ -5,4 +5,7 @@
 import { room as capabilityRoom } from './room';
 import { wsRoom } from './ws-room';
 
-export const room: typeof capabilityRoom = ((import.meta as any).env?.VITE_WS_URL ? wsRoom : capabilityRoom) as any;
+// Both clients share one public shape (see ws-room.ts), so either can stand in for the other.
+export const room: typeof capabilityRoom = (import.meta.env.VITE_WS_URL
+  ? wsRoom
+  : capabilityRoom) as unknown as typeof capabilityRoom;

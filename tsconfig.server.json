@@ -1,0 +1,9 @@
+{
+  // The relay runs in Node, not the browser: Node's types, no DOM.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+  "include": ["server", "src/engine", "src/online.ts", "src/clock.ts", "src/protocol.ts"]
+}

@@ -7,13 +7,14 @@
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
-    "allowJs": true,
-    "checkJs": false,
     "skipLibCheck": true,
     "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "types": [],
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src/ui", "src/*.d.ts", "vite.config.ts"]
+  "include": ["src", "vite.config.ts"]
 }

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMatch, applyAction, listActions } from '../src/arena.js';
-import { matchFromConfig } from '../src/online.js';
+import { createMatch, applyAction, listActions } from '../src/engine/index.ts';
+import { matchFromConfig } from '../src/online.ts';
 
 const teams = { p1: ['hasim', 'hexor', 'magumba', 'plantae'], p2: ['genga', 'aqna', 'plantae', 'hasim'] };
 

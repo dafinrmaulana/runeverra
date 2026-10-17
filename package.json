@@ -7,16 +7,28 @@
   "scripts": {
     "dev": "vite",
     "dev:lan": "vite --host",
-    "build": "tsc -p tsconfig.json && vite build && node build.mjs",
+    "build": "npm run typecheck && vite build && vite build --mode artifact && node build.mjs",
     "test": "node --test test/*.test.js",
-    "typecheck": "tsc -p tsconfig.json",
-    "serve:ws": "node server/ws-server.mjs"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json",
+    "serve:ws": "node server/ws-server.ts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.20.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
     "typescript": "^5.6.3",
+    "typescript-eslint": "^8.18.0",
     "vite": "^5.4.11",
     "vite-plugin-singlefile": "^2.0.3"
   },
@@ -27,5 +39,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "ws": "^8.22.0"
+  },
+  "engines": {
+    "node": ">=22.18"
   }
 }

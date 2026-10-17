@@ -1,0 +1,11 @@
+dist
+dist-artifact
+node_modules
+package-lock.json
+# Prose and recorded data stay as written
+*.md
+docs
+src/demo-match.ts
+public/manifest.json
+# Hand-laid head tags that test/seo.test.js reads as text
+index.html

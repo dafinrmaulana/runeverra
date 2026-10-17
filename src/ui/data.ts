@@ -1,24 +1,44 @@
-// Display data and helpers shared by every screen. Rules live in src/arena.js.
-import { HEROES, ROLES, MAPS, createMatch, moveOptions } from '../arena.js';
+// Display data and helpers shared by every screen. Rules live in src/engine/.
+import type { CSSProperties } from 'react';
+import { HEROES, ROLES, MAPS, createMatch, moveOptions } from '../engine/index.ts';
 
 export type Team = 'p1' | 'p2';
 export type HeroId = keyof typeof HEROES;
 export const HERO_IDS = Object.keys(HEROES) as HeroId[];
 export const MAP_IDS = Object.keys(MAPS) as (keyof typeof MAPS)[];
 
-export const ICON = (h: string) => `assets/icons/${h}.png`;
-export const ART = (h: string) => `assets/art/${h}.jpg`;
-export const MAP_ART: Record<string, string | null> = { desert: 'hasim', savanna: 'genga', jungle: 'plantae', winter: 'hexor', field: null };
+export const ICON = (heroId: string) => `assets/icons/${heroId}.png`;
+export const ART = (heroId: string) => `assets/art/${heroId}.jpg`;
+export const MAP_ART: Record<string, string | null> = {
+  desert: 'hasim',
+  savanna: 'genga',
+  jungle: 'plantae',
+  winter: 'hexor',
+  field: null,
+};
 export const LOCKED = [
   { id: 'locked-skull', title: 'Skull mask' },
   { id: 'locked-flame', title: 'Flame-eyed skull' },
   { id: 'locked-turban', title: 'Turbaned elder' },
 ];
-export const other = (t: Team): Team => (t === 'p1' ? 'p2' : 'p1');
+export const other = (team: Team): Team => (team === 'p1' ? 'p2' : 'p1');
 
-export const tk = (n: number) => `${n} rune${n === 1 ? '' : 's'}`;
+/** Inline style with CSS custom properties: cssVars({ '--cell': '8px' }, { opacity: 1 }). */
+export const cssVars = (vars: Record<`--${string}`, string>, style: CSSProperties = {}) =>
+  ({ ...style, ...vars }) as CSSProperties;
 
-type Skill = { type: string; cost: number; reactionCost?: number; range?: number; cooldown?: number; name: string; text: string; key: string };
+export const tk = (count: number) => `${count} rune${count === 1 ? '' : 's'}`;
+
+type Skill = {
+  type: string;
+  cost: number;
+  reactionCost?: number;
+  range?: number;
+  cooldown?: number;
+  name: string;
+  text: string;
+  key: string;
+};
 
 /** Short cost label for a skill, e.g. "Active · 2 runes". */
 export function costLabel(sk: Skill) {
@@ -33,42 +53,58 @@ export function costChip(sk: Skill) {
 }
 
 export const roleOf = (id: string) => {
-  const h = (HEROES as any)[id];
-  return h?.role ? (ROLES as any)[h.role] as string : 'Shaman';
+  const h = HEROES[id];
+  return h?.role ? (ROLES[h.role] as string) : 'Shaman';
 };
 
-/** One-glance summaries for the short description mode. */
-export const SHORT: Record<string, { move: string; skill: string }> = {
-  hasim: { move: 'Steps 1 square any way.', skill: 'Free jump over the unit next to him: kills what he jumps and what he lands on.' },
-  genga: { move: 'Steps 1 straight.', skill: 'His beast steps 1 any way, free, right after him. 3 runes: summon it back once it falls.' },
-  magumba: { move: 'Steps 1 diagonally.', skill: '2 runes: himself or an ally on his diagonals (up to 3) can\'t be touched until your next turn.' },
-  plantae: { move: 'Steps 1 straight.', skill: '3 runes: root an enemy on her straight lines (up to 3), or cancel an enemy action there on their turn.' },
-  hexor: { move: 'Jumps in an L, like a knight.', skill: 'After a kill, 2 runes: slam everything around him 1 square back; enemies hitting terrain die.' },
-  aqna: { move: 'Moves up to 2 straight.', skill: 'A kill stores an ice charge (never stacks). Spend it anytime, 1 rune: raise a block within 3 that nobody can pass.' },
-};
+/** One-glance summaries for the short description mode (each hero's `short`). */
+export const SHORT: Record<string, { move: string; skill: string }> = Object.fromEntries(
+  HERO_IDS.map((id) => [id, HEROES[id].short]),
+);
 
 /** 7×7 movement preview cells computed from the engine: 'me' | 'go' | 'jump' | ''. */
 export function moveCells(hero: string): string[] {
   const s = createMatch({ map: 'field' });
-  const me = { id: 'x', team: 'p1', hero, kind: 'hero', pos: { r: 3, c: 3 }, alive: true, rooted: 0, warded: false, cd: 0 };
-  s.units = { x: me } as any;
-  const go = new Set(moveOptions(s, me).map((o: any) => `${o.to.r},${o.to.c}`));
+  const me = {
+    id: 'x',
+    team: 'p1' as const,
+    hero,
+    kind: 'hero' as const,
+    pos: { r: 3, c: 3 },
+    alive: true,
+    rooted: 0,
+    warded: false,
+    cd: 0,
+  };
+  s.units = { x: me };
+  const go = new Set(moveOptions(s, me).map((option) => `${option.to.r},${option.to.c}`));
   const jump = new Set<string>();
-  if (hero === 'hasim') for (const dr of [-1, 0, 1]) for (const dc of [-1, 0, 1]) if (dr || dc) jump.add(`${3 + 2 * dr},${3 + 2 * dc}`);
+  if (HEROES[hero].move.some((rule) => rule.kind === 'backstab'))
+    for (const dr of [-1, 0, 1]) for (const dc of [-1, 0, 1]) if (dr || dc) jump.add(`${3 + 2 * dr},${3 + 2 * dc}`);
   const out: string[] = [];
-  for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) {
-    const k = `${r},${c}`;
-    out.push(r === 3 && c === 3 ? 'me' : jump.has(k) ? 'jump' : go.has(k) ? 'go' : '');
-  }
+  for (let r = 0; r < 7; r++)
+    for (let c = 0; c < 7; c++) {
+      const k = `${r},${c}`;
+      out.push(r === 3 && c === 3 ? 'me' : jump.has(k) ? 'jump' : go.has(k) ? 'go' : '');
+    }
   return out;
 }
 
 /** Small persisted UI preferences (best effort; storage can be unavailable). */
 export function pref<T>(key: string, fallback: T): T {
-  try { const v = localStorage.getItem(`hg-${key}`); return v == null ? fallback : JSON.parse(v); } catch { return fallback; }
+  try {
+    const v = localStorage.getItem(`hg-${key}`);
+    return v == null ? fallback : JSON.parse(v);
+  } catch {
+    return fallback;
+  }
 }
 export function setPref(key: string, value: unknown) {
-  try { localStorage.setItem(`hg-${key}`, JSON.stringify(value)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(`hg-${key}`, JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Deterministic shuffle pick for a random team. */

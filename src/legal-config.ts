@@ -6,11 +6,15 @@ export const LEGAL = {
   country: 'Indonesia',
   siteUrl: 'https://runeverra.daffi.my.id',
   effective: '2026-10-15',
-  // Retention facts the Privacy Policy states; keep them equal to the server (server/ws-server.mjs ROOM_TTL_MS, CHAT_KEEP).
+  // Retention facts the Privacy Policy states; keep them equal to the server (server/ws-server.ts ROOM_TTL_MS, CHAT_KEEP).
   roomIdleMinutes: 5,
   chatKept: 50,
   credits: [
-    { name: 'Agung Nugroho', url: 'https://www.instagram.com/heavysmokerashtray/', roles: ['Founder', 'Director', 'Designer (concept, game, hero and rules design)'] },
+    {
+      name: 'Agung Nugroho',
+      url: 'https://www.instagram.com/heavysmokerashtray/',
+      roles: ['Founder', 'Director', 'Designer (concept, game, hero and rules design)'],
+    },
     { name: 'Dafi Nurrohman Maulana', url: 'https://daffi.my.id', roles: ['Developer'] },
   ],
   honorable: [
@@ -19,7 +23,9 @@ export const LEGAL = {
   ],
   honorableNote: 'For their input, testing, and ideas on balancing and characters.',
   thirdParty: [
-    { name: 'React', license: 'MIT' }, { name: 'Vite', license: 'MIT' }, { name: 'ws', license: 'MIT' },
+    { name: 'React', license: 'MIT' },
+    { name: 'Vite', license: 'MIT' },
+    { name: 'ws', license: 'MIT' },
     { name: 'Cinzel, Barlow and Barlow Condensed fonts (via Fontsource)', license: 'SIL Open Font License 1.1' },
   ],
 };

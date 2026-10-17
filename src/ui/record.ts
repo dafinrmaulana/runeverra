@@ -13,10 +13,13 @@ export function getTally(key: string): Tally {
   const all = pref<Record<string, Tally>>('record', {});
   return all[key] || { a: 0, b: 0 };
 }
-function setTally(key: string, t: Tally) {
-  if (!stored(key)) { memory.set(key, t); return; }
+function setTally(key: string, tally: Tally) {
+  if (!stored(key)) {
+    memory.set(key, tally);
+    return;
+  }
   const all = pref<Record<string, Tally>>('record', {});
-  all[key] = t;
+  all[key] = tally;
   setPref('record', all);
 }
 /** One finished match: `aWon` is true when side a (you, or Ivory face to face) won. */
@@ -24,7 +27,9 @@ export function addResult(key: string, aWon: boolean) {
   const t = getTally(key);
   setTally(key, aWon ? { a: t.a + 1, b: t.b } : { a: t.a, b: t.b + 1 });
 }
-export function resetTally(key: string) { setTally(key, { a: 0, b: 0 }); }
+export function resetTally(key: string) {
+  setTally(key, { a: 0, b: 0 });
+}
 
 /** Which side counts as "a" for a match: the viewer, or Ivory when two share a screen. */
 export const sideA = (kind: string, viewer: Team): Team => (kind === 'local' ? 'p1' : viewer);

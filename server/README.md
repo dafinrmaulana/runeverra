@@ -3,7 +3,7 @@
 Runeverra's "Online room" mode normally runs on the `room` capability that Claude provides
 to published artifacts. That capability doesn't exist outside claude.ai, so a build served
 from your own VPS needs this instead: a small, authoritative WebSocket relay that runs the
-same rules engine (`src/arena.js`) as the browser, so it can check every move is legal
+same rules engine (`src/engine/`) as the browser, so it can check every move is legal
 before passing it on — a modified client can refuse to play, but it can never make an
 illegal move happen, claim extra tokens, or act out of turn.
 
@@ -12,6 +12,9 @@ both players care about it, and idle rooms are dropped after 5 minutes with nobo
 connected.
 
 ## 1. Run the relay
+
+Needs Node 22.18 or newer: the relay imports the engine's TypeScript files directly. Check the
+Node that systemd runs (`ExecStart` in `runeverra-ws.service`), not only the one in your shell.
 
 ```sh
 npm install        # pulls in `ws`, used only by the server, never bundled into the client

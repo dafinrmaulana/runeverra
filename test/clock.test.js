@@ -1,8 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  minutesToMs, createClock, remaining, setRunning, expired, snapshot, fromSnapshot, formatClock,
-} from '../src/clock.js';
+  minutesToMs,
+  createClock,
+  remaining,
+  setRunning,
+  expired,
+  snapshot,
+  fromSnapshot,
+  formatClock,
+} from '../src/clock.ts';
 
 test('minutesToMs accepts 1-60 whole minutes, anything else is Classic (0)', () => {
   assert.equal(minutesToMs(5), 300000);

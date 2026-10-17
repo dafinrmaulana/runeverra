@@ -4,34 +4,52 @@ A playable prototype of a deterministic hero tactics game on an 8×8 board. Pick
 
 ## Run
 
-Requires Node 18+.
+Requires Node 22.18+ (the rules engine is TypeScript that Node runs directly, without a build step).
 
 ```bash
 npm install
 npm run dev     # Vite dev server, http://localhost:5173
 npm run dev:lan # same, but reachable from a phone on the same Wi-Fi (opens on your computer's LAN address)
-npm test        # rules engine, bot and online helpers (node:test)
-npm run build   # type-check, then dist/index.html (single file, JS/CSS inlined) + dist/assets,
-                # dist/artifact.html (same page without the document skeleton)
+npm test        # rules engine, bot, online helpers and the relay (node:test)
+npm run lint    # ESLint (also enforces: no single-letter parameters, `import type` for types)
+npm run format  # Prettier; `npm run format:check` is what CI runs
+npm run build   # type-check, then dist/ (the site: hashed JS/CSS/fonts in dist/_) and
+                # dist/artifact.html (a single self-contained page without the document skeleton)
+npm run serve:ws  # the self-hosted online relay (server/README.md)
 ```
+
+New to the code? Start with [docs/architecture.md](docs/architecture.md) (how the pieces fit, words
+used in the code, conventions), then [docs/heroes.md](docs/heroes.md) (adding or changing a hero,
+step by step, and every file involved).
 
 ## Stack
 
-- **Rules engine, bot, online protocol:** plain JavaScript ES modules (`src/arena.js`, `src/arena-bot.js`, `src/online.js`), no dependencies, tested with `node:test`.
-- **UI:** React 18 + TypeScript, built with Vite into one self-contained HTML file (`vite-plugin-singlefile`). The board stage (cells, pieces, terrain, canvas effects and ambient particles) stays an imperative module (`src/ui/game/board.js`) driven by a small controller; React renders the screens, panels and menus around it.
+- **Rules engine and bot:** TypeScript in `src/engine/`, no dependencies, no DOM. Node runs it as is (type stripping), so the server and the tests import the same files the browser does. Tested with `node:test`.
+- **Online:** `src/online.ts` (room codes, move encoding), `src/protocol.ts` (every relay message, typed), `server/ws-server.ts` (the relay, run by Node directly).
+- **UI:** React 18 + TypeScript, built with Vite: the site with code-split, hashed files, plus a single-file build (`vite-plugin-singlefile`) for `artifact.html`. The board stage (cells, pieces, terrain, canvas effects and ambient particles) stays an imperative module (`src/ui/game/board.ts`) driven by a small controller; React renders the screens, panels and menus around it.
 
 ## Layout
 
 ```
-src/arena.js              Rules engine: pure functions, data-driven heroes and maps
-src/arena-bot.js          Bot: time-boxed alpha-beta over the engine
-src/online.js             Online helpers: room codes, move encoding, deterministic replay
+src/engine/index.ts       Rules engine API (everything else imports from here)
+src/engine/heroes/        One file per hero: data, skill hooks, follow-up phases
+src/engine/rules.ts       Legal actions, validation, applying actions; names no hero
+src/engine/registry.ts    HEROES / UNITS / PHASES tables the hero files fill in
+src/engine/modes.ts       Game modes (team size, runes); a match copies its mode into state.rules
+src/engine/bot.ts         Bot: time-boxed alpha-beta over the engine
+src/online.ts             Online helpers: room codes, move encoding, deterministic replay
+src/protocol.ts           Messages between the browser and the relay
+src/clock.ts              Chess clock as plain data (never part of the game state)
 src/ui/App.tsx            Screen flow: home → difficulty / room → heroes → battlefield → game
 src/ui/screens/GameScreen.tsx   Game screen: board, prompts, roster, selected unit, log; face-to-face seats
 src/ui/components/        HeroPicker (2-column list, tooltips, short/detail), MapPicker, Rules
 src/ui/game/controller.ts Match state, selection, bot turns, undo; drives the board
-src/ui/game/board.js      Board DOM, terrain, pieces, effects (canvas), ambient particles
+src/ui/game/board.ts      Board DOM, terrain, pieces, tap and drag input
+src/ui/game/effects.ts    Canvas effects: SKILL_FX per skill, HERO_FX per hero
+src/ui/game/ambient.ts    Drifting particles per map theme
 src/ui/online/room.ts     Room client over the platform room capability
+src/ui/online/ws-room.ts  Room client over the self-hosted relay
+server/ws-server.ts       The relay: validates every online move with the same engine
 public/assets/            Character portraits and card art
 ```
 
@@ -47,7 +65,9 @@ Screens, modals, toasts and accordions fade or drop in; the hero details card op
 
 ## Heroes
 
-Heroes are data in `HEROES` (src/arena.js): name, class, role, movement rules, skill. Movement rules are `slide` (directions + range, stops at the first unit or terrain, may capture the first enemy), `leap` (fixed jumps) or `backstab`.
+Each hero is one file in `src/engine/heroes/`, registered with `defineHero`: name, class, role, movement rules, skill, bot value, picker copy, and hooks for whatever the skill does (see `HeroHooks` in `src/engine/types.ts`). Movement rules are `slide` (directions + range, stops at the first unit or terrain, may capture the first enemy), `leap` (fixed jumps) or `backstab` (`MOVE_RULES` in `src/engine/movement.ts`).
+
+**Adding a hero:** a new file in `src/engine/heroes/` (copy the closest existing one), one import line in `heroes/index.ts`, portrait and art in `public/assets/`. Optional: strike/death flourishes in `HERO_FX` (board.ts), a sound in `sfx-map.ts`, a demo in `HeroDemo.tsx`. Nothing in the rules, bot, server or game screen names a hero.
 
 ### Roles
 
@@ -114,7 +134,7 @@ Plantae without the skill loses 0–5, so its strength was the interrupt itself:
 
 ## Maps
 
-`MAPS` in src/arena.js; obstacles are listed for one half and mirrored 180°, and only placed in files c–f so the flank lanes stay clear for creeps.
+`MAPS` in src/engine/maps.ts; obstacles are listed for one half and mirrored 180°, and only placed in files c–f so the flank lanes stay clear for creeps.
 
 | Map | Theme | Terrain (centre files only) |
 |---|---|---|
@@ -130,7 +150,7 @@ Works in the published page (it uses the platform's `room` capability; the local
 
 - Home → **Online · room code**. One player presses **Create room** and sends the 5-character code; the other types it and presses **Join**. The creator plays Ivory and picks the battlefield and creeps; each player picks their own four heroes, then both press **Ready** on the battlefield step.
 - Both players must be signed in and have access to the page: invite your friend by email from the Share menu (visitors on a public link can't join rooms).
-- Nothing runs on a server. The engine is deterministic, so each player shares only their own decisions, as indexes into `listActions(state)`, in their room presence; both screens replay them in turn order (`src/online.js`). An index that isn't a legal action is rejected.
+- Nothing runs on a server. The engine is deterministic, so each player shares only their own decisions, as indexes into `listActions(state)`, in their room presence; both screens replay them in turn order (`src/online.ts`). An index that isn't a legal action is rejected.
 - The guest (Ember) sees the board turned so their side is at the bottom.
 - Reloading the tab rejoins the room and replays the match; each side also keeps a copy of the other's decisions, so nothing is lost. Undo is off online. Rematch starts when both press it.
 

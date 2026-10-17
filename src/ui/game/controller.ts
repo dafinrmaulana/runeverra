@@ -1,31 +1,44 @@
 // Game controller: owns the match state, selection, bot turns and history, and drives the
-// board. React subscribes to it for the panels. Rules stay in src/arena.js.
+// board. React subscribes to it for the panels. Rules stay in src/engine/.
 import {
-  applyAction, validateAction, listActions, getThreats, unitAt, samePos, toMove, label,
-  HEROES, beastOf, skillActions, moveOptions, squareName,
-} from '../../arena.js';
-import { chooseAction } from '../../arena-bot.js';
-import { actionIndex } from '../../online.js';
-import { createBoard } from './board.js';
+  applyAction,
+  validateAction,
+  listActions,
+  getThreats,
+  unitAt,
+  samePos,
+  toMove,
+  label,
+  HEROES,
+  PHASES,
+  skillActions,
+  skillOf,
+  moveOptions,
+  squareName,
+} from '../../engine/index.ts';
+import { chooseAction } from '../../engine/bot.ts';
+import { actionIndex } from '../../online.ts';
+import { createBoard } from './board.ts';
 import { tk, pref, setPref, type Team } from '../data';
 import { addResult, getTally, resetTally, sideA } from '../record';
 import { saveReplay } from '../replays';
-import { sfx } from '../audio';
-import { sfxFor } from '../../sfx-map.js';
-import { createClock, setRunning, remaining, expired, fromSnapshot } from '../../clock.js';
+import { sfx, type SfxName } from '../audio';
+import { sfxFor } from '../../sfx-map.ts';
+import { createClock, setRunning, remaining, expired, fromSnapshot } from '../../clock.ts';
+import type { Clock, ClockSnapshot } from '../../clock.ts';
+import type { Action, Pos, State, Unit } from '../../engine/index.ts';
 
 export type Mode =
   | { kind: 'bot'; level: 'easy' | 'normal' | 'hard'; side: Team }
   | { kind: 'local' }
-  | { kind: 'online'; side: Team; onLocalMove: (index: number, action: any) => void };
+  | { kind: 'online'; side: Team; onLocalMove: (index: number, action: Action) => void };
 
 export type Source = 'me' | 'bot' | 'remote';
-type Pos = { r: number; c: number };
 
 const BOT_DELAY_MS = 520;
 
 export class GameController {
-  game: any;
+  game: State;
   mode: Mode;
   selectedId: string | null = null;
   armed = false;
@@ -36,8 +49,8 @@ export class GameController {
   /** Which series this match counts toward (set by the app); '' = not counted. */
   series = '';
   private recorded = false;
-  history: any[] = [];
-  future: any[] = [];
+  history: State[] = [];
+  future: State[] = [];
   version = 0;
   /** True while the online opponent is connected (set by the room client). */
   peerHere = true;
@@ -50,42 +63,59 @@ export class GameController {
   private gen = 0;
 
   /** Match clock (Timed mode), or null for Classic. Online it mirrors the server's snapshot. */
-  clock: any = null;
+  clock: Clock | null = null;
   private tickTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(mode: Mode, game: any) {
+  constructor(mode: Mode, game: State) {
     this.mode = mode;
     this.game = game;
     if (this.timed()) {
-      if (mode.kind !== 'online') this.clock = setRunning(createClock(game.setup.clockMs), toMove(game), performance.now());
+      if (mode.kind !== 'online')
+        this.clock = setRunning(createClock(game.setup.clockMs), toMove(game), performance.now());
       this.startTick();
     }
   }
 
   // ---------- match clock ----------
-  timed() { return (this.game.setup?.clockMs || 0) > 0; }
-  timeLeft(team: Team) { return this.clock ? remaining(this.clock, team, performance.now()) : 0; }
+  timed() {
+    return (this.game.setup?.clockMs || 0) > 0;
+  }
+  timeLeft(team: Team) {
+    return this.clock ? remaining(this.clock, team, performance.now()) : 0;
+  }
   /** Online: adopt the server's snapshot (null = Classic or unknown). */
-  setClock(snap: any) { this.clock = snap ? fromSnapshot(snap, performance.now()) : null; this.changed(); }
+  setClock(snap: ClockSnapshot | null) {
+    this.clock = snap ? fromSnapshot(snap, performance.now()) : null;
+    this.changed();
+  }
   /** The side that lost because its time ran out, if that is how the match ended. */
   timedOut(): Team | null {
     const last = this.game.trail?.[this.game.trail.length - 1];
-    return this.game.status !== 'playing' && last?.type === 'timeout' ? last.team : null;
+    return this.game.status !== 'playing' && last?.type === 'timeout' ? (last.team ?? null) : null;
   }
   private startTick() {
     if (this.tickTimer) return;
     this.tickTimer = setInterval(() => {
       if (this.game.status !== 'playing' || !this.clock) return;
       const out = expired(this.clock, performance.now());
-      if (out && this.mode.kind !== 'online') this.commit({ type: 'timeout', team: out }); // online: the server decides
+      if (out && this.mode.kind !== 'online')
+        this.commit({ type: 'timeout', team: out }); // online: the server decides
       else this.changed();
     }, 250);
   }
 
   // ---------- subscription (useSyncExternalStore) ----------
-  subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
+  subscribe = (fn: () => void) => {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  };
   getVersion = () => this.version;
-  private changed() { this.version++; this.listeners.forEach((f) => f()); }
+  private changed() {
+    this.version++;
+    this.listeners.forEach((listener) => listener());
+  }
 
   // ---------- who decides ----------
   humanTeams(): Team[] {
@@ -93,19 +123,30 @@ export class GameController {
     if (this.mode.kind === 'bot') return [this.mode.side];
     return ['p1', 'p2'];
   }
-  decider(): Team | null { return this.game.status === 'playing' ? toMove(this.game) : null; }
-  deciderIsHuman() { const d = this.decider(); return !!d && this.humanTeams().includes(d); }
-  deciderIsBot() { return this.mode.kind === 'bot' && this.decider() === this.botTeam(); }
-  botTeam(): Team | null { return this.mode.kind === 'bot' ? (this.mode.side === 'p1' ? 'p2' : 'p1') : null; }
+  decider(): Team | null {
+    return this.game.status === 'playing' ? toMove(this.game) : null;
+  }
+  deciderIsHuman() {
+    const d = this.decider();
+    return !!d && this.humanTeams().includes(d);
+  }
+  deciderIsBot() {
+    return this.mode.kind === 'bot' && this.decider() === this.botTeam();
+  }
+  botTeam(): Team | null {
+    return this.mode.kind === 'bot' ? (this.mode.side === 'p1' ? 'p2' : 'p1') : null;
+  }
   /** The side whose player sits at the bottom of the screen (board turned for Ember). */
-  viewer(): Team { return this.mode.kind === 'local' ? 'p1' : this.mode.side; }
+  viewer(): Team {
+    return this.mode.kind === 'local' ? 'p1' : this.mode.side;
+  }
 
   // ---------- board ----------
   attach(host: HTMLElement, intro = true) {
     this.board = createBoard(host, {
-      onCell: (p: Pos) => this.onCell(p),
-      onPress: (p: Pos) => this.onPress(p),
-      onDrop: (id: string, p: Pos) => this.onDrop(id, p),
+      onCell: (pos: Pos) => this.onCell(pos),
+      onPress: (pos: Pos) => this.onPress(pos),
+      onDrop: (id: string, pos: Pos) => this.onDrop(id, pos),
       flip: this.viewer() === 'p2',
       facing: this.mode.kind === 'local',
     });
@@ -113,47 +154,78 @@ export class GameController {
     if (intro) this.board.intro(this.game);
     this.maybeBot();
   }
-  detach() { this.cancelBot(); this.board?.destroy(); this.board = null; }
-  destroy() { this.detach(); this.listeners.clear(); if (this.tickTimer) { clearInterval(this.tickTimer); this.tickTimer = null; } }
+  detach() {
+    this.cancelBot();
+    this.board?.destroy();
+    this.board = null;
+  }
+  destroy() {
+    this.detach();
+    this.listeners.clear();
+    if (this.tickTimer) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+    }
+  }
 
   private render(extra: { deathDelay?: number; hits?: Pos[] }) {
     const g = this.game;
     const sel = this.selectedId ? g.units[this.selectedId] : null;
     const live = sel && sel.alive ? sel : null;
-    const threats = this.showThreats && g.status === 'playing' ? getThreats(g, g.current) : new Set();
+    const threats = this.showThreats && g.status === 'playing' ? getThreats(g, g.current) : new Set<string>();
     const acts = this.deciderIsHuman() ? listActions(g) : [];
     this.board?.render(g, { acts, live, armed: this.armed, threats, ...extra });
     this.changed();
     this.maybeBot();
   }
-  refresh() { this.render({}); }
+  refresh() {
+    this.render({});
+  }
 
-  say(text: string, kind: '' | 'ok' | 'err' = '') { this.msg = text; this.msgKind = kind; if (kind === 'err') sfx('error'); }
-  clearSel() { this.selectedId = null; this.armed = false; }
+  say(text: string, kind: '' | 'ok' | 'err' = '') {
+    this.msg = text;
+    this.msgKind = kind;
+    if (kind === 'err') sfx('error');
+  }
+  clearSel() {
+    this.selectedId = null;
+    this.armed = false;
+  }
 
   // ---------- decisions ----------
   /** Apply a decision. `src`: 'me' (this screen), 'bot', or 'remote' (online opponent). */
-  commit(action: any, src: Source = 'me'): boolean {
+  commit(action: Action, src: Source = 'me'): boolean {
     const online = this.mode.kind === 'online';
     const idx = online && src === 'me' ? actionIndex(this.game, action) : -1;
     const res = applyAction(this.game, action, { trusted: action.type === 'timeout' });
-    if (!res.ok) { this.say(res.reason || 'Not allowed.', 'err'); this.render({}); return false; }
+    if (!res.ok) {
+      this.say(res.reason || 'Not allowed.', 'err');
+      this.render({});
+      return false;
+    }
     const before = this.game;
-    if (src === 'me' && !online) { this.history.push(before); this.future = []; }
-    if (online && src === 'me') (this.mode as any).onLocalMove(idx, action);
+    if (src === 'me' && !online) {
+      this.history.push(before);
+      this.future = [];
+    }
+    if (online && src === 'me') if (this.mode.kind === 'online') this.mode.onLocalMove(idx, action);
     this.game = res.state;
-    if (this.clock) this.clock = setRunning(this.clock, this.game.status === 'playing' ? toMove(this.game) : null, performance.now());
+    if (this.clock)
+      this.clock = setRunning(this.clock, this.game.status === 'playing' ? toMove(this.game) : null, performance.now());
     this.clearSel();
     const g = this.game;
-    const newLines = g.log.slice(before.log.length).map((l: any) => l.text).join(' ');
+    const newLines = g.log
+      .slice(before.log.length)
+      .map((entry) => entry.text)
+      .join(' ');
     if (newLines) this.say((src === 'bot' ? 'Bot: ' : src === 'remote' ? 'Opponent: ' : '') + newLines, 'ok');
-    else if (g.phase === 'react') this.say(`${label(g.units[g.pending.plantId])} can interrupt this action.`);
+    else if (g.phase === 'react') this.say(`${label(g.units[g.pending!.reactorId!])} can interrupt this action.`);
     this.playSound(before, g, src);
-    const plan = this.board ? this.board.plan(before, g) : { deathDelay: 0, hop: null };
-    const hits = g.lastAction && g.lastAction !== before.lastAction ? (g.lastAction.hits || []) : [];
-    if (g.phase === 'beast' && this.deciderIsHuman()) this.selectedId = g.pending.unitId;
-    this.render({ deathDelay: plan.deathDelay, hits });
-    if (this.board) {
+    const plan = this.board?.plan(before, g);
+    const hits = g.lastAction && g.lastAction !== before.lastAction ? g.lastAction.hits || [] : [];
+    if (g.phase === 'beast' && this.deciderIsHuman()) this.selectedId = g.pending?.unitId ?? null;
+    this.render({ deathDelay: plan?.deathDelay ?? 0, hits });
+    if (this.board && plan) {
       if (plan.hop) this.board.hop(plan.hop);
       this.board.run(plan);
       if (before.status === 'playing' && g.status !== 'playing') this.board.victory(g, g.status);
@@ -163,39 +235,69 @@ export class GameController {
       if (this.series) addResult(this.series, g.status === sideA(this.mode.kind, this.viewer()));
       const m = this.mode;
       saveReplay({
-        kind: m.kind, viewer: this.viewer(), winner: g.status, setup: g.setup, trail: g.trail,
-        label: m.kind === 'bot' ? `vs Bot · ${m.level[0].toUpperCase()}${m.level.slice(1)}` : m.kind === 'local' ? 'Face to face' : 'Online',
+        kind: m.kind,
+        viewer: this.viewer(),
+        winner: g.status,
+        setup: g.setup,
+        trail: g.trail,
+        label:
+          m.kind === 'bot'
+            ? `vs Bot · ${m.level[0].toUpperCase()}${m.level.slice(1)}`
+            : m.kind === 'local'
+              ? 'Face to face'
+              : 'Online',
       });
     }
     return true;
   }
 
   /** The sound of what just happened, then the end-of-match fanfare, then a chime when it is the player's turn. */
-  private playSound(before: any, g: any, src: Source) {
-    sfx(sfxFor(g.lastAction && g.lastAction !== before.lastAction ? g.lastAction : null, g.units));
-    if (before.status === 'playing' && g.status !== 'playing') {
-      const mine = this.mode.kind === 'local' ? null : g.status === this.viewer();
+  private playSound(before: State, after: State, src: Source) {
+    sfx(
+      sfxFor(
+        after.lastAction && after.lastAction !== before.lastAction ? after.lastAction : null,
+        after.units,
+      ) as SfxName | null,
+    );
+    if (before.status === 'playing' && after.status !== 'playing') {
+      const mine = this.mode.kind === 'local' ? null : after.status === this.viewer();
       window.setTimeout(() => sfx(mine === null ? 'victory' : mine ? 'victory' : 'defeat'), 420);
-    } else if (src !== 'me' && this.deciderIsHuman() && g.phase === 'main') {
+    } else if (src !== 'me' && this.deciderIsHuman() && after.phase === 'main') {
       window.setTimeout(() => sfx('turn'), 360);
     }
   }
 
   /** Replace the match without effects (online catch-up). */
-  setGame(game: any) { this.game = game; if (this.clock && this.mode.kind !== 'online') this.clock = setRunning(this.clock, game.status === 'playing' ? toMove(game) : null, performance.now()); this.clearSel(); this.board?.reset(); this.render({}); }
+  setGame(game: State) {
+    this.game = game;
+    if (this.clock && this.mode.kind !== 'online')
+      this.clock = setRunning(this.clock, game.status === 'playing' ? toMove(game) : null, performance.now());
+    this.clearSel();
+    this.board?.reset();
+    this.render({});
+  }
 
   private maybeBot() {
     if (!this.deciderIsBot() || this.botTimer) return;
     const myGen = this.gen;
-    const level = (this.mode as any).level;
-    this.botTimer = setTimeout(() => {
-      this.botTimer = null;
-      if (myGen !== this.gen || !this.deciderIsBot()) return;
-      const pick = chooseAction(this.game, level);
-      if (pick?.action) this.commit(pick.action, 'bot');
-    }, this.game.phase === 'main' ? BOT_DELAY_MS : 420);
+    const level = this.mode.kind === 'bot' ? this.mode.level : 'normal';
+    this.botTimer = setTimeout(
+      () => {
+        this.botTimer = null;
+        if (myGen !== this.gen || !this.deciderIsBot()) return;
+        const pick = chooseAction(this.game, level);
+        if (pick?.action) this.commit(pick.action, 'bot');
+      },
+      this.game.phase === 'main' ? BOT_DELAY_MS : 420,
+    );
   }
-  cancelBot() { this.gen++; if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; } }
+  cancelBot() {
+    this.gen++;
+    if (this.botTimer) {
+      clearTimeout(this.botTimer);
+      this.botTimer = null;
+    }
+  }
 
   onCell(pos: Pos) {
     const g = this.game;
@@ -207,62 +309,120 @@ export class GameController {
     const acts = listActions(g);
     const occupant = unitAt(g, pos);
     if (g.phase === 'react') return;
-    if (g.phase === 'ice') {
-      const a = acts.find((x: any) => x.type === 'ice' && samePos(x.to, pos));
-      if (a) { this.commit(a); return; }
-      this.say('Pick a dashed square within 3 of Aqna, or Skip.', 'err'); this.render({}); return;
+    const phase = PHASES[g.phase];
+    if (phase) {
+      // a follow-up (ice, the beast's step, a slam): a tap picks one of its squares
+      const a = acts.find((action) => action.to && samePos(action.to, pos));
+      if (a) {
+        this.commit(a);
+        return;
+      }
+      this.say(phase.hint || 'Decide, or Skip.', 'err');
+      this.render({});
+      return;
     }
-    if (g.phase === 'beast') {
-      const a = acts.find((x: any) => x.type === 'move' && samePos(x.to, pos));
-      if (a) { this.commit(a); return; }
-      this.say('Move the beast to a marked square, or Skip.', 'err'); this.render({}); return;
-    }
-    if (g.phase === 'storm') { this.say('Choose Slam or Skip.', 'err'); this.render({}); return; }
 
     const sel = this.selectedId ? g.units[this.selectedId] : null;
     if (this.armed && sel) {
-      const a = acts.find((x: any) => x.type === 'skill' && x.unitId === sel.id && (x.to ? samePos(x.to, pos) : occupant && x.targetId === occupant.id));
-      if (a) { this.commit(a); return; }
-      const key = HEROES[sel.hero as keyof typeof HEROES].skill.key;
-      if (key === 'summon') { this.armed = false; this.say('Summon cancelled.'); this.render({}); return; }
-      if (occupant && occupant.team === sel.team && occupant.id !== sel.id && key !== 'grave') { this.select(occupant.id); return; }
-      if (occupant) {
-        this.say(validateAction(g, { type: 'skill', unitId: sel.id, skill: key, targetId: occupant.id }).reason || '', 'err');
-        this.render({}); return;
+      const a = acts.find(
+        (action) =>
+          action.type === 'skill' &&
+          action.unitId === sel.id &&
+          (action.to ? samePos(action.to, pos) : occupant && action.targetId === occupant.id),
+      );
+      if (a) {
+        this.commit(a);
+        return;
       }
-      this.armed = false; this.say('Skill cancelled.'); this.render({}); return;
+      const sk = skillOf(sel)!;
+      const aims = HEROES[sel.hero].ui?.targets;
+      if (occupant && occupant.team === sel.team && occupant.id !== sel.id && aims !== 'ally') {
+        this.select(occupant.id);
+        return;
+      }
+      if (occupant && aims !== 'square') {
+        this.say(
+          validateAction(g, { type: 'skill', unitId: sel.id, skill: sk.key, targetId: occupant.id }).reason || '',
+          'err',
+        );
+        this.render({});
+        return;
+      }
+      this.armed = false;
+      this.say(`${sk.name} cancelled.`);
+      this.render({});
+      return;
     }
-    if (sel && sel.team === g.current && acts.some((x: any) => x.type === 'move' && x.unitId === sel.id && samePos(x.to, pos))) {
-      this.commit({ type: 'move', unitId: sel.id, to: pos }); return;
+    if (
+      sel &&
+      sel.team === g.current &&
+      acts.some((action) => action.type === 'move' && action.unitId === sel.id && samePos(action.to!, pos))
+    ) {
+      this.commit({ type: 'move', unitId: sel.id, to: pos });
+      return;
     }
-    if (sel && occupant && this.shieldBlocks(sel, occupant)) { this.bounce(sel, occupant, true); return; }
-    if (sel && sel.rooted && sel.team === g.current && g.phase === 'main' && moveOptions(g, sel).some((o: any) => samePos(o.to, pos))) {
-      this.board?.rootTug(sel.id, sel.pos, pos);
-      this.say(`${label(sel)} strains toward ${squareName(pos)}, but the roots drag it back: it can't act this turn.`, 'err');
-      this.render({}); return;
+    if (sel && occupant && this.shieldBlocks(sel, occupant)) {
+      this.bounce(sel, occupant, true);
+      return;
+    }
+    if (
+      sel &&
+      sel.rooted &&
+      sel.team === g.current &&
+      g.phase === 'main' &&
+      moveOptions(g, sel).some((option) => samePos(option.to, pos))
+    ) {
+      this.board?.rootTug({ unitId: sel.id, from: sel.pos, to: pos });
+      this.say(
+        `${label(sel)} strains toward ${squareName(pos)}, but the roots drag it back: it can't act this turn.`,
+        'err',
+      );
+      this.render({});
+      return;
     }
     if (occupant) {
-      if (this.selectedId === occupant.id) { this.clearSel(); this.say(''); this.render({}); return; }
-      this.select(occupant.id); return;
+      if (this.selectedId === occupant.id) {
+        this.clearSel();
+        this.say('');
+        this.render({});
+        return;
+      }
+      this.select(occupant.id);
+      return;
     }
     if (sel && sel.team === g.current && sel.kind === 'hero') {
       this.say(validateAction(g, { type: 'move', unitId: sel.id, to: pos }).reason || '', 'err');
-      this.render({}); return;
+      this.render({});
+      return;
     }
-    this.clearSel(); this.say(''); this.render({});
+    this.clearSel();
+    this.say('');
+    this.render({});
   }
 
-  /** Would `u` capture `target` here if Empty Grave weren't protecting it? */
-  shieldBlocks(u: any, target: any): boolean {
+  /** Would `attacker` capture `target` here if Empty Grave weren't protecting it? */
+  shieldBlocks(attacker: Unit, target: Unit): boolean {
     const g = this.game;
-    if (!target.warded || target.team === u.team || u.team !== g.current || g.phase !== 'main') return false;
+    if (!target.warded || target.team === attacker.team || attacker.team !== g.current || g.phase !== 'main')
+      return false;
     const open = { ...g, units: { ...g.units, [target.id]: { ...target, warded: false } } };
-    return moveOptions(open, u).some((o: any) => samePos(o.to, target.pos) && o.kills.includes(target.id));
+    return moveOptions(open, attacker).some(
+      (option) => samePos(option.to, target.pos) && option.kills.includes(target.id),
+    );
   }
   /** The attack bounces off the shield: an effect and a message, the turn is not used. */
-  bounce(u: any, target: any, lunge: boolean) {
-    this.board?.shieldBounce(u.id, u.pos, target.id, target.pos, lunge);
-    this.say(`${label(target)} is shielded by Empty Grave: ${label(u)} is thrown back. The shield lasts until its caster's next turn.`, 'err');
+  bounce(attacker: Unit, target: Unit, lunge: boolean) {
+    this.board?.shieldBounce({
+      attackerId: attacker.id,
+      from: attacker.pos,
+      targetId: target.id,
+      to: target.pos,
+      lunge,
+    });
+    this.say(
+      `${label(target)} is shielded by Empty Grave: ${label(attacker)} is thrown back. The shield lasts until its caster's next turn.`,
+      'err',
+    );
     this.render({});
   }
 
@@ -272,7 +432,7 @@ export class GameController {
     if (g.status !== 'playing' || !this.deciderIsHuman() || this.armed) return null;
     if (g.phase !== 'main' && g.phase !== 'beast') return null;
     const u = unitAt(g, pos);
-    if (!u || !listActions(g).some((a: any) => a.type === 'move' && a.unitId === u.id)) return null;
+    if (!u || !listActions(g).some((action) => action.type === 'move' && action.unitId === u.id)) return null;
     const fresh = this.selectedId !== u.id;
     if (fresh) this.select(u.id);
     return { id: u.id, fresh };
@@ -281,10 +441,15 @@ export class GameController {
   /** A lifted piece released on `pos`. True when it moved there. */
   onDrop(id: string, pos: Pos): boolean {
     const g = this.game;
-    const a = listActions(g).find((x: any) => x.type === 'move' && x.unitId === id && samePos(x.to, pos));
+    const a = listActions(g).find(
+      (action) => action.type === 'move' && action.unitId === id && samePos(action.to!, pos),
+    );
     if (a) return this.commit(a);
     const occ = unitAt(g, pos);
-    if (occ && this.shieldBlocks(g.units[id], occ)) { this.bounce(g.units[id], occ, false); return false; }
+    if (occ && this.shieldBlocks(g.units[id], occ)) {
+      this.bounce(g.units[id], occ, false);
+      return false;
+    }
     this.say(validateAction(g, { type: 'move', unitId: id, to: pos }).reason || 'That square is out of reach.', 'err');
     this.render({});
     return false;
@@ -292,10 +457,11 @@ export class GameController {
 
   select(id: string) {
     const g = this.game;
-    this.selectedId = id; this.armed = false;
+    this.selectedId = id;
+    this.armed = false;
     const u = g.units[id];
     if (u.team !== g.current) this.say('Enemy unit. Red rings show where it can go.');
-    else if (u.kind === 'beast') this.say('The beast only acts right after Ge\'nga.', 'err');
+    else if (u.kind === 'beast') this.say("The beast only acts right after Ge'nga.", 'err');
     else if (u.rooted) this.say(`${label(u)} is held by roots this turn.`, 'err');
     else this.say('');
     this.render({});
@@ -305,27 +471,64 @@ export class GameController {
     const g = this.game;
     const u = this.selectedId ? g.units[this.selectedId] : null;
     if (!u || u.kind !== 'hero' || g.phase !== 'main' || !this.deciderIsHuman() || u.team !== g.current) return;
-    const sk = HEROES[u.hero as keyof typeof HEROES].skill as any;
-    if (sk.type !== 'active') { this.say(`${sk.name} is passive: it triggers on its own.`); this.render({}); return; }
-    if (this.armed) { this.armed = false; this.say('Skill cancelled.'); this.render({}); return; }
-    if (u.rooted) { this.say(`${label(u)} is held by roots this turn.`, 'err'); this.render({}); return; }
-    if (g.energy[u.team] < sk.cost) { this.say(`${sk.name} needs ${tk(sk.cost)}; you have ${g.energy[u.team]}.`, 'err'); this.render({}); return; }
-    if (sk.key === 'summon' && beastOf(g, u)) { this.say('The beast is still alive. Wild Company summons it only after it falls.', 'err'); this.render({}); return; }
-    if (!skillActions(g, u).length) { this.say(`${sk.name} has no valid target in range.`, 'err'); this.render({}); return; }
+    const sk = skillOf(u)!;
+    const ui = HEROES[u.hero].ui;
+    if (sk.type !== 'active') {
+      this.say(`${sk.name} is passive: it triggers on its own.`);
+      this.render({});
+      return;
+    }
+    if (this.armed) {
+      this.armed = false;
+      this.say('Skill cancelled.');
+      this.render({});
+      return;
+    }
+    if (u.rooted) {
+      this.say(`${label(u)} is held by roots this turn.`, 'err');
+      this.render({});
+      return;
+    }
+    if (g.energy[u.team] < sk.cost) {
+      this.say(`${sk.name} needs ${tk(sk.cost)}; you have ${g.energy[u.team]}.`, 'err');
+      this.render({});
+      return;
+    }
+    if (!skillActions(g, u).length) {
+      this.say(ui?.unavailable?.(g, u).text ?? `${sk.name} has no valid target in range.`, 'err');
+      this.render({});
+      return;
+    }
     this.armed = true;
-    this.say(sk.key === 'summon' ? 'Tap a highlighted square next to Ge\'nga to summon the beast.' : `${sk.name}: tap a highlighted ${sk.key === 'grave' ? 'ally' : 'enemy'}.`);
+    this.say(ui?.aim ?? `${sk.name}: tap a highlighted ${ui?.targets === 'ally' ? 'ally' : 'enemy'}.`);
     this.render({});
   }
 
-  skip() { if (this.deciderIsHuman()) this.commit({ type: 'skip' }); }
-  slam(pattern: 'plus' | 'x') { if (this.deciderIsHuman() && this.game.phase === 'storm') this.commit({ type: 'storm', pattern }); }
-  react(use: boolean) { if (this.deciderIsHuman() && this.game.phase === 'react') this.commit({ type: 'react', use }); }
-  escape() { if (this.armed) this.armed = false; else this.clearSel(); this.say(''); this.render({}); }
+  skip() {
+    if (this.deciderIsHuman()) this.commit({ type: 'skip' });
+  }
+  slam(pattern: 'plus' | 'x') {
+    if (this.deciderIsHuman() && this.game.phase === 'storm') this.commit({ type: 'storm', pattern });
+  }
+  react(use: boolean) {
+    if (this.deciderIsHuman() && this.game.phase === 'react') this.commit({ type: 'react', use });
+  }
+  escape() {
+    if (this.armed) this.armed = false;
+    else this.clearSel();
+    this.say('');
+    this.render({});
+  }
 
-  canUndo() { return this.mode.kind !== 'online' && !this.timed() && this.history.length > 0 && !this.deciderIsBot(); }
-  canRedo() { return this.mode.kind !== 'online' && !this.timed() && this.future.length > 0 && !this.deciderIsBot(); }
-  private jump(to: any, note: string) {
-    this.cancelBot(); this.board?.clearFx();
+  canUndo() {
+    return this.mode.kind !== 'online' && !this.timed() && this.history.length > 0 && !this.deciderIsBot();
+  }
+  canRedo() {
+    return this.mode.kind !== 'online' && !this.timed() && this.future.length > 0 && !this.deciderIsBot();
+  }
+  private jump(to: State, note: string) {
+    this.cancelBot();
+    this.board?.clearFx();
     this.game = to;
     this.board?.reset();
     this.clearSel();
@@ -335,16 +538,31 @@ export class GameController {
   undo() {
     if (!this.canUndo()) return;
     this.future.push(this.game);
-    this.jump(this.history.pop(), this.mode.kind === 'bot' ? 'Took back your last decision and the bot\'s reply.' : 'Took back the last decision.');
+    this.jump(
+      this.history.pop()!,
+      this.mode.kind === 'bot' ? "Took back your last decision and the bot's reply." : 'Took back the last decision.',
+    );
   }
   redo() {
     if (!this.canRedo()) return;
     this.history.push(this.game);
-    this.jump(this.future.pop(), 'Replayed the decision again.');
+    this.jump(this.future.pop()!, 'Replayed the decision again.');
   }
 
-  setThreats(on: boolean) { this.showThreats = on; this.render({}); }
-  setScore(on: boolean) { this.showScore = on; setPref('showScore', on); this.changed(); }
-  tally() { return getTally(this.series); }
-  resetScore() { resetTally(this.series); this.changed(); }
+  setThreats(on: boolean) {
+    this.showThreats = on;
+    this.render({});
+  }
+  setScore(on: boolean) {
+    this.showScore = on;
+    setPref('showScore', on);
+    this.changed();
+  }
+  tally() {
+    return getTally(this.series);
+  }
+  resetScore() {
+    resetTally(this.series);
+    this.changed();
+  }
 }

@@ -1,11 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMatch, applyAction, listActions, parseSquare as sq, toMove } from '../src/arena.js';
-import { chooseAction, pickTeam } from '../src/arena-bot.js';
+import { createMatch, applyAction, listActions, parseSquare as sq, toMove } from '../src/engine/index.ts';
+import { chooseAction, pickTeam } from '../src/engine/bot.ts';
 
 function setup(spec, opts = {}) {
-  const s = createMatch({ p1: ['hasim', 'hexor', 'magumba', 'plantae'], p2: ['genga', 'aqna', 'plantae', 'hasim'], map: 'field', ...opts });
-  for (const id of Object.keys(s.units)) { if (spec[id]) s.units[id].pos = sq(spec[id]); else delete s.units[id]; }
+  const s = createMatch({
+    p1: ['hasim', 'hexor', 'magumba', 'plantae'],
+    p2: ['genga', 'aqna', 'plantae', 'hasim'],
+    map: 'field',
+    ...opts,
+  });
+  for (const id of Object.keys(s.units)) {
+    if (spec[id]) s.units[id].pos = sq(spec[id]);
+    else delete s.units[id];
+  }
   return s;
 }
 

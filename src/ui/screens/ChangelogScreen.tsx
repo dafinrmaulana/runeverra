@@ -8,18 +8,21 @@ function fmtDate(iso: string) {
 export function ChangelogScreen() {
   return (
     <div className="changelog">
-      {CHANGELOG.map((p, i) => (
-        <details key={p.version} className="patch" open={i === 0}>
+      {CHANGELOG.map((patch, index) => (
+        <details key={patch.version} className="patch" open={index === 0}>
           <summary className="patch-head">
-            <span className="patch-ver">v{p.version}</span>
-            {i === 0 && <span className="patch-latest">Latest</span>}
-            <span className="patch-title">{p.title}</span>
-            <span className="patch-date">{fmtDate(p.date)}</span>
+            <span className="patch-ver">v{patch.version}</span>
+            {index === 0 && <span className="patch-latest">Latest</span>}
+            <span className="patch-title">{patch.title}</span>
+            <span className="patch-date">{fmtDate(patch.date)}</span>
             <span className="patch-chev" aria-hidden="true" />
           </summary>
           <ul>
-            {p.entries.map((e, j) => (
-              <li key={j}><span className={`ptag ${e.tag}`}>{TAG_LABEL[e.tag]}</span><span>{e.text}</span></li>
+            {patch.entries.map((entry, entryIndex) => (
+              <li key={entryIndex}>
+                <span className={`ptag ${entry.tag}`}>{TAG_LABEL[entry.tag]}</span>
+                <span>{entry.text}</span>
+              </li>
             ))}
           </ul>
         </details>

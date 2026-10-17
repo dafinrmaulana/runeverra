@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMatch, applyAction } from '../src/arena.js';
-import { DEMO_MATCH } from '../src/demo-match.js';
+import { createMatch, applyAction } from '../src/engine/index.ts';
+import { DEMO_MATCH } from '../src/demo-match.ts';
 
 test('the home demo match replays legally to a winner and shows a variety of skills', () => {
   let g = createMatch(DEMO_MATCH.setup);
@@ -14,6 +14,6 @@ test('the home demo match replays legally to a winner and shows a variety of ski
   }
   assert.notEqual(g.status, 'playing', 'the demo ends with a winner');
   assert.ok(kinds.has('capture'), 'shows a takedown');
-  const skills = ['storm', 'grave', 'summon', 'ice', 'root', 'interrupt', 'backstab'].filter((k) => kinds.has(k));
+  const skills = ['storm', 'grave', 'summon', 'ice', 'root', 'interrupt', 'backstab'].filter((kind) => kinds.has(kind));
   assert.ok(skills.length >= 3, `shows at least 3 different skills, got ${skills.join(',')}`);
 });

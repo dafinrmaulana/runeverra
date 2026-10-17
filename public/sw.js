@@ -7,8 +7,9 @@ self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
@@ -22,7 +23,11 @@ self.addEventListener('fetch', (event) => {
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
-        .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('./', copy)); return res; })
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put('./', copy));
+          return res;
+        })
         .catch(() => caches.match('./').then((hit) => hit || Response.error())),
     );
     return;
@@ -31,9 +36,16 @@ self.addEventListener('fetch', (event) => {
   // Everything else on this origin (fonts, hashed bundles, hero art): serve the cached copy
   // at once and refresh it in the background.
   event.respondWith(
-    caches.open(CACHE).then((cache) => cache.match(req).then((hit) => {
-      const fresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => hit);
-      return hit || fresh;
-    })),
+    caches.open(CACHE).then((cache) =>
+      cache.match(req).then((hit) => {
+        const fresh = fetch(req)
+          .then((res) => {
+            if (res.ok) cache.put(req, res.clone());
+            return res;
+          })
+          .catch(() => hit);
+        return hit || fresh;
+      }),
+    ),
   );
 });

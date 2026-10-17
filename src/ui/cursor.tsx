@@ -28,8 +28,15 @@ const HOT: Record<Exclude<CursorKind, 'system'>, string> = { dagger: '2 2', staf
 
 export function applyCursor(kind: CursorKind) {
   let tag = document.getElementById('rv-cursor') as HTMLStyleElement | null;
-  if (!tag) { tag = document.createElement('style'); tag.id = 'rv-cursor'; document.head.appendChild(tag); }
-  if (kind === 'system') { tag.textContent = ''; return; }
+  if (!tag) {
+    tag = document.createElement('style');
+    tag.id = 'rv-cursor';
+    document.head.appendChild(tag);
+  }
+  if (kind === 'system') {
+    tag.textContent = '';
+    return;
+  }
   const url = `url("data:image/svg+xml,${encodeURIComponent(CURSOR_SVG[kind])}") ${HOT[kind]}`;
   tag.textContent = `body, body *:not(input):not(textarea) { cursor: ${url}, auto !important; }
     button:disabled, [aria-disabled="true"] { cursor: ${url}, not-allowed !important; }`;
@@ -39,15 +46,45 @@ export const cursorPref = () => pref<CursorKind>('cursor', 'dagger');
 
 export function CursorPicker() {
   const [kind, setKind] = useState<CursorKind>(cursorPref());
-  const pick = (k: CursorKind) => { setKind(k); setPref('cursor', k); applyCursor(k); };
-  const opts: { k: CursorKind; label: string }[] = [{ k: 'dagger', label: 'Dagger' }, { k: 'staff', label: 'Staff' }, { k: 'system', label: 'System' }];
+  const pick = (choice: CursorKind) => {
+    setKind(choice);
+    setPref('cursor', choice);
+    applyCursor(choice);
+  };
+  const opts: { value: CursorKind; label: string }[] = [
+    { value: 'dagger', label: 'Dagger' },
+    { value: 'staff', label: 'Staff' },
+    { value: 'system', label: 'System' },
+  ];
   return (
     <div className="cursor-opts" role="radiogroup" aria-label="Mouse cursor">
-      {opts.map(({ k, label }) => (
-        <button key={k} type="button" role="radio" aria-checked={kind === k} className="cursor-opt" onClick={() => pick(k)}>
-          {k === 'system'
-            ? <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 4 L8 26 L13.5 20.5 L17.5 29 L21 27.5 L17 19 L24.5 19 Z" fill="#f3e6cf" stroke="#221c18" strokeWidth="1.6" strokeLinejoin="round" /></svg>
-            : <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: CURSOR_SVG[k].replace('width="32" height="32"', 'width="40" height="40"') }} />}
+      {opts.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          role="radio"
+          aria-checked={kind === value}
+          className="cursor-opt"
+          onClick={() => pick(value)}
+        >
+          {value === 'system' ? (
+            <svg viewBox="0 0 32 32" aria-hidden="true">
+              <path
+                d="M8 4 L8 26 L13.5 20.5 L17.5 29 L21 27.5 L17 19 L24.5 19 Z"
+                fill="#f3e6cf"
+                stroke="#221c18"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <span
+              aria-hidden="true"
+              dangerouslySetInnerHTML={{
+                __html: CURSOR_SVG[value].replace('width="32" height="32"', 'width="40" height="40"'),
+              }}
+            />
+          )}
           <span>{label}</span>
         </button>
       ))}

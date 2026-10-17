@@ -1,12 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyAction, listActions, toMove } from '../src/arena.js';
+import { applyAction, listActions, toMove } from '../src/engine/index.ts';
 import {
-  newRoomCode, cleanCode, roomName, encodeMoves, decodeMoves, actionIndex, matchFromConfig, replay, nextMove,
-} from '../src/online.js';
+  newRoomCode,
+  cleanCode,
+  roomName,
+  encodeMoves,
+  decodeMoves,
+  actionIndex,
+  matchFromConfig,
+  replay,
+  nextMove,
+} from '../src/online.ts';
 
 test('room codes: 5 unambiguous characters, typed codes are normalised', () => {
-  let seed = 3; const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  let seed = 3;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
   for (let i = 0; i < 50; i++) {
     const c = newRoomCode(rnd);
     assert.match(c, /^[A-HJKMNP-Z2-9]{5}$/);
@@ -25,9 +34,15 @@ test('move lists encode compactly and decode back; garbage stops decoding', () =
   assert.deepEqual(decodeMoves('3.4.!!.5'), [3, 4]);
 });
 
-test('two clients replaying each side\'s own list reach the same match', () => {
-  const cfg = { p1: ['hasim', 'hexor', 'magumba', 'plantae'], p2: ['genga', 'aqna', 'plantae', 'hasim'], map: 'jungle', creeps: true };
-  let seed = 9; const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+test("two clients replaying each side's own list reach the same match", () => {
+  const cfg = {
+    p1: ['hasim', 'hexor', 'magumba', 'plantae'],
+    p2: ['genga', 'aqna', 'plantae', 'hasim'],
+    map: 'jungle',
+    creeps: true,
+  };
+  let seed = 9;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
   let s = matchFromConfig(cfg);
   const moves = { p1: [], p2: [] };
   for (let n = 0; n < 250 && s.status === 'playing'; n++) {

@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 # Adjust to wherever you cloned the repo on the VPS.
 WorkingDirectory=/opt/runeverra
-ExecStart=/usr/bin/node --max-old-space-size=128 server/ws-server.mjs
+ExecStart=/usr/bin/node --max-old-space-size=128 server/ws-server.ts
 Restart=always
 RestartSec=2
 Environment=PORT=8787
