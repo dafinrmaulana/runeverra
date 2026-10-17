@@ -1,7 +1,7 @@
 // Setting up a match: heroes on their slots, creeps on the flank lanes, the map's terrain.
 import type { Block, State, Team, Unit } from './types.ts';
 import { BOARD_SIZE, FILES, TEAMS, key, parseSquare } from './geometry.ts';
-import { HEROES, defineUnit, isHero, own } from './registry.ts';
+import { HEROES, commanderOf, defineUnit, isHero, own } from './registry.ts';
 import { makeUnit } from './state.ts';
 import { CREEPS } from './turn.ts';
 import { MAPS } from './maps.ts';
@@ -48,10 +48,12 @@ export function createMatch({
     if (!Array.isArray(picks) || picks.length !== gameMode.teamSize)
       throw new Error(`Each team needs exactly ${gameMode.teamSize} heroes.`);
     if (new Set(picks).size !== gameMode.teamSize) throw new Error('A team cannot pick the same hero twice.');
+    const commander = commanderOf(picks);
     picks.forEach((heroId, slot) => {
       if (!isHero(heroId)) throw new Error(`Unknown hero: ${heroId}`);
       const id = `${team}-${heroId}`;
       units[id] = makeUnit(id, team, heroId, 'hero', parseSquare(SLOTS[team][slot]));
+      if (heroId === commander) units[id].commander = true;
       HEROES[heroId].hooks?.spawn?.(units, units[id]);
     });
   }

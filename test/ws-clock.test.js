@@ -26,7 +26,7 @@ function connect() {
 }
 const send = (ws, message) => ws.send(JSON.stringify(message));
 const find = (ws, type, from = 0) => ws.msgs.slice(from).find((message) => message.t === type);
-const PICKS = ['hasim', 'genga', 'magumba', 'plantae'];
+const PICKS = ['hasim', 'genga', 'magumba', 'hexor'];
 
 async function startMatch(minutes) {
   const a = await connect();

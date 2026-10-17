@@ -6,7 +6,8 @@ export type Mode = { name: string; teamSize: number; creeps: boolean; energy: En
 
 export const MODES: Record<string, Mode> = {
   // Skill runes ("energy" in code): every skill costs runes according to its impact.
-  classic: { name: 'Classic', teamSize: 4, creeps: true, energy: { start: 4, perTurn: 0, max: 4 } },
+  // No real cap on runes: `max` only keeps the number finite (states travel as JSON).
+  classic: { name: 'Classic', teamSize: 4, creeps: true, energy: { start: 4, perTurn: 0, max: 99 } },
 };
 
 export const ENERGY = MODES.classic.energy;

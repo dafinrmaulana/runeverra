@@ -832,6 +832,60 @@ canvas.layer {
   }
 }
 
+/* a creep called back in on its lane: it waits for the pillar of light, then rises out of it */
+.piece.spawn-in .token {
+  animation: spawn-in 0.7s 0.95s both cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+@keyframes spawn-in {
+  from {
+    transform: translateY(-40%) scale(0.2);
+    opacity: 0;
+    filter: brightness(3) drop-shadow(0 0 12px #f2d48a);
+  }
+  60% {
+    opacity: 1;
+    filter: brightness(1.8) drop-shadow(0 0 10px #f2d48a);
+  }
+  to {
+    filter: none;
+  }
+}
+
+/* Aqna's ice on an enemy: it freezes over, then shatters with it */
+.piece.frozen .token {
+  animation: freeze-over 0.9s both ease-out;
+  box-shadow:
+    0 0 0 3px #bfe8ff,
+    0 0 18px 4px rgba(159, 216, 255, 0.85);
+}
+.piece.frozen .token::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.55) 0 18%,
+      transparent 18% 40%,
+      rgba(255, 255, 255, 0.35) 40% 46%,
+      transparent 46%
+    ),
+    radial-gradient(circle at 50% 50%, rgba(190, 232, 255, 0.55), rgba(120, 190, 240, 0.35));
+  mix-blend-mode: screen;
+  animation: freeze-over 0.9s both ease-out;
+  pointer-events: none;
+}
+@keyframes freeze-over {
+  from {
+    filter: none;
+    opacity: 0.4;
+  }
+  to {
+    filter: saturate(0.25) brightness(1.15) hue-rotate(170deg);
+    opacity: 1;
+  }
+}
+
 .fx {
   position: absolute;
   inset: 0;
@@ -1742,6 +1796,22 @@ a.btn {
 }
 .role-support {
   color: #7fd06d;
+}
+.role-fighter {
+  color: #e8c35a;
+}
+.role-commander {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  color: #f2d48a;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.role + .role {
+  margin-left: 6px;
 }
 .role-none {
   color: #a996ff;
@@ -3365,6 +3435,11 @@ a.btn {
   color: var(--brass);
   box-shadow: inset 0 0 0 1px rgba(214, 165, 74, 0.55);
 }
+.fx-pill.cmd {
+  background: rgba(242, 212, 138, 0.16);
+  color: #f2d48a;
+  box-shadow: inset 0 0 0 1px rgba(242, 212, 138, 0.6);
+}
 .fx-pill.th {
   background: rgba(226, 87, 63, 0.18);
   color: #ff9a85;
@@ -4206,4 +4281,143 @@ a.btn {
 }
 .bot-team.p1 .hidden-slot .q {
   color: #efe7d1;
+}
+
+/* the commander's banner on its board piece: lose it and the match is lost */
+.piece .cmd-mark {
+  position: absolute;
+  top: -2%;
+  right: 4%;
+  width: 26%;
+  height: 26%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #241b12;
+  box-shadow:
+    0 0 0 1.5px #f2d48a,
+    0 1px 3px rgba(0, 0, 0, 0.6);
+  color: #f2d48a;
+  pointer-events: none;
+  z-index: 3;
+}
+.piece .cmd-mark svg {
+  width: 62%;
+  height: 62%;
+}
+.cmd-ico {
+  vertical-align: -1px;
+}
+.commander-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 2px;
+}
+/* a switch: the commander's segment is filled and outlined; one segment per hero that can command */
+.cmd-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(242, 212, 138, 0.22);
+}
+.cmd-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #e9dcc4;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition:
+    background 0.18s,
+    box-shadow 0.18s;
+}
+.cmd-opt img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.cmd-opt:hover:not(:disabled) {
+  background: rgba(242, 212, 138, 0.08);
+}
+.cmd-opt[aria-checked='true'] {
+  color: #fff8e6;
+  background: rgba(242, 212, 138, 0.32);
+  box-shadow:
+    inset 0 0 0 1.5px #f2d48a,
+    0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.commander-pick-label {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 100%;
+}
+.commander-pick-label b {
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f2d48a;
+}
+.commander-pick-label small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* the game's popup, drawn over a hero demo (a picture, not a control) */
+.demo {
+  position: relative;
+}
+.demo-choice {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(24, 18, 13, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(242, 212, 138, 0.45),
+    0 8px 22px rgba(0, 0, 0, 0.5);
+  font-size: 0.72rem;
+  z-index: 5;
+  animation: popIn 0.3s both;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.demo-choice-title {
+  color: #f2d48a;
+}
+.demo-choice-row {
+  display: flex;
+  gap: 4px;
+}
+.demo-choice-opt {
+  padding: 3px 7px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(243, 230, 207, 0.35);
+}
+.demo-choice-opt.on {
+  background: rgba(242, 212, 138, 0.28);
+  box-shadow: inset 0 0 0 1.5px #f2d48a;
+}
+
+.cmd-note {
+  margin: 4px 0 8px;
+  font-size: 0.82rem;
+  color: #f2d48a;
 }

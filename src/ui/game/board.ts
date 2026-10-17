@@ -15,6 +15,7 @@ import {
   moveOptions,
   skillReach,
   skillOf,
+  isCommander,
 } from '../../engine/index.ts';
 import type { Action, Pos, State, Team, Unit } from '../../engine/index.ts';
 import { ICON, ART, MAP_ART } from '../data';
@@ -25,6 +26,10 @@ import { lungeBack } from './motion';
 
 export { TERRAIN_SVG, CREEP_SVG, BEAST_SVG } from './art';
 export { lungeBack } from './motion';
+
+/** The commander's mark on its piece: a war banner on its pole (the same as the picker's). */
+const COMMANDER_SVG =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5v13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.3 2.3h8.4l-2.2 2.8 2.2 2.8H4.3z" fill="currentColor"/></svg>';
 
 /** Squares tinted with the reach of the skill in play, and that skill's key (for its colour). */
 export type SkillZone = { cells: Set<string>; key: string };
@@ -38,6 +43,7 @@ export function skillZone(
   game: State,
   selected: Unit | null | undefined,
   armed: boolean | undefined,
+  ownReach = true,
 ): SkillZone | null {
   const zoneOf = (caster: Unit | null): SkillZone | null =>
     caster
@@ -55,7 +61,8 @@ export function skillZone(
   if (!selected || selected.kind !== 'hero') return null;
   const skill = skillOf(selected)!;
   if (armed && skill.range) return zoneOf(selected);
-  if (HEROES[selected.hero].hooks?.reaction) return zoneOf(selected);
+  // a reaction's reach shows only for the player's own hero: an enemy's is theirs to know
+  if (ownReach && HEROES[selected.hero].hooks?.reaction) return zoneOf(selected);
   return null;
 }
 
@@ -80,6 +87,7 @@ export type BoardView = {
   threats: Set<string>; // units to badge as capturable next turn
   deathDelay?: number; // ms to wait before eliminated pieces fade (so the effect lands first)
   hits?: Pos[]; // squares to flash as hit
+  ownReach?: boolean; // the selected unit is the viewer's own: show its reaction's reach (default true)
 };
 
 type Drag = {
@@ -282,7 +290,7 @@ export function createBoard(
     const pendingTo = pending
       ? pending.to || (pending.targetId ? game.units[pending.targetId]?.pos : null) || null
       : null;
-    const zone = skillZone(game, live, armed);
+    const zone = skillZone(game, live, armed, view.ownReach ?? true);
     const lastAction = game.lastAction;
     const movers = new Set(acts.filter((action) => action.type === 'move').map((action) => action.unitId));
     for (const cell of cells) {
@@ -292,8 +300,9 @@ export function createBoard(
       const isTarget = skillActs.some((action) => samePos(action.to || game.units[action.targetId!].pos, pos));
       const inZone = !!zone && zone.cells.has(`${pos.r},${pos.c}`);
       cell.classList.toggle('sel', !!live && samePos(live.pos, pos));
-      cell.classList.toggle('move', !!option && !option.backstab && !option.kills.length);
-      cell.classList.toggle('capture', !!option && option.kills.length > 0);
+      const attack = !!option && (option.kills.length > 0 || !!option.breaks?.length); // a kill, or a blow on a shield
+      cell.classList.toggle('move', !!option && !option.backstab && !attack);
+      cell.classList.toggle('capture', attack);
       cell.classList.toggle('stab', !!option && !!option.backstab);
       cell.classList.toggle('target', isTarget);
       cell.classList.toggle('grave', isTarget && skillKey === 'grave');
@@ -355,9 +364,13 @@ export function createBoard(
     const [startX, startY, endX, endY] = [from.x + ux * 38, from.y + uy * 38, dest.x - ux * 46, dest.y - uy * 46];
     const option =
       pending.type === 'move' ? moveOptions(game, actor).find((candidate) => samePos(candidate.to, to)) : null;
-    const victimIds = option ? option.kills : pending.type === 'skill' && pending.targetId ? [pending.targetId] : [];
+    const victimIds = option
+      ? [...option.kills, ...(option.breaks || [])]
+      : pending.type === 'skill' && pending.targetId
+        ? [pending.targetId]
+        : [];
     const victims = victimIds.map((id) => game.units[id]).filter(Boolean);
-    const hostile = option ? option.kills.length > 0 : pending.type === 'skill';
+    const hostile = option ? victimIds.length > 0 : pending.type === 'skill';
     const color = hostile ? '#ff5a3c' : '#6fcf55';
     const reticle = (pos: Pos) => {
       const c = centerOf(pos);
@@ -444,7 +457,11 @@ export function createBoard(
       el.innerHTML = `<div class="token" style="color:${unit.team === 'p1' ? '#5a3a1a' : '#f3d9a8'}">${BEAST_SVG}</div><span class="tag">${name}</span>`;
     else if (unit.kind === 'creep') el.innerHTML = `<div class="token">${CREEP_SVG}</div>`;
     else
-      el.innerHTML = `<div class="token"><img src="${ICON(unit.hero)}" alt=""></div><span class="tag">${name}</span>`;
+      el.innerHTML = `<div class="token"><img src="${ICON(unit.hero)}" alt=""></div><span class="tag">${name}</span>${
+        isCommander(unit)
+          ? `<span class="cmd-mark" title="Commander: if it falls, its side loses">${COMMANDER_SVG}</span>`
+          : ''
+      }`;
     return el;
   }
   function fadeOut(unitId: string, el: HTMLElement, delayMs: number) {

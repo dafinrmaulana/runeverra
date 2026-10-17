@@ -19,6 +19,8 @@ export type SfxName =
   | 'ice'
   | 'shatter'
   | 'shield'
+  | 'rune'
+  | 'spawn'
   | 'summon'
   | 'victory'
   | 'defeat'
@@ -266,6 +268,24 @@ const RECIPES: Record<SfxName, (context: Ctx, output: AudioNode, time: number) =
     );
     ring(context, output, time, 1500, 0.4, 0.08);
   },
+  // a rune earned: a bright glassy chime with a shimmer rising off it
+  rune: (context, output, time) => {
+    ring(context, output, time, 1320, 1.2, 0.22);
+    ring(context, output, time + 0.09, 1760, 1.0, 0.16);
+    tone(context, output, 'sine', 880, 1760, time, 0.35, 0.12, 0.01);
+    gust(context, output, time, 0.8, 0.18, 4000, 9000, 1.5, 'highpass');
+  },
+  // a creep called back to its lane: air drawn upward, a swelling hum, sparkles, then it lands
+  spawn: (context, output, time) => {
+    gust(context, output, time, 0.9, 0.55, 180, 2400, 1.2);
+    tone(context, grit(context, output, 2), 'sine', 70, 140, time, 0.9, 0.35, 0.4);
+    tone(context, output, 'triangle', 330, 660, time + 0.1, 0.8, 0.08, 0.3);
+    [0.35, 0.48, 0.6, 0.7].forEach((delay, index) =>
+      hiss(context, output, 'bandpass', 3000 + index * 600, 3200 + index * 600, time + delay, 0.05, 0.25, 10),
+    );
+    thump(context, output, time + 0.85, 90, 45, 0.2, 0.8, 3);
+    ring(context, output, time + 0.85, 660, 0.7, 0.12);
+  },
   // a blow glancing off a warded shield
   shield: (context, output, time) => {
     thump(context, output, time, 140, 70, 0.14, 0.9, 4);
@@ -363,6 +383,7 @@ function buildBus(ctx: Ctx, dest: AudioNode): AudioNode {
 const SAMPLES: Partial<Record<SfxName, { file: string; level: number }>> = {
   move: { file: 'move', level: 0.9 },
   beast: { file: 'move', level: 0.7 },
+  capture: { file: 'slash', level: 0.9 }, // every takedown: the sword
   slash: { file: 'slash', level: 0.9 },
   backstab: { file: 'backstab', level: 1 },
   grave: { file: 'grave', level: 0.85 },
@@ -404,11 +425,26 @@ function playSample(context: AudioContext, output: AudioNode, name: SfxName) {
   return true;
 }
 
+/** A brick-wall limiter into the speakers: loud mixes squash instead of crackling. */
+export function limiter(context: AudioContext): AudioNode {
+  const node = context.createDynamicsCompressor();
+  node.threshold.value = -2;
+  node.knee.value = 0;
+  node.ratio.value = 20;
+  node.attack.value = 0.002;
+  node.release.value = 0.12;
+  node.connect(context.destination);
+  return node;
+}
+
 // ---------- the live player ----------
 let ctx: AudioContext | null = null;
 let bus: AudioNode | null = null;
 let master: GainNode | null = null;
-let volume: number = pref('sfxVol', 0.55);
+// The slider goes twice as loud as it used to: 50% (the default) is the old 100%, 100% doubles it. A limiter
+// after it keeps the loudest moments from clipping.
+const FULL_GAIN = 2;
+let volume: number = pref('sfxLevel', 0.5);
 const lastPlayed = new Map<string, number>();
 
 function ensure(): AudioContext | null {
@@ -421,8 +457,8 @@ function ensure(): AudioContext | null {
   try {
     ctx = new AC() as AudioContext;
     master = ctx.createGain();
-    master.gain.value = volume;
-    master.connect(ctx.destination);
+    master.gain.value = volume * FULL_GAIN;
+    master.connect(limiter(ctx));
     bus = buildBus(ctx, master);
     loadSamples(ctx);
   } catch {
@@ -463,8 +499,8 @@ export function sfx(name: SfxName | null) {
 export const sfxVolume = () => volume;
 export function setSfxVolume(level: number) {
   volume = Math.min(1, Math.max(0, level));
-  setPref('sfxVol', volume);
-  if (master) master.gain.value = volume;
+  setPref('sfxLevel', volume);
+  if (master) master.gain.value = volume * FULL_GAIN;
 }
 
 /** Render one effect offline and report how loud it is (used to check every recipe really makes sound). */

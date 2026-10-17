@@ -16,7 +16,10 @@ import {
   key,
   ENERGY,
   TEAM_SIZE,
+  teamProblem,
 } from '../src/engine/index.ts';
+import { pickTeam } from '../src/engine/bot.ts';
+import { matchFromConfig } from '../src/online.ts';
 
 /** Custom position. spec: { 'p1-hasim': 'd4', ... }; listed units are kept (others removed). */
 function setup(spec, { current = 'p1', energy = { p1: 0, p2: 0 }, blocks = {}, p1, p2, map = 'field' } = {}) {
@@ -71,19 +74,26 @@ test("setup: 4 heroes each, beast beside Ge'nga, symmetric map blocks, no first-
   assert.throws(() => createMatch({ p1: ['hasim', 'hexor', 'aqna'] }));
 });
 
-test('roles: Roam moves 2 straight, Assassin 1 in any direction plus Backstab, Support 1, Hexor is a Roam with an L jump', () => {
+test('roles: Aqna slides 3, Assassin 1 in any direction plus Backstab, Support 1 and commands, Hexor an L, Fighter 2 any way', () => {
   assert.equal(HEROES.aqna.role, 'roam');
   assert.equal(HEROES.hexor.role, 'roam');
   assert.equal(HEROES.hasim.role, 'assassin');
+  assert.equal(HEROES.genga.role, 'fighter');
   assert.equal(HEROES.plantae.role, 'support');
-  assert.equal(ENERGY.max, 4);
+  assert.equal(HEROES.magumba.role, 'support');
+  assert.deepEqual(
+    Object.keys(HEROES).filter((heroId) => HEROES[heroId].commander),
+    ['magumba', 'plantae'],
+    'the two 1-step supports are the commanders',
+  );
+  assert.ok(ENERGY.max >= 99, 'runes have no real cap');
   const s = setup({ 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'h4', 'p2-plantae': 'h8' });
   const names = (unitId) =>
     moveOptions(s, s.units[unitId])
       .map((option) => 'abcdefgh'[option.to.c] + (8 - option.to.r))
       .sort();
   assert.deepEqual(names('p1-hasim'), ['c3', 'c4', 'c5', 'd3', 'd5', 'e3', 'e4', 'e5']);
-  assert.deepEqual(names('p2-aqna'), ['f4', 'g4', 'h2', 'h3', 'h5', 'h6']);
+  assert.deepEqual(names('p2-aqna'), ['e4', 'f4', 'g4', 'h1', 'h2', 'h3', 'h5', 'h6', 'h7']);
   assert.deepEqual(names('p2-plantae'), ['g8', 'h7']);
 });
 
@@ -131,13 +141,20 @@ test("Ge'nga: the beast follow-up is free; Wild Company (3 runes) summons a fall
     { 'p2-genga': 'd8', 'p2-beast': 'd7', 'p2-plantae': 'h8', 'p1-hasim': 'a1' },
     { current: 'p2', energy: { p1: 0, p2: 0 } },
   );
-  assert.match(reject(s, mv('p2-beast', 'c6')), /after Ge'nga/);
+  // before it has ever moved, the beast may move on its own as the turn, picking its stride
+  assert.match(reject(s, mv('p2-beast', 'c6')), /choose how/, 'the first move names its stride');
+  const solo = act(s, { ...mv('p2-beast', 'c6'), pattern: 'any' });
+  assert.equal(solo.current, 'p1', 'the solo move is the whole turn');
+  assert.equal(solo.units['p2-beast'].moved, true);
+  assert.equal(solo.units['p2-beast'].stride, 'any');
+  solo.current = 'p2';
+  assert.match(reject(solo, mv('p2-beast', 'b5')), /after Ge'nga/, 'only once on its own');
   assert.match(reject(s, mv('p2-genga', 'b8')), /./, "Ge'nga steps only 1 square");
   s = act(s, mv('p2-genga', 'c8'));
   assert.equal(s.phase, 'beast', 'offered with 0 runes: it is free');
   assert.equal(s.current, 'p2');
   assert.ok(listActions(s).some((action) => action.type === 'skip'));
-  s = act(s, mv('p2-beast', 'c6'));
+  s = act(s, { ...mv('p2-beast', 'c6'), pattern: 'any' });
   assert.equal(s.current, 'p1');
   assert.equal(s.energy.p2, 0);
   // no summon while the beast lives
@@ -172,11 +189,21 @@ test("Ge'nga: the beast follow-up is free; Wild Company (3 runes) summons a fall
   );
   f = act(f, mv('p1-aqna', 'd5'));
   assert.equal(f.units['p2-beast'].alive, false);
+  // summoned onto an enemy, the beast eliminates it
+  let c = setup(
+    { 'p2-genga': 'd8', 'p2-beast': 'd6', 'p2-plantae': 'h8', 'p1-aqna': 'd4', 'p1-hasim': 'c7', 'p1-magumba': 'a1' },
+    { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 0, p2: 3 } },
+  );
+  c = act(c, mv('p1-aqna', 'd6'));
+  c = act(c, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('c7') });
+  assert.equal(c.units['p1-hasim'].alive, false);
+  assert.deepEqual(c.units['p2-beast'].pos, sq('c7'));
+  assert.equal(c.energy.p2, 1, '3 spent, +1 for the hero');
 });
 
-test("Magumba Empty Grave: costs 2 runes, protects an ally from captures until caster's next turn", () => {
+test('Magumba Empty Grave: 2 runes, a plus next to him; the first attack breaks it and the attacker stays put', () => {
   let s = setup(
-    { 'p1-magumba': 'c3', 'p1-hasim': 'd4', 'p1-hexor': 'a1', 'p2-aqna': 'd6', 'p2-plantae': 'h8' },
+    { 'p1-magumba': 'c3', 'p1-hasim': 'c4', 'p1-hexor': 'a1', 'p2-aqna': 'c7', 'p2-hasim': 'h5', 'p2-plantae': 'h8' },
     { p1: ['magumba', 'hasim', 'hexor', 'aqna'], energy: { p1: 1, p2: 0 } },
   );
   assert.match(
@@ -187,9 +214,26 @@ test("Magumba Empty Grave: costs 2 runes, protects an ally from captures until c
   s = act(s, { type: 'skill', unitId: 'p1-magumba', skill: 'grave', targetId: 'p1-hasim' });
   assert.equal(s.energy.p1, 0);
   assert.equal(s.units['p1-hasim'].warded, true);
-  assert.match(reject(s, mv('p2-aqna', 'd4')), /Empty Grave/);
-  s = act(s, mv('p2-aqna', 'e6'));
-  assert.equal(s.units['p1-hasim'].warded, false, "wears off at the start of Ivory's turn");
+  // the enemy may attack it: the shield breaks, nobody falls, the attacker stays where it was
+  const hit = act(s, mv('p2-aqna', 'c4'));
+  assert.equal(hit.units['p1-hasim'].alive, true);
+  assert.equal(hit.units['p1-hasim'].warded, false, 'broken');
+  assert.deepEqual(hit.units['p2-aqna'].pos, sq('c7'), 'thrown back');
+  assert.equal(hit.lastAction.kind, 'shieldbreak');
+  assert.equal(hit.current, 'p1', "their turn is over: it's Ivory's again");
+  // left alone, the shielded unit still acts, kills, and keeps the shield
+  s = act(s, mv('p2-hasim', 'h6'));
+  assert.equal(s.units['p1-hasim'].warded, true, 'lasts past the next turn');
+  s = act(s, mv('p1-hasim', 'c5'));
+  s = act(s, mv('p2-hasim', 'h5'));
+  s = act(s, mv('p1-hasim', 'c6'));
+  s = act(s, mv('p2-hasim', 'h6'));
+  assert.equal(s.units['p1-hasim'].warded, true, "two of Ivory's turns in");
+  s = act(s, mv('p1-hasim', 'c7'));
+  assert.equal(s.units['p2-aqna'].alive, false);
+  assert.equal(s.units['p1-hasim'].warded, true, 'still shielded after a kill');
+  s = act(s, mv('p2-hasim', 'h5'));
+  assert.equal(s.units['p1-hasim'].warded, false, 'unbroken, it wears off after 3 of your turns');
 });
 
 test('Plantae Aggressive Root: 3 tokens, roots a target for its next turn', () => {
@@ -238,12 +282,18 @@ test('Plantae interrupt: 3 tokens, negates an action on her lines; she is not ro
   // only in her pattern: beside the block, behind her, or a far one gets no prompt
   const side = act(
     setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'b5', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }),
+    mv('p1-hexor', 'a3'),
+  );
+  assert.equal(side.phase, 'main', 'beside the block, moving away: not in the pattern');
+  const entering = act(
+    setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'b5', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }),
     mv('p1-hexor', 'd6'),
   );
-  assert.equal(side.phase, 'main', 'beside the block: not in the pattern');
+  assert.equal(entering.phase, 'react', 'moving into the block from outside: she may stop it');
+  assert.deepEqual(act(entering, { type: 'react', use: true }).units['p1-hexor'].pos, sq('b5'), 'kept outside');
   const behind = act(
     setup({ 'p2-plantae': 'd7', 'p2-aqna': 'h8', 'p1-hexor': 'd8', 'p1-hasim': 'a1' }, { energy: { p1: 0, p2: 3 } }),
-    mv('p1-hexor', 'c6'),
+    mv('p1-hexor', 'b7'),
   );
   assert.equal(behind.phase, 'main', 'never reaches behind her');
   const far = act(
@@ -373,7 +423,7 @@ test('Hexor Storm Hammer: optional 2-token slam after a capture; pick + or X, pu
 });
 
 test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest moves at the limit', () => {
-  const pos = { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-plantae': 'a5', 'p2-genga': 'h8' };
+  const pos = { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-genga': 'a5', 'p2-plantae': 'h8' };
   const poor = act(setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'] }), mv('p1-aqna', 'a5'));
   assert.equal(poor.phase, 'ice', "no runes before the kill: the hero kill's rune pays for the ice");
   let s = setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } });
@@ -406,10 +456,10 @@ test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest m
 });
 
 test('Aqna Icy Step: the charge is storable (not immediate) and never stacks', () => {
-  const pos = { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-plantae': 'a5', 'p2-genga': 'h8', 'p2-hasim': 'b5' };
+  const pos = { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-genga': 'a5', 'p2-plantae': 'h8', 'p2-hasim': 'b5' };
   // skip the immediate ice prompt; she keeps the charge for a later turn of her choosing
   let s = setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } });
-  s = act(s, mv('p1-aqna', 'a5')); // kills p2-plantae, enters the 'ice' prompt
+  s = act(s, mv('p1-aqna', 'a5')); // kills p2-genga, enters the 'ice' prompt
   assert.equal(s.phase, 'ice');
   assert.equal(s.units['p1-aqna'].iceCharge, 1);
   s = act(s, { type: 'skip' });
@@ -426,7 +476,7 @@ test('Aqna Icy Step: the charge is storable (not immediate) and never stacks', (
 
   // charges never stack: a second kill while one is already held still leaves exactly one
   let t = setup(
-    { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-plantae': 'a5', 'p2-hasim': 'a7', 'p2-genga': 'h8' },
+    { 'p1-aqna': 'a3', 'p1-hasim': 'h1', 'p2-genga': 'a5', 'p2-hasim': 'a7', 'p2-plantae': 'h8' },
     { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } },
   );
   t = act(t, mv('p1-aqna', 'a5')); // first kill, charge = 1
@@ -437,25 +487,26 @@ test('Aqna Icy Step: the charge is storable (not immediate) and never stacks', (
   assert.equal(t.units['p1-aqna'].iceCharge, 1, 'still just one charge, never two');
 });
 
-test('tokens: start full at 4, never refill per turn, only creeps give more (capped at 4)', () => {
+test('tokens: start at 4, never refill per turn, kills and breakthroughs give more (no cap)', () => {
   let s = createMatch({ map: 'field' });
   assert.deepEqual(s.energy, { p1: 4, p2: 4 });
   s = act(s, mv('p1-hasim', 'c2'));
   assert.equal(s.energy.p2, 4);
   s.energy = { p1: 1, p2: 1 };
   s = act(s, mv('p2-creep-a', 'a6'));
+  s = act(s, { type: 'skip' }); // Ember's opening: no second creep
   s = act(s, mv('p1-creep-a', 'a3'));
   assert.deepEqual(s.energy, { p1: 1, p2: 1 }, 'no +1 per turn');
   assert.equal(CREEPS.lastHit, 1);
   assert.equal(CREEPS.breach, 1);
-  // a creep kill at full tokens stays at the cap
+  // a creep kill at 4 goes past 4
   let k = setup(
     { 'p1-aqna': 'd4', 'p1-hasim': 'a1', 'p2-creep-b': 'd6', 'p2-genga': 'h8' },
     { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 4, p2: 0 } },
   );
   k = act(k, mv('p1-aqna', 'd6'));
   if (k.phase === 'ice') k = act(k, { type: 'skip' });
-  assert.equal(k.energy.p1, 4);
+  assert.equal(k.energy.p1, 5);
 });
 
 test('win when every enemy hero is down (beasts do not count)', () => {
@@ -517,10 +568,19 @@ test('creeps: start on the flank files and are moved by their player like pawns'
   reject(s, mv('p1-creep-a', 'a5'));
   reject(s, mv('p1-creep-b', 'c2'));
   s = act(s, mv('p1-creep-a', 'a4'));
+  assert.equal(s.phase, 'pawns', "a side's first turn: a second creep may move too");
+  assert.equal(s.current, 'p1');
+  assert.ok(!listActions(s).some((action) => action.unitId === 'p1-creep-a'), 'not the same one');
+  assert.ok(!listActions(s).some((action) => action.unitId === 'p1-hasim'), 'only creeps');
+  s = act(s, mv('p1-creep-b', 'b4'));
   assert.equal(s.current, 'p2');
-  assert.deepEqual(s.units['p1-creep-b'].pos, sq('b2'), 'other creeps stay put');
   reject(s, mv('p2-creep-h', 'h8'));
   s = act(s, mv('p2-creep-h', 'h6'));
+  s = act(s, { type: 'skip' });
+  assert.equal(s.current, 'p1');
+  s = act(s, mv('p1-creep-g', 'g3'));
+  assert.equal(s.current, 'p2', 'from the second turn on, one action per turn');
+  s = act(s, mv('p2-creep-g', 'g6'));
   const again = listActions(s).filter((action) => action.unitId === 'p1-creep-a');
   assert.deepEqual(
     again.map((action) => action.to),
@@ -542,6 +602,18 @@ test('creeps: capture diagonally, are blocked straight ahead, break through for 
   assert.equal(r.units['p1-creep-g'].alive, false);
   assert.equal(r.energy.p1, 1 + CREEPS.breach);
   assert.ok(r.lastAction.breach);
+  const fresh = r.units['p1-creep-g-2'];
+  assert.ok(fresh?.alive, 'a new creep joins');
+  assert.deepEqual(fresh.pos, sq('g2'), 'on the starting square of its lane');
+  assert.ok(!fresh.moved, 'with its double first step');
+  assert.equal(r.lastAction.respawned, 'p1-creep-g-2');
+  // its starting square taken: the nearest open square instead, on the same rank if it can
+  let taken = setup({ 'p1-creep-g': 'e7', 'p1-hasim': 'g2', 'p2-genga': 'h8' });
+  taken = act(taken, mv('p1-creep-g', 'e8'));
+  const moved = taken.units['p1-creep-g-2'];
+  assert.ok(moved?.alive);
+  assert.equal(moved.pos.r, sq('g2').r, 'same rank');
+  assert.equal(Math.abs(moved.pos.c - sq('g2').c), 1, 'right next to its starting square');
 });
 
 test('creeps: last hit gives a token; a creep capture can win the game; rooted creeps cannot move', () => {
@@ -676,7 +748,7 @@ test('Replay: createMatch(setup) plus the trail reproduces the match exactly', (
   assert.deepEqual(r.log, g.log);
 });
 
-test("Ge'nga steps 1 in a + pattern; his beast steps 1 in any direction, like Hasim", () => {
+test("Ge'nga steps 1 in a + pattern; his beast picks a stride on its first move and keeps it all match", () => {
   const s = setup(
     { 'p1-hasim': 'a1', 'p2-genga': 'd5', 'p2-beast': 'f5', 'p2-aqna': 'h8' },
     { current: 'p2', p2: ['genga', 'aqna', 'plantae', 'hasim'] },
@@ -687,10 +759,27 @@ test("Ge'nga steps 1 in a + pattern; his beast steps 1 in any direction, like Ha
   assert.deepEqual(g, [sq('d6'), sq('c5'), sq('e5'), sq('d4')]);
   const after = act(s, mv('p2-genga', 'd4'));
   assert.equal(after.phase, 'beast');
-  const b = moveOptions(after, after.units['p2-beast']).map((option) => option.to);
-  assert.equal(b.length, 8, 'all 8 neighbours');
-  assert.match(reject(after, mv('p2-beast', 'h7')), /can't reach/);
-  act(after, mv('p2-beast', 'g6'));
+  const moves = listActions(after).filter((action) => action.type === 'move');
+  const count = (stride) => moves.filter((action) => action.pattern === stride).length;
+  assert.deepEqual([count('any'), count('plus'), count('cross')], [8, 8, 8], 'every stride offered, each tagged');
+  assert.match(reject(after, { ...mv('p2-beast', 'g8'), pattern: 'cross' }), /./, 'never 3');
+  let crossed = act(after, { ...mv('p2-beast', 'h7'), pattern: 'cross' });
+  assert.equal(crossed.units['p2-beast'].stride, 'cross');
+  // from now on only the cross, even after it falls and is summoned back
+  crossed.current = 'p2';
+  crossed = act(crossed, mv('p2-genga', 'd3'));
+  const later = listActions(crossed).filter((action) => action.type === 'move');
+  assert.ok(later.length && later.every((action) => !action.pattern), 'no stride to pick any more');
+  assert.ok(
+    later.every((action) => Math.abs(action.to.r - sq('h7').r) === Math.abs(action.to.c - sq('h7').c)),
+    'diagonal only',
+  );
+  crossed.units['p2-beast'].alive = false;
+  crossed.energy.p2 = 3;
+  crossed.phase = 'main';
+  crossed.pending = null;
+  crossed = act(crossed, { type: 'skill', unitId: 'p2-genga', skill: 'summon', to: sq('d2') });
+  assert.equal(crossed.units['p2-beast'].stride, 'cross', 'a summon keeps it');
 });
 
 test('maps: obstacles sit on both square colours, so a piece that stays on one colour is never walled off', () => {
@@ -703,4 +792,72 @@ test('maps: obstacles sit on both square colours, so a piece that stays on one c
     const colours = new Set(cells.map(([row, col]) => (row + col) % 2));
     assert.equal(colours.size, 2, `${id} has obstacles on one colour only`);
   }
+});
+
+test('commander: Plantae or Magumba leads (the first picked, if both); when it falls its side loses', () => {
+  assert.equal(teamProblem(['hasim', 'hexor', 'magumba', 'aqna']), null);
+  assert.match(teamProblem(['hasim', 'hexor', 'genga', 'aqna']), /commander/);
+  assert.equal(teamProblem(['hasim', 'hexor', 'magumba', 'plantae']), null, 'both may come; one leads');
+  assert.throws(() =>
+    matchFromConfig({ p1: ['hasim', 'hexor', 'genga', 'aqna'], p2: ['genga', 'aqna', 'plantae', 'hasim'] }),
+  );
+  for (let seed = 0; seed < 30; seed++) assert.equal(teamProblem(pickTeam(seed)), null, `bot team ${seed}`);
+  const both = createMatch({
+    p1: ['hasim', 'plantae', 'hexor', 'magumba'],
+    p2: ['magumba', 'aqna', 'plantae', 'hasim'],
+  });
+  assert.equal(both.units['p1-plantae'].commander, true, 'first in pick order leads');
+  assert.ok(!both.units['p1-magumba'].commander);
+  assert.equal(both.units['p2-magumba'].commander, true);
+  let s = setup(
+    { 'p1-aqna': 'd4', 'p1-hasim': 'a1', 'p2-plantae': 'd6', 'p2-genga': 'h8', 'p2-hasim': 'h1' },
+    { p1: ['aqna', 'hasim', 'hexor', 'magumba'] },
+  );
+  s = act(s, mv('p1-aqna', 'd6'));
+  assert.equal(s.status, 'p1', 'Ember still has two heroes, but its commander is down');
+  assert.match(s.log[s.log.length - 1].text, /commander/);
+  // the hero that doesn't lead can fall without ending the match
+  let t2 = setup(
+    { 'p1-aqna': 'd4', 'p1-magumba': 'a1', 'p2-plantae': 'h8', 'p2-magumba': 'd6', 'p2-hasim': 'h1' },
+    { p1: ['aqna', 'hasim', 'hexor', 'magumba'], p2: ['plantae', 'magumba', 'genga', 'hasim'] },
+  );
+  t2 = act(t2, mv('p1-aqna', 'd6'));
+  assert.equal(t2.status, 'playing');
+});
+
+test('Aqna: ice raised on an enemy eliminates it; a shielded enemy is out of reach', () => {
+  let s = setup(
+    { 'p1-aqna': 'd4', 'p1-hasim': 'a1', 'p2-genga': 'f5', 'p2-hasim': 'e3', 'p2-plantae': 'h8' },
+    { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } },
+  );
+  s.units['p1-aqna'].iceCharge = 1;
+  s.units['p2-hasim'].warded = true;
+  const spots = listActions(s).filter((action) => action.type === 'skill');
+  assert.ok(spots.some((action) => action.to.r === sq('f5').r && action.to.c === sq('f5').c));
+  assert.ok(!spots.some((action) => action.to.r === sq('e3').r && action.to.c === sq('e3').c), 'not through a shield');
+  s = act(s, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('f5') });
+  assert.equal(s.units['p2-genga'].alive, false, 'frozen, then shattered');
+  assert.equal(blockAt(s, sq('f5')), null, 'the ice breaks: no block is left');
+  assert.equal(s.lastAction.frozen, 'p2-genga');
+  assert.equal(s.energy.p1, 1, '1 spent, +1 for the hero');
+  // the ice doesn't use her turn: she may still move, or skip
+  assert.equal(s.phase, 'icewalk');
+  assert.ok(listActions(s).every((action) => action.type === 'skip' || action.unitId === 'p1-aqna'));
+  const walked = act(s, mv('p1-aqna', 'd7'));
+  assert.equal(walked.current, 'p2');
+  assert.equal(act(s, { type: 'skip' }).current, 'p2');
+});
+
+test('Empty Grave: a Backstab into a shield breaks it and Hasim stays put', () => {
+  let s = setup(
+    { 'p1-hasim': 'd4', 'p1-magumba': 'a1', 'p2-genga': 'd5', 'p2-plantae': 'h8' },
+    { p1: ['hasim', 'hexor', 'magumba', 'aqna'] },
+  );
+  s.units['p2-genga'].warded = true;
+  s.units['p2-genga'].wardTurns = 3;
+  s = act(s, mv('p1-hasim', 'd6'));
+  assert.deepEqual(s.units['p1-hasim'].pos, sq('d4'));
+  assert.equal(s.units['p2-genga'].alive, true);
+  assert.equal(s.units['p2-genga'].warded, false);
+  assert.equal(s.current, 'p2');
 });

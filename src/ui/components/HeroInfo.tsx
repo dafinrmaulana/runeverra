@@ -1,4 +1,4 @@
-import { HEROES, CLASSES, createMatch, skillReach } from '../../engine/index.ts';
+import { HEROES, CLASSES, ROLES, createMatch, skillReach } from '../../engine/index.ts';
 import type { Skill } from '../../engine/index.ts';
 import { SHORT, costLabel, roleOf, moveCells, cssVars } from '../data';
 import { CostChip } from './Rune';
@@ -57,6 +57,34 @@ export function RangeDiagram({ hero, size = 7 }: { hero: string; size?: number }
   );
 }
 
+/** The commander's mark: a war banner on its pole. */
+export function CommanderMark() {
+  return (
+    <svg className="cmd-ico" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+      <path d="M3.5 1.5v13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M4.3 2.3h8.4l-2.2 2.8 2.2 2.8H4.3z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** A hero's role, and the commander tag on top for the heroes that can command. */
+export function RoleTags({ id }: { id: string }) {
+  const h = HEROES[id];
+  return (
+    <>
+      <span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span>
+      {h.commander && (
+        <span
+          className="role role-commander"
+          title="Can be the team's commander: if the commander falls, the team loses"
+        >
+          <CommanderMark /> {ROLES.commander}
+        </span>
+      )}
+    </>
+  );
+}
+
 /** A hero's description, short (one glance) or detailed (full rules text). */
 export function HeroInfo({ id, mode }: { id: string; mode: DescMode }) {
   const h = HEROES[id];
@@ -67,8 +95,13 @@ export function HeroInfo({ id, mode }: { id: string; mode: DescMode }) {
       <div className="hinfo short">
         <div className="hinfo-head">
           <b>{h.name}</b>
-          <span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span>
+          <RoleTags id={id} />
         </div>
+        {h.commander && (
+          <p className="cmd-note">
+            <CommanderMark /> Can lead your team as its commander. If your commander falls, you lose.
+          </p>
+        )}
         <div className="hinfo-move">
           <MoveDiagram hero={id} size={8} />
           <span>
@@ -93,9 +126,14 @@ export function HeroInfo({ id, mode }: { id: string; mode: DescMode }) {
       <div className="hinfo-head">
         <b>{h.name}</b>
         <span className="sub">{h.title}</span>
-        <span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span>
+        <RoleTags id={id} />
         <span className="sub">{CLASSES[h.cls].name}</span>
       </div>
+      {h.commander && (
+        <p className="cmd-note">
+          <CommanderMark /> Can lead your team as its commander. If your commander falls, you lose.
+        </p>
+      )}
       <div className="hinfo-move">
         <MoveDiagram hero={id} size={9} />
         <span>

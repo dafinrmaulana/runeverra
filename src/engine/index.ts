@@ -16,6 +16,10 @@ export {
   heroDef,
   skillOf,
   isHero,
+  isCommander,
+  canCommand,
+  commanderOf,
+  teamProblem,
   own,
 } from './registry.ts';
 export { MODES, ENERGY, TEAM_SIZE } from './modes.ts';
@@ -23,7 +27,7 @@ export type { Mode } from './modes.ts';
 export { MAPS } from './maps.ts';
 export type { MapDef } from './maps.ts';
 export { livingUnits, livingHeroes, unitAt, blockAt, label, toMove, beastOf } from './state.ts';
-export { MOVE_RULES, moveOptions } from './movement.ts';
+export { MOVE_RULES, moveOptions, moveActions } from './movement.ts';
 export { skillCooldown, skillReach, inSkillReach, skillTargets, skillActions } from './skills.ts';
 export { CREEPS, HERO_BOUNTY, bountyFor } from './turn.ts';
 export { CREEP, SLOTS, createMatch } from './match.ts';

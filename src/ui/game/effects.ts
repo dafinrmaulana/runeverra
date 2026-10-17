@@ -87,6 +87,11 @@ type Flash = { center: Point; color: string; radius: number; age: number; life: 
 type Bolt = { points: Point[]; color: string; age: number; life: number };
 type FloatingText = { center: Point; text: string; color: string; age: number; life: number };
 
+/** How long Aqna's ice holds an enemy frozen before it shatters (the length of the frost sound). */
+export const FREEZE_MS = 1700;
+/** When a creep that broke through is called back in on its lane. */
+export const SPAWN_MS = 1000;
+
 /** What createEffects needs from the board: piece elements, and the display flip for the viewer's side. */
 export type EffectsView = { pieceEl: (unitId: string) => HTMLElement | undefined; toDisplay: (pos: Pos) => Pos };
 /** Decided before the board renders, so pieces wait for the effect: when victims vanish, and who hops. */
@@ -674,6 +679,10 @@ export function createEffects(canvas: HTMLCanvasElement, wrap: HTMLElement, view
     },
     ice({ lastAction }) {
       const to = lastAction.to!;
+      if (lastAction.frozen) {
+        frostKill(lastAction);
+        return;
+      }
       burst(to, [COLORS.frost, COLORS.white], 20, {
         shape: 'crystal',
         minSpeed: 2,
@@ -704,6 +713,88 @@ export function createEffects(canvas: HTMLCanvasElement, wrap: HTMLElement, view
     },
   };
 
+  /** Aqna's ice on an enemy: it freezes over, holds, then shatters and the enemy is gone. */
+  function frostKill(lastAction: LastAction) {
+    const square = lastAction.to!;
+    line(lastAction.from!, square, COLORS.frost, { life: 360, width: 2.5 });
+    view.pieceEl(lastAction.frozen!)?.classList.add('frozen');
+    flash(square, COLORS.frost, { size: 1.1, life: 420 });
+    ring(square, COLORS.frost, { from: 1.1, to: 0.35, life: 600, width: 4 });
+    burst(square, [COLORS.frost, COLORS.white], 22, {
+      shape: 'crystal',
+      minSpeed: 0.3,
+      maxSpeed: 1,
+      drag: 0.9,
+      life: [700, 1200],
+      size: [2, 3.6],
+    });
+    // the frost creeps over it while the cold sound lasts
+    for (let delay = 300; delay < FREEZE_MS - 200; delay += 320)
+      after(delay, () => {
+        ring(square, COLORS.frost, { from: 0.55, to: 0.42, life: 360, width: 2 });
+        burst(square, COLORS.white, 4, { shape: 'crystal', minSpeed: 0.1, maxSpeed: 0.4, life: [400, 700] });
+      });
+    // then it shatters
+    after(FREEZE_MS, () => {
+      flash(square, COLORS.white, { size: 1.5, life: 320 });
+      ring(square, COLORS.frost, { from: 0.3, to: 1.5, life: 520, width: 5 });
+      burst(square, [COLORS.frost, COLORS.white, '#d8f3ff'], 34, {
+        shape: 'shard',
+        minSpeed: 1.6,
+        maxSpeed: 4.4,
+        gravity: 0.9,
+        drag: 0.93,
+        life: [500, 900],
+        size: [2, 4.8],
+      });
+      burst(square, COLORS.white, 14, { shape: 'crystal', minSpeed: 1, maxSpeed: 3, life: [400, 700] });
+      text(square, 'SHATTERED', COLORS.frost);
+      shake(1.2);
+    });
+  }
+
+  /** A creep breaks through and a new one is called in on its lane: a pillar of light, rays, rising sparks. */
+  function reinforce(unitId: string, square: Pos) {
+    view.pieceEl(unitId)?.classList.add('spawn-in');
+    const start = SPAWN_MS - 450;
+    after(start, () => {
+      flash(square, COLORS.brass, { size: 1.9, life: 900 });
+      flash(square, COLORS.white, { size: 0.8, life: 500 });
+      ring(square, COLORS.brass, { from: 1.4, to: 0.45, life: 520, width: 4, dots: COLORS.white });
+      for (let ray = 0; ray < 8; ray++) {
+        const angle = (ray * Math.PI) / 4 + Math.PI / 8;
+        line(square, { r: square.r + Math.sin(angle) * 1.1, c: square.c + Math.cos(angle) * 1.1 }, COLORS.brass, {
+          life: 700,
+          width: 2.2,
+          grow: 3,
+        });
+      }
+      burst(square, [COLORS.brass, COLORS.white], 26, {
+        shape: 'spark',
+        direction: -Math.PI / 2,
+        spread: 0.5,
+        minSpeed: 1.4,
+        maxSpeed: 3.6,
+        life: [500, 900],
+      });
+    });
+    after(SPAWN_MS, () => {
+      ring(square, COLORS.brass, { from: 0.3, to: 1.3, life: 700, width: 3, dots: COLORS.brass });
+      ring(square, COLORS.white, { from: 0.2, to: 0.9, life: 500, width: 2 });
+      burst(square, [COLORS.brass, COLORS.white], 18, {
+        shape: 'dot',
+        minSpeed: 0.2,
+        maxSpeed: 0.8,
+        rise: 0.05,
+        drag: 0.96,
+        life: [700, 1200],
+        size: [1.2, 2.4],
+      });
+      text(square, 'REINFORCED', COLORS.brass);
+      shake(0.5);
+    });
+  }
+
   // ---------- what the board calls ----------
   /** Timing decisions that must be known before render. */
   function plan(before: State, afterState: State): EffectPlan {
@@ -720,6 +811,7 @@ export function createEffects(canvas: HTMLCanvasElement, wrap: HTMLElement, view
     const isStep = lastAction.kind === 'move' || lastAction.kind === 'capture';
     if (actor && isStep && heroDef(actor).move.some((rule) => rule.kind === 'leap')) result.hop = actor.id;
     if (lastAction.kind === 'storm') result.deathDelay = 420;
+    if (lastAction.kind === 'ice' && lastAction.frozen) result.deathDelay = FREEZE_MS + 60;
     if (lastAction.breach) result.deathDelay = 520;
     return result;
   }
@@ -735,16 +827,11 @@ export function createEffects(canvas: HTMLCanvasElement, wrap: HTMLElement, view
     );
     for (const victim of victims) {
       const bounty = actor ? bountyFor(victim, actor.team) : 0;
-      if (bounty) after(420, () => text(victim.pos, `+${bounty}`, COLORS.brass));
+      if (bounty) after(lastAction.frozen ? FREEZE_MS + 380 : 420, () => text(victim.pos, `+${bounty}`, COLORS.brass));
     }
     const eliminateAll = (delayMs: number, big = false) =>
       after(delayMs, () => victims.forEach((victim) => eliminated(before.units[victim.id], big)));
 
-    const skillEffect = SKILL_FX[lastAction.kind];
-    if (skillEffect) {
-      skillEffect({ lastAction, actor, before, after: afterState, target: lastAction.hits?.[0], eliminateAll });
-      return;
-    }
     if (lastAction.breach) {
       const to = lastAction.to!;
       after(300, () => {
@@ -760,6 +847,13 @@ export function createEffects(canvas: HTMLCanvasElement, wrap: HTMLElement, view
         });
         text(to, `+${tk(CREEPS.breach).toUpperCase()}`, COLORS.brass);
       });
+      const fresh = lastAction.respawned ? afterState.units[lastAction.respawned] : null;
+      if (fresh) reinforce(fresh.id, fresh.pos);
+    }
+    const skillEffect = SKILL_FX[lastAction.kind];
+    if (skillEffect) {
+      skillEffect({ lastAction, actor, before, after: afterState, target: lastAction.hits?.[0], eliminateAll });
+      return;
     }
     if (lastAction.kind === 'move') {
       const theme = MAPS[afterState.map].theme;

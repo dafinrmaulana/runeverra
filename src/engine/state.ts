@@ -31,6 +31,8 @@ export const toMove = (state: State): Team => (state.phase === 'react' ? other(s
 export const beastOf = (state: State, owner: Unit) =>
   Object.values(state.units).find((unit) => unit.kind === 'beast' && unit.ownerId === owner.id && unit.alive) || null;
 export const canBeHit = (attacker: Unit, target: Unit) => target.team !== attacker.team && !target.warded;
+/** An enemy behind Empty Grave: attacking it breaks the shield instead of eliminating it. */
+export const isShielded = (attacker: Unit, target: Unit) => target.team !== attacker.team && target.warded;
 /** The rune numbers this match is played with (older saved states predate `rules`). */
 export const energyRules = (state: State) => state.rules?.energy ?? ENERGY;
 export const gainRunes = (state: State, team: Team, amount: number) => {

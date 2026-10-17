@@ -8,7 +8,7 @@ import { ICON, SHORT, type HeroId } from '../data';
 import { Modal } from './ui';
 import { Rune, CostChip } from './Rune';
 
-const YOURS: HeroId[] = ['hasim', 'hexor', 'magumba', 'plantae'];
+const YOURS: HeroId[] = ['hasim', 'hexor', 'magumba', 'aqna'];
 const THEIRS: HeroId[] = ['genga', 'aqna', 'plantae', 'hasim'];
 const ALL = Object.keys(HEROES) as HeroId[];
 
@@ -141,8 +141,8 @@ export function Tour({
 
   const steps: Step[] = [
     {
-      title: 'Take down all four',
-      text: 'You and your opponent each lead four heroes. Move one piece per turn. No dice, no luck: the better plan wins.',
+      title: 'Take down their commander',
+      text: 'You and your opponent each lead four heroes, one of them the commander (Plantae or Magumba, marked with a banner). Take down theirs, or all four, to win. Move one piece per turn. No dice, no luck: the better plan wins.',
       visual: GoalVisual,
     },
     {

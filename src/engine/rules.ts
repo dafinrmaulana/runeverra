@@ -2,7 +2,19 @@
 // ones, and applying them. Nothing here names a hero; heroes plug in through their hooks
 // and phases (src/engine/heroes/). docs/heroes.md walks through the order of a turn.
 import type { Action, LastAction, Result, State, Team, Unit } from './types.ts';
-import { BOARD_SIZE, DIAG, TEAMS, TEAM_NAMES, inBounds, other, samePos, squareName } from './geometry.ts';
+import {
+  BOARD_SIZE,
+  DIAG,
+  TEAMS,
+  TEAM_NAMES,
+  allSquares,
+  chebyshev,
+  inBounds,
+  other,
+  parseSquare,
+  samePos,
+  squareName,
+} from './geometry.ts';
 import { HEROES, PHASES, heroDef, hooksOf, own, skillOf } from './registry.ts';
 import {
   blockAt,
@@ -12,13 +24,15 @@ import {
   label,
   livingHeroes,
   livingUnits,
+  makeUnit,
   pushLog,
+  tokens,
   toMove,
   unitAt,
 } from './state.ts';
-import { moveOptions } from './movement.ts';
+import { moveActions, moveOptions } from './movement.ts';
 import { inSkillReach, skillActions, skillCooldown } from './skills.ts';
-import { CREEPS, checkWinner, done, eliminate, endTurn, mainActors } from './turn.ts';
+import { CREEPS, checkWinner, done, eliminate, endTurn, mainActors, openSecondPawn } from './turn.ts';
 
 /** Every legal action for whoever decides now (toMove). Validation, the bot and the UI all use this. */
 export function listActions(state: State): Action[] {
@@ -33,9 +47,7 @@ export function listActions(state: State): Action[] {
   const actions: Action[] = [];
   for (const unit of mainActors(state)) {
     if (unit.rooted) continue;
-    for (const option of moveOptions(state, unit)) {
-      if ((option.cost || 0) <= state.energy[unit.team]) actions.push({ type: 'move', unitId: unit.id, to: option.to });
-    }
+    actions.push(...moveActions(state, unit, (option) => (option.cost || 0) <= state.energy[unit.team]));
     actions.push(...skillActions(state, unit));
   }
   return actions;
@@ -70,7 +82,8 @@ function explain(state: State, action: Action): string {
   if (phase) {
     const why = phase.explain?.(state, action, unit);
     if (why) return why;
-  } else if (heroDef(unit).follower) return heroDef(unit).idleText || 'That unit only follows its owner.';
+  } else if (heroDef(unit).follower && !mainActors(state).includes(unit))
+    return heroDef(unit).idleText || 'That unit only follows its owner.';
   if (unit.team !== state.current) return `It is ${TEAM_NAMES[state.current]}'s turn.`;
   if (unit.rooted) return `${label(unit)} is held by roots this turn.`;
   if (action.type === 'move') return explainMove(state, unit, action);
@@ -81,13 +94,14 @@ function explain(state: State, action: Action): string {
 function explainMove(state: State, unit: Unit, action: Action): string {
   const to = action.to;
   if (!to || !inBounds(to)) return 'That square is off the board.';
+  if (heroDef(unit).strides && !unit.stride && !action.pattern)
+    return `First choose how the ${heroDef(unit).name.toLowerCase()} moves: 1 square any way, 2 straight or 2 diagonal.`;
   if (blockAt(state, to)) return 'Nobody can enter terrain.';
   const option = moveOptions(state, unit).find((candidate) => samePos(candidate.to, to));
   if (option?.cost && option.cost > state.energy[unit.team])
     return `${heroDef(unit).skill?.name} costs ${option.cost} rune; you have ${state.energy[unit.team]}.`;
   const occupant = unitAt(state, to);
   if (occupant && occupant.team === unit.team) return `${squareName(to)} is occupied by your own unit.`;
-  if (occupant && occupant.warded) return `${label(occupant)} is protected by Empty Grave.`;
   return `${label(unit)} can't reach ${squareName(to)}. ${heroDef(unit).moveText}`;
 }
 
@@ -119,12 +133,29 @@ function explainSkill(state: State, caster: Unit, action: Action): string {
 function resolveMove(state: State, action: Action, logLines: string[], lastAction: LastAction) {
   const mover = state.units[action.unitId!];
   const option = moveOptions(state, mover).find((candidate) => samePos(candidate.to, action.to!))!;
+  if (action.pattern && heroDef(mover).strides && !mover.stride) mover.stride = action.pattern; // its stride from now on
   const from = { ...mover.pos };
   const victims = option.kills.map((id) => state.units[id]);
   const jumped = option.over ? state.units[option.over] : null;
-  lastAction.kind = option.backstab ? 'backstab' : victims.length ? 'capture' : 'move';
   lastAction.from = from;
   lastAction.to = { ...option.to };
+  if (option.breaks?.length) {
+    // An attack on Empty Grave: the shield takes it and breaks, nobody falls, the attacker stays put.
+    state.energy[mover.team] -= option.cost || 0;
+    lastAction.kind = 'shieldbreak';
+    lastAction.broke = [...option.breaks];
+    for (const id of option.breaks) {
+      const target = state.units[id];
+      target.warded = false;
+      target.wardTurns = 0;
+      lastAction.hits.push({ ...target.pos });
+      logLines.push(
+        `${label(mover)} attacks ${label(target)} on ${squareName(target.pos)}, but Empty Grave takes the blow and breaks. ${label(mover)} is thrown back.`,
+      );
+    }
+    return { killed: 0, broke: true };
+  }
+  lastAction.kind = option.backstab ? 'backstab' : victims.length ? 'capture' : 'move';
   if (option.backstab) {
     state.energy[mover.team] -= option.cost || 0;
     logLines.push(
@@ -140,14 +171,45 @@ function resolveMove(state: State, action: Action, logLines: string[], lastActio
     eliminate(state, victim, logLines, mover.team);
   }
   mover.pos = { ...option.to };
-  if (mover.kind === 'creep') mover.moved = true;
+  if (mover.kind === 'creep' || mover.kind === 'beast') mover.moved = true;
   if (mover.kind === 'creep' && mover.pos.r === (mover.team === 'p1' ? 0 : BOARD_SIZE - 1)) {
     mover.alive = false;
     gainRunes(state, mover.team, CREEPS.breach);
     lastAction.breach = true;
-    logLines.push(`${label(mover)} breaks through on ${squareName(mover.pos)}: +${CREEPS.breach} runes.`);
+    logLines.push(`${label(mover)} breaks through on ${squareName(mover.pos)}: +${tokens(CREEPS.breach)}.`);
+    const fresh = respawnCreep(state, mover);
+    if (fresh) {
+      lastAction.respawned = fresh.id;
+      logLines.push(`A new ${label(fresh)} joins on ${squareName(fresh.pos)}.`);
+    }
   }
-  return { killed: victims.length };
+  return { killed: victims.length, broke: false };
+}
+
+/**
+ * A creep that broke through comes back as a new creep on its starting square, or, when a unit stands there,
+ * on the nearest open square to it (staying on that rank if it can, then nearer its own side).
+ */
+function respawnCreep(state: State, creep: Unit): Unit | null {
+  const file = creep.id.split('-')[2];
+  const home = parseSquare(`${file}${creep.team === 'p1' ? 2 : BOARD_SIZE - 1}`);
+  const farRank = creep.team === 'p1' ? 0 : BOARD_SIZE - 1;
+  const behind = (pos: { r: number }) => (creep.team === 'p1' ? pos.r - home.r : home.r - pos.r); // > 0: toward its own side
+  const spot = allSquares()
+    .filter((pos) => pos.r !== farRank && !unitAt(state, pos) && !blockAt(state, pos))
+    .sort(
+      (first, second) =>
+        chebyshev(first, home) - chebyshev(second, home) ||
+        Math.abs(first.r - home.r) - Math.abs(second.r - home.r) ||
+        behind(second) - behind(first) ||
+        Math.abs(first.c - home.c) - Math.abs(second.c - home.c),
+    )[0];
+  if (!spot) return null;
+  let count = 2;
+  while (state.units[`${creep.team}-creep-${file}-${count}`]) count++;
+  const id = `${creep.team}-creep-${file}-${count}`;
+  state.units[id] = makeUnit(id, creep.team, 'creep', 'creep', spot);
+  return state.units[id];
 }
 
 function resolveSkill(state: State, action: Action, logLines: string[], lastAction: LastAction) {
@@ -239,9 +301,13 @@ function answerReaction(state: State, answer: Action, logLines: string[]): Resul
 /** Resolve a move or a cast, then either open the hero's follow-up phase or end the turn. */
 function finishUnitAction(state: State, action: Action, lastAction: LastAction, logLines: string[]): Result {
   const actor = state.units[action.unitId!];
-  const following = !!own(PHASES, state.phase)?.unitPhase; // e.g. the beast stepping after Ge'nga
-  let killed = 0;
-  if (action.type === 'move') killed = resolveMove(state, action, logLines, lastAction).killed;
+  const phaseNow = own(PHASES, state.phase);
+  // e.g. the beast stepping after Ge'nga: its own follow-ups don't run. Aqna moving after her ice is her own move.
+  const following = !!phaseNow?.unitPhase && !phaseNow.ownMove;
+  const inPhase = !!phaseNow?.unitPhase;
+  let killed = 0,
+    broke = false;
+  if (action.type === 'move') ({ killed, broke } = resolveMove(state, action, logLines, lastAction));
   else resolveSkill(state, action, logLines, lastAction);
   pushLog(state, logLines, actor.team);
   state.lastAction = lastAction;
@@ -250,9 +316,13 @@ function finishUnitAction(state: State, action: Action, lastAction: LastAction, 
 
   state.phase = 'main';
   state.pending = null;
-  if (action.type !== 'skill' && !following && actor.alive) {
-    // a cast ends the turn
+  if (action.type === 'skill' && !inPhase && actor.alive) {
+    // a cast ends the turn, unless the hero may still act (Aqna moves after her ice)
+    if (hooksOf(actor)?.afterSkill?.(state, actor)) return done(state);
+  } else if (action.type !== 'skill' && !following && actor.alive && !broke) {
+    // an attack thrown back by a shield ends the turn
     if (hooksOf(actor)?.afterAction?.(state, actor, { killed })) return done(state);
+    if (!inPhase && openSecondPawn(state, actor)) return done(state);
   }
   endTurn(state);
   return done(state);
@@ -264,7 +334,7 @@ function findReactor(state: State, action: Action): Unit | null {
   if (!actor || actor.warded) return null;
   for (const hero of livingHeroes(state, other(actor.team))) {
     const reaction = hooksOf(hero)?.reaction;
-    if (reaction && !hero.rooted && skillCooldown(hero) === 0 && reaction.can(state, hero, actor)) return hero;
+    if (reaction && !hero.rooted && skillCooldown(hero) === 0 && reaction.can(state, hero, actor, action)) return hero;
   }
   return null;
 }

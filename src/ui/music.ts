@@ -3,10 +3,12 @@
 // memory) routed into the shared audio context, so its volume also works on iPhone, where an element's own
 // volume is ignored.
 import { pref, setPref } from './data';
-import { audioContext } from './audio';
+import { audioContext, limiter } from './audio';
 
 const FADE_SECONDS = 0.9;
-let volume: number = pref('musicVol', 0.5);
+// The slider goes twice as loud as it used to: 50% (the default) is the old 100%, 100% doubles it.
+const FULL_GAIN = 1.2;
+let volume: number = pref('musicLevel', 0.5);
 let wanted = false; // on a menu screen
 let element: HTMLAudioElement | null = null;
 let gain: GainNode | null = null;
@@ -23,7 +25,7 @@ function setup(): boolean {
     gain = context.createGain();
     gain.gain.value = 0;
     context.createMediaElementSource(element).connect(gain);
-    gain.connect(context.destination);
+    gain.connect(limiter(context));
     return true;
   } catch {
     element = null;
@@ -48,7 +50,7 @@ function update() {
   if (playing) {
     if (context.state === 'suspended') context.resume().catch(() => {});
     element.play().catch(() => {}); // refused until the first touch; the unlock below tries again
-    gain.gain.linearRampToValueAtTime(volume * 0.6, now + FADE_SECONDS);
+    gain.gain.linearRampToValueAtTime(volume * FULL_GAIN, now + FADE_SECONDS);
   } else {
     gain.gain.linearRampToValueAtTime(0, now + FADE_SECONDS);
     pauseTimer = setTimeout(() => element?.pause(), FADE_SECONDS * 1000 + 50);
@@ -64,7 +66,7 @@ export function setMenuMusic(onMenu: boolean) {
 export const musicVolume = () => volume;
 export function setMusicVolume(level: number) {
   volume = Math.min(1, Math.max(0, level));
-  setPref('musicVol', volume);
+  setPref('musicLevel', volume);
   update();
 }
 

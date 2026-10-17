@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { HEROES, TEAM_NAMES } from '../../engine/index.ts';
+import { HEROES, TEAM_NAMES, canCommand, commanderOf } from '../../engine/index.ts';
 import { CostChip } from './Rune';
-import { HERO_IDS, ICON, ART, roleOf, randomTeam, type HeroId, type Team, cssVars } from '../data';
-import { HeroInfo, type DescMode } from './HeroInfo';
+import { HERO_IDS, ICON, ART, randomTeam, type HeroId, type Team, cssVars } from '../data';
+import { CommanderMark, HeroInfo, RoleTags, type DescMode } from './HeroInfo';
 import { Modal } from './ui';
 
 const SIZE = 4;
@@ -25,6 +25,18 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
   const [modal, setModal] = useState<string | null>(null);
   const [note, setNote] = useState('');
 
+  // The commander is the first hero in pick order that can command: choosing one swaps the two in the team.
+  const leaders = HERO_IDS.filter((heroId) => picks.includes(heroId) && canCommand(heroId)); // a stable order, like a switch
+  const chooseCommander = (id: HeroId) => {
+    const current = commanderOf(picks);
+    if (readOnly || !current || current === id) return;
+    const next = [...picks];
+    const [from, to] = [picks.indexOf(current as HeroId), picks.indexOf(id)];
+    [next[from], next[to]] = [next[to], next[from]];
+    onChange(next);
+    setNote(`${HEROES[id].name} commands your team: if they fall, you lose.`);
+  };
+
   const toggle = (id: HeroId) => {
     if (readOnly) return;
     const i = picks.indexOf(id);
@@ -37,8 +49,15 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
       setNote('Team is full. Tap a hero in your team to remove it first.');
       return;
     }
-    onChange([...picks, id]);
-    setNote('');
+    const next = [...picks, id];
+    onChange(next);
+    setNote(
+      next.length === SIZE && !commanderOf(next)
+        ? 'Every team needs a commander (Plantae or Magumba). If it falls, you lose.'
+        : canCommand(id) && next.filter(canCommand).length > 1
+          ? `Two heroes can command: choose your commander above. ${HEROES[commanderOf(next)!].name} leads for now.`
+          : '',
+    );
   };
 
   return (
@@ -101,6 +120,32 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
           );
         })}
       </div>
+      {leaders.length > 1 && (
+        <div className="commander-pick">
+          <span className="commander-pick-label">
+            <b>
+              <CommanderMark /> Choose your commander
+            </b>
+            <small>Both can lead. Tap the one who leads: if your commander falls, you lose.</small>
+          </span>
+          <span className="cmd-switch" role="radiogroup" aria-label="Choose your commander">
+            {leaders.map((heroId) => (
+              <button
+                key={heroId}
+                type="button"
+                role="radio"
+                aria-checked={commanderOf(picks) === heroId}
+                className="cmd-opt"
+                disabled={readOnly}
+                onClick={() => chooseCommander(heroId)}
+              >
+                <img src={ICON(heroId)} alt="" />
+                {HEROES[heroId].name}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
       {note && <p className="picker-note">{note}</p>}
 
       <div className="hero-grid">
@@ -123,7 +168,7 @@ export function HeroPicker({ team, title, picks, onChange, mode, onMode, mirrore
                 </span>
                 <span className="htile-text">
                   <b>{h.name}</b>
-                  <span className={`role role-${h.role || 'none'}`}>{roleOf(id)}</span>
+                  <RoleTags id={id} />
                   <span className="sk">
                     {h.skill.name} <CostChip sk={h.skill} />
                   </span>

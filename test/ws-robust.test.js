@@ -43,7 +43,7 @@ test('crafted actions and hero ids are refused and the relay keeps running', asy
   const from = a.msgs.length;
   send(a, { t: 'picks', picks: ['hasim', 'genga', 'magumba', 'toString'] });
   assert.deepEqual((await until(a, (message) => message.t === 'lobby', from)).you.picks, ['hasim', 'genga', 'magumba']);
-  for (const w of [a, b]) send(w, { t: 'picks', picks: ['hasim', 'genga', 'magumba', 'plantae'] });
+  for (const w of [a, b]) send(w, { t: 'picks', picks: ['hasim', 'genga', 'magumba', 'hexor'] });
   for (const w of [a, b]) await until(w, (message) => message.t === 'lobby' && message.you.picks.length === 4);
   for (const w of [a, b]) send(w, { t: 'ready', ready: true });
   for (const w of [a, b]) await until(w, (message) => message.t === 'start');

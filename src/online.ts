@@ -7,7 +7,7 @@
 // Indexes make the log tiny (a long match is a few hundred bytes) and can never encode
 // an illegal action: an index past the end of the list is simply rejected.
 import type { Action, Pos, State, Team } from './engine/index.ts';
-import { applyAction, listActions, toMove, createMatch } from './engine/index.ts';
+import { applyAction, listActions, toMove, createMatch, teamProblem } from './engine/index.ts';
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L
 export const CODE_LENGTH = 5;
@@ -80,6 +80,10 @@ export function actionAt(state: State, index: number) {
 
 /** The match both clients build from the agreed setup. */
 export function matchFromConfig(config: MatchConfig) {
+  for (const picks of [config.p1, config.p2]) {
+    const problem = teamProblem(picks || []);
+    if (problem) throw new Error(problem);
+  }
   return createMatch({
     p1: config.p1,
     p2: config.p2,

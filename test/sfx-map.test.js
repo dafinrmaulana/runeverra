@@ -9,7 +9,9 @@ test('every skill and takedown has its own sound; skips are silent; a beast step
     assert.equal(sfxFor({ kind: k }), k);
   assert.equal(sfxFor({ kind: 'move', unitId: 'b' }, { b: { kind: 'beast' } }), 'beast');
   assert.equal(sfxFor({ kind: 'move', unitId: 'h' }, { h: { kind: 'hero' } }), 'move');
-  for (const k of ['skip-beast', 'skip-ice', 'skip-storm', 'react', undefined]) assert.equal(sfxFor({ kind: k }), null);
+  assert.equal(sfxFor({ kind: 'shieldbreak' }), 'shield');
+  for (const k of ['skip-beast', 'skip-ice', 'skip-storm', 'skip-pawn', 'react', undefined])
+    assert.equal(sfxFor({ kind: k }), null);
   assert.equal(sfxFor(null), null);
 });
 
@@ -20,7 +22,8 @@ test('replaying the demo match, every action that changes the board gets a sound
     const before = g;
     g = applyAction(g, a).state;
     const name = sfxFor(g.lastAction !== before.lastAction ? g.lastAction : null, g.units);
-    if (a.type === 'move' || a.type === 'skill')
+    // (an action waiting on the opponent's interrupt prompt sounds once it is answered)
+    if ((a.type === 'move' || a.type === 'skill') && g.phase !== 'react')
       assert.ok(name, `${a.type} ${JSON.stringify(g.lastAction?.kind)} should make a sound`);
     if (name) heard.add(name);
   }

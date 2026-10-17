@@ -36,7 +36,7 @@ test('move lists encode compactly and decode back; garbage stops decoding', () =
 
 test("two clients replaying each side's own list reach the same match", () => {
   const cfg = {
-    p1: ['hasim', 'hexor', 'magumba', 'plantae'],
+    p1: ['hasim', 'hexor', 'magumba', 'aqna'],
     p2: ['genga', 'aqna', 'plantae', 'hasim'],
     map: 'jungle',
     creeps: true,
@@ -69,7 +69,7 @@ test("two clients replaying each side's own list reach the same match", () => {
 });
 
 test('an index that is not a legal action is rejected, never applied', () => {
-  const cfg = { p1: ['hasim', 'hexor', 'magumba', 'plantae'], p2: ['genga', 'aqna', 'plantae', 'hasim'], map: 'field' };
+  const cfg = { p1: ['hasim', 'hexor', 'magumba', 'aqna'], p2: ['genga', 'aqna', 'plantae', 'hasim'], map: 'field' };
   const r = replay(cfg, { p1: [4000], p2: [] });
   assert.match(r.error, /Bad move/);
   assert.equal(r.state.turn, 1);

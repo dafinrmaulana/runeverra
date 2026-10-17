@@ -17,7 +17,7 @@ import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { applyAction, validateAction, toMove, isHero, own, TEAM_SIZE } from '../src/engine/index.ts';
+import { applyAction, validateAction, toMove, isHero, own, teamProblem, TEAM_SIZE } from '../src/engine/index.ts';
 import type { Action, State, Team } from '../src/engine/index.ts';
 import { newRoomCode, cleanCode, matchFromConfig } from '../src/online.ts';
 import { createClock, setRunning, remaining, snapshot, minutesToMs } from '../src/clock.ts';
@@ -71,7 +71,7 @@ const other = (team: Team): Team => (team === 'p1' ? 'p2' : 'p1');
 const newToken = () => randomBytes(12).toString('base64url');
 const isTeam = (value: unknown): value is Team => value === 'p1' || value === 'p2';
 const validPicks = (picks: unknown): picks is string[] =>
-  Array.isArray(picks) && picks.length === TEAM_SIZE && picks.every(isHero);
+  Array.isArray(picks) && picks.length === TEAM_SIZE && picks.every(isHero) && !teamProblem(picks);
 
 function send(ws: Client | null, message: ServerMessage) {
   if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));

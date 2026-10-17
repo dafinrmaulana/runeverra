@@ -25,7 +25,7 @@ import { setMenuMusic } from './music';
 import { useInstall } from './pwa';
 import { Modal, Steps, Switch } from './components/ui';
 import { CursorPicker } from './cursor';
-import { ICON, pref, setPref, type HeroId, type Team } from './data';
+import { ICON, pickProblem, pref, setPref, type HeroId, type Team } from './data';
 import type { DescMode } from './components/HeroInfo';
 
 type ModeKind = 'bot' | 'local' | 'online';
@@ -423,7 +423,9 @@ export function App() {
                 ? {
                     label: 'Next: battlefield',
                     disabled:
-                      kind === 'online' ? r.picks.length !== 4 : teamOf('p1').length !== 4 || p2Picks.length !== 4,
+                      kind === 'online'
+                        ? !!pickProblem(r.picks)
+                        : !!pickProblem(teamOf('p1')) || !!pickProblem(p2Picks),
                     hint: heroHint(
                       kind,
                       kind === 'bot' ? picks[youT] : picks.p1,
@@ -435,7 +437,7 @@ export function App() {
                 : kind === 'online'
                   ? {
                       label: r.ready ? 'Not ready' : 'Ready',
-                      disabled: !r.room || r.picks.length !== 4,
+                      disabled: !r.room || !!pickProblem(r.picks),
                       hint: !r.opp
                         ? 'Waiting for your opponent to join.'
                         : r.ready
@@ -731,9 +733,11 @@ export function App() {
 }
 
 function heroHint(kind: ModeKind, first: HeroId[], p2: HeroId[], onlineRoom: typeof room) {
-  if (kind === 'online') return onlineRoom.picks.length < 4 ? `Pick ${4 - onlineRoom.picks.length} more.` : 'Team set.';
-  if (first.length < 4) return `${kind === 'bot' ? 'You need' : 'Player 1 needs'} ${4 - first.length} more.`;
-  if (p2.length < 4) return `${kind === 'bot' ? 'The bot needs' : 'Player 2 needs'} ${4 - p2.length} more.`;
+  if (kind === 'online') return pickProblem(onlineRoom.picks) || 'Team set.';
+  const firstProblem = pickProblem(first);
+  if (firstProblem) return `${kind === 'bot' ? 'You' : 'Player 1'}: ${firstProblem}`;
+  const secondProblem = pickProblem(p2);
+  if (secondProblem) return `${kind === 'bot' ? 'The bot' : 'Player 2'}: ${secondProblem}`;
   return 'Both teams set.';
 }
 

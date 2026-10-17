@@ -1,6 +1,6 @@
 // Display data and helpers shared by every screen. Rules live in src/engine/.
 import type { CSSProperties } from 'react';
-import { HEROES, ROLES, MAPS, createMatch, moveOptions } from '../engine/index.ts';
+import { HEROES, ROLES, MAPS, createMatch, moveOptions, teamProblem } from '../engine/index.ts';
 
 export type Team = 'p1' | 'p2';
 export type HeroId = keyof typeof HEROES;
@@ -108,13 +108,24 @@ export function setPref(key: string, value: unknown) {
 }
 
 /** Deterministic shuffle pick for a random team. */
+/** A random team with exactly one commander, the rest drawn from the other heroes. */
 export function randomTeam(seed: number, size = 4): HeroId[] {
-  const pool = [...HERO_IDS];
-  const out: HeroId[] = [];
+  const commanders = HERO_IDS.filter((id) => HEROES[id].commander);
+  const others = HERO_IDS.filter((id) => !HEROES[id].commander);
   let h = (seed * 2654435761 + 7) >>> 0;
-  while (out.length < size && pool.length) {
+  const draw = (pool: HeroId[]) => {
     h = (Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
-    out.push(pool.splice(h % pool.length, 1)[0]);
-  }
+    return pool.splice(h % pool.length, 1)[0];
+  };
+  const out: HeroId[] = [draw(commanders)];
+  while (out.length < size && others.length) out.push(draw(others));
+  const slot = (h >>> 3) % out.length; // the commander in a random slot
+  [out[0], out[slot]] = [out[slot], out[0]];
   return out;
+}
+
+/** Why a picked team can't start yet (wrong size or no single commander), or '' when it can. */
+export function pickProblem(picks: readonly string[], size = 4): string {
+  if (picks.length < size) return `Pick ${size - picks.length} more.`;
+  return teamProblem(picks) || '';
 }

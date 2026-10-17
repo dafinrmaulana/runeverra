@@ -1,5 +1,5 @@
-// Plantae, Jungle Keeper: Aggressive Root, cast on her turn or as a reaction on the enemy's.
-import type { Dir } from '../types.ts';
+// Plantae, Jungle Keeper: a commander. Aggressive Root, cast on her turn or as a reaction on the enemy's.
+import type { Action, Dir, State } from '../types.ts';
 import { ORTHO, other } from '../geometry.ts';
 import { defineHero } from '../registry.ts';
 import { dist, label, left, livingUnits, tokens } from '../state.ts';
@@ -13,6 +13,7 @@ const plantae = defineHero('plantae', {
   title: 'Jungle Keeper',
   cls: 'leaf',
   role: 'support',
+  commander: true,
   value: 270,
   move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
   moveText: 'Steps 1 square straight.',
@@ -26,11 +27,12 @@ const plantae = defineHero('plantae', {
     reaction: true,
     reactionCost: 3,
     cooldown: 3,
-    text: "Roots an enemy in the 3x3 block right in front of her — never beside or behind her, and nothing in between blocks it. It can't act on its next turn. It can instead be cast during the opponent's turn (3 runes), when an enemy in that block acts: that action is negated. After either use, it recharges for 3 of your turns.",
+    text: "Roots an enemy in the 3x3 block right in front of her — never beside or behind her, and nothing in between blocks it. It can't act on its next turn. It can instead be cast during the opponent's turn (3 runes), when an enemy in that block acts, or an enemy outside it tries to move or act into it: that action is negated, and the enemy stays where it was. After either use, it recharges for 3 of your turns.",
   },
   short: {
     move: 'Steps 1 straight.',
-    skill: '3 runes: root an enemy in the 3x3 block in front of her, or cancel an enemy action there on their turn.',
+    skill:
+      '3 runes: root an enemy in the 3x3 block in front of her, or cancel an enemy action in or into it on their turn.',
   },
   ui: {
     targets: 'enemy',
@@ -61,11 +63,11 @@ const plantae = defineHero('plantae', {
     explainTarget: (_state, _hero, target) =>
       target.rooted ? `${label(target)} is already rooted.` : 'Aggressive Root only works on enemies.',
     reaction: {
-      can(state, reactor, actor) {
+      can(state, reactor, actor, action) {
         const skill = plantae.skill;
         if (skill.maxReactions != null && (reactor.reacts || 0) >= skill.maxReactions) return false;
         if (state.energy[reactor.team] < (skill.reactionCost ?? skill.cost)) return false;
-        return inSkillReach(state, reactor, actor.pos);
+        return [actor.pos, ...reachedBy(state, action)].some((pos) => inSkillReach(state, reactor, pos));
       },
       resolve(state, reactor, actor, negated, logLines) {
         const skill = plantae.skill;
@@ -75,8 +77,9 @@ const plantae = defineHero('plantae', {
         reactor.reacts = (reactor.reacts || 0) + 1;
         // where the negated action was going, so the animation can pull the actor back from it
         const toward = negated.to || (negated.targetId ? state.units[negated.targetId]?.pos : null) || null;
+        const inside = inSkillReach(state, reactor, actor.pos);
         logLines.push(
-          `${label(reactor)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(cost)}: ${label(actor)} acted ${dist(reactor, actor)} in the block in front of Plantae, within range ${skill.range}; recharges for ${skill.cooldown} turns. ${left(state, reactor.team)}`,
+          `${label(reactor)} interrupts with Aggressive Root! ${label(actor)}'s action is negated. Interrupt, ${tokens(cost)}: ${label(actor)} ${inside ? `acted ${dist(reactor, actor)} in` : 'tried to reach into'} the block in front of Plantae; recharges for ${skill.cooldown} turns. ${left(state, reactor.team)}`,
         );
         return {
           team: reactor.team,
@@ -93,3 +96,12 @@ const plantae = defineHero('plantae', {
     },
   },
 });
+
+/** The squares an action goes to or aims at (a move's square, a skill's square or target). */
+function reachedBy(state: State, action: Action) {
+  const squares = [];
+  if (action.to) squares.push(action.to);
+  const target = action.targetId ? state.units[action.targetId] : null;
+  if (target) squares.push(target.pos);
+  return squares;
+}

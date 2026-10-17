@@ -15,10 +15,12 @@ import {
   skillOf,
   moveOptions,
   squareName,
+  heroDef,
 } from '../../engine/index.ts';
 import { chooseAction } from '../../engine/bot.ts';
 import { actionIndex } from '../../online.ts';
 import { createBoard } from './board.ts';
+import { FREEZE_MS, SPAWN_MS } from './effects.ts';
 import { tk, pref, setPref, type Team } from '../data';
 import { addResult, getTally, resetTally, sideA } from '../record';
 import { saveReplay } from '../replays';
@@ -26,7 +28,7 @@ import { sfx, type SfxName } from '../audio';
 import { sfxFor } from '../../sfx-map.ts';
 import { createClock, setRunning, remaining, expired, fromSnapshot } from '../../clock.ts';
 import type { Clock, ClockSnapshot } from '../../clock.ts';
-import type { Action, Pos, State, Unit } from '../../engine/index.ts';
+import type { Action, Pos, State } from '../../engine/index.ts';
 
 export type Mode =
   | { kind: 'bot'; level: 'easy' | 'normal' | 'hard'; side: Team }
@@ -34,6 +36,14 @@ export type Mode =
   | { kind: 'online'; side: Team; onLocalMove: (index: number, action: Action) => void };
 
 export type Source = 'me' | 'bot' | 'remote';
+
+/** The beast's stride, picked on its first move and kept all match: 1 square any way, or up to 2 straight or diagonal. */
+export type BeastPattern = 'any' | 'plus' | 'cross';
+const BEAST_PATTERN_TEXT: Record<BeastPattern, string> = {
+  any: 'The beast will move 1 square in any direction, all match: tap a marked square.',
+  plus: 'The beast will move up to 2 squares straight, all match: tap a marked square.',
+  cross: 'The beast will move up to 2 squares diagonally, all match: tap a marked square.',
+};
 
 const BOT_DELAY_MS = 520;
 
@@ -46,6 +56,8 @@ export class GameController {
   msgKind: '' | 'ok' | 'err' = '';
   showThreats = true;
   showScore: boolean = pref('showScore', true);
+  /** How the selected beast moves this time; null until the player picks. */
+  beastPattern: BeastPattern | null = null;
   /** Which series this match counts toward (set by the app); '' = not counted. */
   series = '';
   private recorded = false;
@@ -173,8 +185,11 @@ export class GameController {
     const sel = this.selectedId ? g.units[this.selectedId] : null;
     const live = sel && sel.alive ? sel : null;
     const threats = this.showThreats && g.status === 'playing' ? getThreats(g, g.current) : new Set<string>();
-    const acts = this.deciderIsHuman() ? listActions(g) : [];
-    this.board?.render(g, { acts, live, armed: this.armed, threats, ...extra });
+    const acts = this.deciderIsHuman() ? this.gate(listActions(g)) : [];
+    // face to face both sides are human: only the side to move counts as "own"
+    const ownReach =
+      !!live && this.humanTeams().includes(live.team) && (this.mode.kind !== 'local' || live.team === g.current);
+    this.board?.render(g, { acts, live, armed: this.armed, threats, ownReach, ...extra });
     this.changed();
     this.maybeBot();
   }
@@ -190,6 +205,31 @@ export class GameController {
   clearSel() {
     this.selectedId = null;
     this.armed = false;
+    this.beastPattern = null;
+  }
+
+  // ---------- the beast's first move: the player first picks how it moves (once per match) ----------
+  /** True while the selected beast, before its first move, may move and the player still has to pick its pattern. */
+  needsBeastPattern() {
+    const g = this.game;
+    const sel = this.selectedId ? g.units[this.selectedId] : null;
+    return (
+      !!sel &&
+      !!heroDef(sel).strides &&
+      !sel.stride &&
+      !this.beastPattern &&
+      this.deciderIsHuman() &&
+      listActions(g).some((action) => action.type === 'move' && action.unitId === sel.id)
+    );
+  }
+  pickBeastPattern(pattern: BeastPattern) {
+    this.beastPattern = pattern;
+    this.say(BEAST_PATTERN_TEXT[pattern]);
+    this.render({});
+  }
+  /** Before the beast's first move, only the moves of the stride picked show (and count); everything else passes. */
+  private gate(acts: Action[]) {
+    return acts.filter((action) => !action.pattern || action.type !== 'move' || action.pattern === this.beastPattern);
   }
 
   // ---------- decisions ----------
@@ -223,11 +263,19 @@ export class GameController {
     this.playSound(before, g, src);
     const plan = this.board?.plan(before, g);
     const hits = g.lastAction && g.lastAction !== before.lastAction ? g.lastAction.hits || [] : [];
-    if (g.phase === 'beast' && this.deciderIsHuman()) this.selectedId = g.pending?.unitId ?? null;
+    // a follow-up move of one unit (the beast, Aqna after her ice): select it so its squares show
+    if ((g.phase === 'beast' || g.phase === 'icewalk') && this.deciderIsHuman())
+      this.selectedId = g.pending?.unitId ?? null;
     this.render({ deathDelay: plan?.deathDelay ?? 0, hits });
     if (this.board && plan) {
       if (plan.hop) this.board.hop(plan.hop);
       this.board.run(plan);
+      const broke = g.lastAction !== before.lastAction && g.lastAction?.kind === 'shieldbreak' ? g.lastAction : null;
+      if (broke?.unitId && broke.broke?.length) {
+        // the attack lunges at the shield and is thrown back
+        const target = g.units[broke.broke[0]];
+        this.board.shieldBounce({ attackerId: broke.unitId, from: broke.from!, targetId: target.id, to: target.pos });
+      }
       if (before.status === 'playing' && g.status !== 'playing') this.board.victory(g, g.status);
     }
     if (before.status === 'playing' && g.status !== 'playing' && !this.recorded) {
@@ -255,8 +303,16 @@ export class GameController {
   private playSound(before: State, after: State, src: Source) {
     const fresh = after.lastAction && after.lastAction !== before.lastAction ? after.lastAction : null;
     sfx(sfxFor(fresh, after.units) as SfxName | null);
-    if (fresh?.kind === 'backstab' && fresh.hits.length) window.setTimeout(() => sfx('slash'), 220); // his blade lands
-    if (fresh?.movedIce) window.setTimeout(() => sfx('shatter'), 120); // her oldest block breaks to make room
+    const killed = Object.values(before.units).some((unit) => unit.alive && !after.units[unit.id]?.alive);
+    if (fresh?.kind === 'backstab' && killed) window.setTimeout(() => sfx('slash'), 220); // his blade lands
+    // the frost holds the enemy for as long as it sounds, then the ice (and the enemy) shatters
+    if (fresh?.kind === 'ice' && fresh.frozen) window.setTimeout(() => sfx('shatter'), FREEZE_MS);
+    else if (fresh?.movedIce) window.setTimeout(() => sfx('shatter'), 120); // her oldest block breaks to make room
+    if (fresh?.breach) {
+      window.setTimeout(() => sfx('rune'), 320); // +1 rune
+      if (fresh.respawned) window.setTimeout(() => sfx('spawn'), SPAWN_MS - 250); // a new creep is called in
+    }
+    if (fresh?.kind === 'summon' && killed) window.setTimeout(() => sfx('capture'), 300); // the beast lands on an enemy
     if (before.status === 'playing' && after.status !== 'playing') {
       const mine = this.mode.kind === 'local' ? null : after.status === this.viewer();
       window.setTimeout(() => sfx(mine === null ? 'victory' : mine ? 'victory' : 'defeat'), 420);
@@ -307,15 +363,29 @@ export class GameController {
       else this.escape(); // the same piece again, or an empty square: put it down
       return;
     }
-    const acts = listActions(g);
+    const acts = this.gate(listActions(g));
     const occupant = unitAt(g, pos);
+    if (this.needsBeastPattern() && occupant?.id !== this.selectedId) {
+      this.say('First choose how the beast moves: 1 square any way, 2 straight, or 2 diagonal.', 'err');
+      this.render({});
+      return;
+    }
     if (g.phase === 'react') return;
     const phase = PHASES[g.phase];
     if (phase) {
-      // a follow-up (ice, the beast's step, a slam): a tap picks one of its squares
-      const a = acts.find((action) => action.to && samePos(action.to, pos));
+      // a follow-up (ice, the beast's step, a slam, a second creep): a tap picks one of its squares
+      const chosen = this.selectedId;
+      const a =
+        acts.find((action) => action.to && samePos(action.to, pos) && (!chosen || action.unitId === chosen)) ||
+        acts.find((action) => action.to && samePos(action.to, pos));
       if (a) {
         this.commit(a);
+        return;
+      }
+      // a phase with several units to choose from (the opening's second creep): a tap picks the unit first
+      if (occupant && acts.some((action) => action.unitId === occupant.id)) {
+        if (this.selectedId === occupant.id) this.escape();
+        else this.select(occupant.id);
         return;
       }
       this.say(phase.hint || 'Decide, or Skip.', 'err');
@@ -366,11 +436,9 @@ export class GameController {
       sel.team === g.current &&
       acts.some((action) => action.type === 'move' && action.unitId === sel.id && samePos(action.to!, pos))
     ) {
-      this.commit({ type: 'move', unitId: sel.id, to: pos });
-      return;
-    }
-    if (sel && occupant && this.shieldBlocks(sel, occupant)) {
-      this.bounce(sel, occupant, true);
+      this.commit(
+        acts.find((action) => action.type === 'move' && action.unitId === sel.id && samePos(action.to!, pos))!,
+      );
       return;
     }
     if (
@@ -408,38 +476,15 @@ export class GameController {
     this.render({});
   }
 
-  /** Would `attacker` capture `target` here if Empty Grave weren't protecting it? */
-  shieldBlocks(attacker: Unit, target: Unit): boolean {
-    const g = this.game;
-    if (!target.warded || target.team === attacker.team || attacker.team !== g.current || g.phase !== 'main')
-      return false;
-    const open = { ...g, units: { ...g.units, [target.id]: { ...target, warded: false } } };
-    return moveOptions(open, attacker).some(
-      (option) => samePos(option.to, target.pos) && option.kills.includes(target.id),
-    );
-  }
-  /** The attack bounces off the shield: an effect and a message, the turn is not used. */
-  bounce(attacker: Unit, target: Unit, lunge: boolean) {
-    this.board?.shieldBounce({
-      attackerId: attacker.id,
-      from: attacker.pos,
-      targetId: target.id,
-      to: target.pos,
-      lunge,
-    });
-    sfx('shield');
-    this.msg = `${label(target)} is shielded by Empty Grave: ${label(attacker)} is thrown back. The shield lasts until its caster's next turn.`;
-    this.msgKind = 'err'; // the shield's own sound, not the error thud
-    this.render({});
-  }
-
   /** A press on a piece that can move now: lift it (select, showing its squares). */
   onPress(pos: Pos): { id: string; fresh: boolean } | null {
     const g = this.game;
     if (g.status !== 'playing' || !this.deciderIsHuman() || this.armed) return null;
-    if (g.phase !== 'main' && g.phase !== 'beast') return null;
+    if (g.phase !== 'main' && !PHASES[g.phase]?.unitPhase) return null;
     const u = unitAt(g, pos);
     if (!u || !listActions(g).some((action) => action.type === 'move' && action.unitId === u.id)) return null;
+    // a beast still to pick its stride: no lifting yet (the tap selects it and the stride chooser opens)
+    if (heroDef(u).strides && !u.stride && (!this.beastPattern || this.selectedId !== u.id)) return null;
     const fresh = this.selectedId !== u.id;
     if (fresh) this.select(u.id);
     return { id: u.id, fresh };
@@ -448,15 +493,10 @@ export class GameController {
   /** A lifted piece released on `pos`. True when it moved there. */
   onDrop(id: string, pos: Pos): boolean {
     const g = this.game;
-    const a = listActions(g).find(
+    const a = this.gate(listActions(g)).find(
       (action) => action.type === 'move' && action.unitId === id && samePos(action.to!, pos),
     );
     if (a) return this.commit(a);
-    const occ = unitAt(g, pos);
-    if (occ && this.shieldBlocks(g.units[id], occ)) {
-      this.bounce(g.units[id], occ, false);
-      return false;
-    }
     this.say(validateAction(g, { type: 'move', unitId: id, to: pos }).reason || 'That square is out of reach.', 'err');
     this.render({});
     return false;
@@ -464,12 +504,16 @@ export class GameController {
 
   select(id: string) {
     const g = this.game;
+    if (id !== this.selectedId) this.beastPattern = null;
     this.selectedId = id;
     this.armed = false;
     const u = g.units[id];
     if (u.team !== g.current)
       this.say(this.humanTeams().includes(u.team) ? `${label(u)} acts on its own turn.` : `Enemy unit: ${label(u)}.`);
-    else if (u.kind === 'beast') this.say("The beast only acts right after Ge'nga.", 'err');
+    else if (u.kind === 'beast' && u.moved && g.phase !== 'beast')
+      this.say("The beast only acts right after Ge'nga.", 'err');
+    else if (u.kind === 'beast' && !u.moved && g.phase === 'main')
+      this.say("The beast hasn't moved yet: it may take one step on its own as your turn.");
     else if (u.rooted) this.say(`${label(u)} is held by roots this turn.`, 'err');
     else this.say('');
     this.render({});

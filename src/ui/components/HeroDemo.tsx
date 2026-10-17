@@ -9,10 +9,10 @@ import { createBoard } from '../game/board.ts';
 type Step = {
   text: string;
   ms?: number;
-  show?: { live: string; armed?: boolean }; // select this unit (and arm its skill) to show its reach
+  show?: { live: string; armed?: boolean; stride?: string }; // select this unit (and arm its skill) to show its reach; `stride`: only that stride's moves
+  choice?: { title: string; options: string[]; picked: number }; // a popup like the game's, with the option picked (-1: none yet)
   act?: Action; // play this action, with its effects
   state?: () => State; // jump to a new position first
-  bounce?: { by: string; target: string }; // an attack bouncing off Empty Grave (nothing changes)
 };
 type Demo = { setup: () => State; steps: Step[] };
 
@@ -53,6 +53,12 @@ function scene(map: string, units: Unit[], blocks: Record<string, string> = {}, 
 const move = (unitId: string, to: string): Action => ({ type: 'move', unitId, to: sq(to) });
 const cast = (unitId: string, details: Partial<Action>): Action => ({ type: 'skill', unitId, ...details });
 
+const BEAST_CHOICE = (picked: number) => ({
+  title: 'How does the beast move?',
+  options: ['1 any way', '2 straight', '2 diagonal'],
+  picked,
+});
+
 // A far-away enemy keeps every demo from ending the match.
 const KEEP = unit('p2', 'plantae', 'h8');
 
@@ -77,43 +83,66 @@ const DEMOS: Record<string, Demo> = {
         { energy: { p1: 4, p2: 0 } },
       ), // Hexor can't afford a storm here
     steps: [
-      { text: "Ge'nga steps 1 square in a straight line.", show: { live: 'p1-genga' }, ms: 2200 },
+      {
+        text: "Ge'nga steps 1 square in a straight line.",
+        show: { live: 'p1-genga' },
+        ms: 2600,
+      },
       { text: 'He moves first…', act: move('p1-genga', 'd4'), ms: 1400 },
       {
-        text: '…then his beast takes a free step, 1 square in any direction. No jumps, no special moves.',
+        text: '…then his beast moves free. The first time, a popup asks how it moves: you pick once, for the whole match.',
         show: { live: 'p1-beast' },
+        choice: BEAST_CHOICE(-1),
+        ms: 2800,
+      },
+      {
+        text: '1 square any way: only those squares light up. (2 straight or 2 diagonal would reach further, in fewer directions.)',
+        show: { live: 'p1-beast', stride: 'any' },
+        choice: BEAST_CHOICE(0),
+        ms: 2800,
+      },
+      {
+        text: 'It steps, and keeps that move for the rest of the match, even after a summon.',
+        act: { ...move('p1-beast', 'e3'), pattern: 'any' },
         ms: 2200,
       },
-      { text: 'The beast steps forward.', act: move('p1-beast', 'e3'), ms: 1500 },
       { text: 'If an enemy brings the beast down…', act: move('p2-hexor', 'e3'), ms: 2000 },
       {
         text: "Wild Company (3 runes): its reach is every square next to Ge'nga.",
         show: { live: 'p1-genga', armed: true },
         ms: 2200,
       },
-      { text: 'The beast is summoned back.', act: cast('p1-genga', { skill: 'summon', to: sq('c4') }), ms: 2400 },
+      {
+        text: 'Summoned right onto Hexor, the beast comes back and eliminates him.',
+        act: cast('p1-genga', { skill: 'summon', to: sq('e3') }),
+        ms: 2600,
+      },
     ],
   },
   magumba: {
     setup: () =>
-      scene('savanna', [unit('p1', 'magumba', 'c3'), unit('p1', 'hasim', 'e5'), unit('p2', 'aqna', 'e7'), KEEP]),
+      scene('savanna', [unit('p1', 'magumba', 'c3'), unit('p1', 'hasim', 'c4'), unit('p2', 'aqna', 'c7'), KEEP]),
     steps: [
-      { text: 'Magumba steps 1 square diagonally.', show: { live: 'p1-magumba' }, ms: 2200 },
+      {
+        text: 'Magumba, a commander (if he falls, his side loses), steps 1 square straight.',
+        show: { live: 'p1-magumba' },
+        ms: 2600,
+      },
       {
         text: 'Empty Grave (2 runes) covers a fan ahead of him, 2 squares deep — nothing in between blocks it.',
         show: { live: 'p1-magumba', armed: true },
-        ms: 2800,
+        ms: 2600,
       },
       {
-        text: 'He shields Hasim until his next turn.',
+        text: 'He shields Hasim. Hasim can still move and fight as usual.',
         act: cast('p1-magumba', { skill: 'grave', targetId: 'p1-hasim' }),
-        ms: 2200,
+        ms: 2400,
       },
       { text: 'Aqna goes for Hasim…', show: { live: 'p2-aqna' }, ms: 1500 },
       {
-        text: "…and the shield throws her back. Attacks on Hasim are negated until Magumba's next turn.",
-        bounce: { by: 'p2-aqna', target: 'p1-hasim' },
-        ms: 3000,
+        text: '…the shield takes the blow and breaks. Aqna is thrown back, and her turn is over.',
+        act: move('p2-aqna', 'c4'),
+        ms: 3200,
       },
     ],
   },
@@ -122,7 +151,7 @@ const DEMOS: Record<string, Demo> = {
       scene('jungle', [unit('p1', 'plantae', 'd3'), unit('p2', 'hexor', 'd6'), unit('p2', 'aqna', 'f5'), KEEP]),
     steps: [
       {
-        text: 'Plantae steps 1 square straight. The green squares are her reach: a 3x3 block right in front of her, unblocked by anything in between.',
+        text: 'Plantae, a commander (if she falls, her side loses), steps 1 square straight. Green: her reach, a 3x3 block right in front of her.',
         show: { live: 'p1-plantae' },
         ms: 2800,
       },
@@ -147,7 +176,11 @@ const DEMOS: Record<string, Demo> = {
           ),
         ms: 1500,
       },
-      { text: "Ge'nga acts inside her block: Plantae may answer.", act: move('p2-genga', 'd6'), ms: 2400 },
+      {
+        text: "Ge'nga acts inside her block (stepping in from outside counts too): Plantae may answer.",
+        act: move('p2-genga', 'd6'),
+        ms: 2600,
+      },
       {
         text: 'Interrupt (3 runes): the action is negated. Then the skill recharges for 3 turns.',
         act: { type: 'react', use: true },
@@ -182,9 +215,9 @@ const DEMOS: Record<string, Demo> = {
     ],
   },
   aqna: {
-    setup: () => scene('keep', [unit('p1', 'aqna', 'd3'), unit('p2', 'hasim', 'd5'), KEEP]),
+    setup: () => scene('keep', [unit('p1', 'aqna', 'd3'), unit('p2', 'hasim', 'd5'), unit('p2', 'genga', 'f4'), KEEP]),
     steps: [
-      { text: 'Aqna moves up to 2 squares in a straight line.', show: { live: 'p1-aqna' }, ms: 2200 },
+      { text: 'Aqna moves up to 3 squares in a straight line.', show: { live: 'p1-aqna' }, ms: 2200 },
       {
         text: 'She eliminates Hasim and stores an ice charge — never more than one at a time.',
         act: move('p1-aqna', 'd5'),
@@ -194,7 +227,11 @@ const DEMOS: Record<string, Demo> = {
         text: 'Spend it whenever you like, even turns later: Icy Step (1 rune) then reaches every square within 3 of her.',
         ms: 2400,
       },
-      { text: 'An ice block rises. Nobody can enter it, not even her.', act: { type: 'ice', to: sq('f4') }, ms: 2600 },
+      {
+        text: "Aimed at Ge'nga, the ice freezes him… then shatters, and he is gone. On an empty square it would raise a block nobody can pass.",
+        act: { type: 'ice', to: sq('f4') },
+        ms: 3600,
+      },
     ],
   },
 };
@@ -289,15 +326,18 @@ export function HeroDemo({ hero, compact }: { hero: string; compact?: boolean })
       if (plan) {
         if (plan.hop) b.hop(plan.hop);
         b.run(plan);
+        const broke = g.lastAction?.kind === 'shieldbreak' ? g.lastAction : null;
+        if (broke?.unitId && broke.broke?.length) {
+          const target = g.units[broke.broke[0]];
+          b.shieldBounce({ attackerId: broke.unitId, from: broke.from!, targetId: target.id, to: target.pos });
+        }
       }
-    } else if (st.bounce) {
-      const by = g.units[st.bounce.by],
-        t = g.units[st.bounce.target];
-      b.render(g, { acts: [], live: by, threats: new Set() });
-      if (fx) b.shieldBounce({ attackerId: by.id, from: by.pos, targetId: t.id, to: t.pos });
     } else {
       const live = st.show ? g.units[st.show.live] : null;
-      b.render(g, { acts: listActions(g), live, armed: !!st.show?.armed, threats: new Set() });
+      const stride = st.show?.stride;
+      // before the beast has picked a stride, every stride's squares would show: a picked one shows alone
+      const acts = listActions(g).filter((action) => !action.pattern || !stride || action.pattern === stride);
+      b.render(g, { acts, live, armed: !!st.show?.armed, threats: new Set() });
     }
     game.current = g;
   }
@@ -324,6 +364,18 @@ export function HeroDemo({ hero, compact }: { hero: string; compact?: boolean })
   return (
     <figure className={`demo${compact ? ' compact' : ''}`} ref={fig}>
       <div className="demo-stage" ref={host} aria-hidden="true" />
+      {i >= 0 && demo.steps[i].choice && (
+        <div className="demo-choice" aria-hidden="true">
+          <span className="demo-choice-title">{demo.steps[i].choice!.title}</span>
+          <span className="demo-choice-row">
+            {demo.steps[i].choice!.options.map((option, index) => (
+              <span key={option} className={`demo-choice-opt${index === demo.steps[i].choice!.picked ? ' on' : ''}`}>
+                {option}
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
       <figcaption>
         <span className="demo-text" key={i} aria-live="off">
           {text}

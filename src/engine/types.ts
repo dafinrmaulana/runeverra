@@ -21,11 +21,14 @@ export type Unit = {
   alive: boolean;
   rooted: number; // turns it still can't act (Aggressive Root)
   warded: boolean; // enemy attacks and skills on it are negated (Empty Grave)
+  wardTurns?: number; // own turns the ward still lasts if nothing breaks it
   cd: number; // skill cooldown: own turns until the skill is ready again
   ownerId?: string; // a beast's Ge'nga
-  moved?: boolean; // a creep that already used its double first step
+  moved?: boolean; // a creep that already used its double first step; a beast that already took its free solo step
   iceCharge?: number; // Aqna: 1 when she holds an ice charge
   reacts?: number; // times this hero's reaction was used
+  commander?: boolean; // the team's commander: when it falls, its team loses
+  stride?: string; // a unit with strides (the beast): the one picked on its first move, kept all match
 };
 /** Terrain on a square: map obstacles (pillar, tree…) or Aqna's ice (`owner` = her unit id). */
 export type Block = { kind: string; owner?: string };
@@ -41,7 +44,7 @@ export type Action = {
   skill?: string; // skill key (skill)
   targetId?: string; // unit-targeted skill
   use?: boolean; // react: use the reaction or let the action happen
-  pattern?: string; // storm: 'plus' or 'x'
+  pattern?: string; // storm: 'plus' or 'x'; a first move with strides: the stride picked
   team?: Team; // timeout: who ran out of time
 };
 /** What the match is waiting for outside the main phase. */
@@ -71,6 +74,9 @@ export type LastAction = {
   movedIce?: string | null;
   storm?: Push[];
   pattern?: string;
+  broke?: string[]; // units whose Empty Grave an attack broke instead of eliminating them
+  frozen?: string; // Aqna's ice froze this unit, then shattered: it was eliminated (no block is left)
+  respawned?: string; // a creep broke through and this new creep joined on its starting square
 };
 export type LogEntry = { turn: number; team: Team | null; text: string };
 
@@ -112,7 +118,15 @@ export type State = {
 export type Result = { ok: boolean; state: State; reason: string | null };
 
 /** One square a unit's basic move can reach, and who it eliminates there. */
-export type MoveOption = { to: Pos; kills: string[]; over?: string | null; backstab?: boolean; cost?: number };
+export type MoveOption = {
+  to: Pos;
+  kills: string[];
+  over?: string | null;
+  backstab?: boolean;
+  cost?: number;
+  /** Shielded enemies this attack hits: their Empty Grave breaks, nobody is eliminated, and the attacker stays put. */
+  breaks?: string[];
+};
 /** A movement rule: `kind` names an entry of MOVE_RULES (src/engine/movement.ts). */
 export type MoveRule = { kind: string; dirs?: Dir[]; range?: number; deltas?: Dir[] };
 
@@ -145,6 +159,12 @@ export type UnitDef = {
   moveText: string;
   value: number; // material value for the bot
   follower?: boolean; // only acts in its owner's follow-up phase, never as the turn's action
+  /**
+   * Ways of moving to pick from on the unit's first move; the one picked (Unit.stride) is its only move for
+   * the rest of the match. Until then `move` is unused and every stride is offered, each move tagged with
+   * its stride in Action.pattern.
+   */
+  strides?: Record<string, MoveRule>;
   idleText?: string; // why a follower can't act in the main phase
 };
 
@@ -168,12 +188,14 @@ export type HeroHooks = {
   explainSkill?(state: State, hero: Unit, action: Action): string | undefined;
   /** Why a target in reach still can't be picked. */
   explainTarget?(state: State, hero: Unit, target: Unit): string;
+  /** After the hero's cast. Return true when it opened a follow-up phase (Aqna may still move), else the turn ends. */
+  afterSkill?(state: State, hero: Unit): boolean;
   /** After the hero's move (not a cast). Return true when it opened a follow-up phase, else the turn ends. */
   afterAction?(state: State, hero: Unit, result: { killed: number }): boolean;
   /** Acting during the opponent's turn to negate one of their actions (Plantae). */
   reaction?: {
-    /** May `reactor` answer what `actor` is doing? (Already checked: alive, not rooted, skill ready.) */
-    can(state: State, reactor: Unit, actor: Unit): boolean;
+    /** May `reactor` answer what `actor` is doing (`action`)? (Already checked: alive, not rooted, skill ready.) */
+    can(state: State, reactor: Unit, actor: Unit, action: Action): boolean;
     /** Pay for it and describe it; the negated action never happens and the turn ends. */
     resolve(state: State, reactor: Unit, actor: Unit, negated: Action, logLines: string[]): LastAction;
   };
@@ -196,6 +218,8 @@ export type HeroUi = {
 
 export type HeroDef = UnitDef & {
   role: string;
+  /** Can lead the team as its commander. A team needs at least one; the first in pick order commands. */
+  commander?: boolean;
   skill: Skill;
   hooks?: HeroHooks;
   ui?: HeroUi;
@@ -213,6 +237,8 @@ export type PhaseDef = {
   /** Why an action is illegal here. For a unit phase: why this unit can't act now, or nothing. */
   explain?(state: State, action: Action, unit?: Unit): string | undefined;
   unitPhase?: boolean;
+  /** A unit phase whose move is the unit's own (Aqna after her ice): its afterAction still runs. */
+  ownMove?: boolean;
   /** What the deciding player is asked, and what a tap on a wrong square tells them. */
   prompt?(state: State): string;
   hint?: string;

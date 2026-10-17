@@ -10,6 +10,8 @@ import {
   TEAM_NAMES as TN,
   CREEPS,
   ROLES,
+  ENERGY,
+  isCommander,
   label,
   heroDef,
   livingHeroes,
@@ -21,7 +23,7 @@ import {
   skillOf,
   getThreats,
 } from '../../engine/index.ts';
-import type { GameController } from '../game/controller';
+import type { BeastPattern, GameController } from '../game/controller';
 import type { Action, State, Unit } from '../../engine/index.ts';
 import { ICON, ART, MAP_ART, SHORT, costLabel, other, tk, type Team, cssVars } from '../data';
 import { BEAST_SVG, CREEP_SVG } from '../game/board.ts';
@@ -53,6 +55,55 @@ function SlamIcon({ pattern }: { pattern: 'plus' | 'x' }) {
           strokeLinejoin="round"
         />
       ))}
+    </svg>
+  );
+}
+
+/** The beast's three ways to move, as buttons: the board then marks only that pattern's squares. */
+function BeastPatternButtons({ controller }: { controller: GameController }) {
+  const choices: { pattern: BeastPattern; label: string; title: string; icon: React.ReactNode }[] = [
+    { pattern: 'any', label: '1 any way', title: '1 square in any direction', icon: <AnyStepIcon /> },
+    {
+      pattern: 'plus',
+      label: '2 straight',
+      title: 'Up to 2 squares straight (plus)',
+      icon: <SlamIcon pattern="plus" />,
+    },
+    {
+      pattern: 'cross',
+      label: '2 diagonal',
+      title: 'Up to 2 squares diagonally (cross)',
+      icon: <SlamIcon pattern="x" />,
+    },
+  ];
+  return (
+    <>
+      {choices.map((choice) => (
+        <button
+          key={choice.pattern}
+          className={`btn${controller.beastPattern === choice.pattern ? ' primary' : ''} slam-btn`}
+          type="button"
+          title={choice.title}
+          aria-pressed={controller.beastPattern === choice.pattern}
+          onClick={() => {
+            const g = controller.game;
+            const beastId = g.phase === 'beast' ? g.pending?.unitId : controller.selectedId;
+            if (beastId && controller.selectedId !== beastId) controller.select(beastId);
+            controller.pickBeastPattern(choice.pattern);
+          }}
+        >
+          {choice.icon}
+          {choice.label}
+        </button>
+      ))}
+    </>
+  );
+}
+function AnyStepIcon() {
+  return (
+    <svg className="slam-ico" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" />
+      <rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }
@@ -167,6 +218,9 @@ function Toast({ controller, mirror }: { controller: GameController; mirror?: bo
       <>
         <span className="pt">{text}</span>
         <span className="row">
+          {g.phase === 'beast' && !g.units[g.pending!.unitId!]?.stride && (
+            <BeastPatternButtons controller={controller} />
+          )}
           {g.phase === 'storm' && (
             <button
               className="btn primary slam-btn"
@@ -197,6 +251,19 @@ function Toast({ controller, mirror }: { controller: GameController; mirror?: bo
         </span>
       </>
     );
+  } else if (controller.needsBeastPattern()) {
+    // the beast's one solo move: how does it move?
+    body = (
+      <>
+        <span className="pt">How does the beast move? You pick once: it keeps this move all match.</span>
+        <span className="row">
+          <BeastPatternButtons controller={controller} />
+          <button className="btn" type="button" onClick={() => controller.escape()}>
+            Cancel
+          </button>
+        </span>
+      </>
+    );
   }
   if (!body) return null;
   return (
@@ -219,10 +286,11 @@ function Toast({ controller, mirror }: { controller: GameController; mirror?: bo
   );
 }
 
-function Pips({ count, max }: { count: number; max: number }) {
+/** Runes as pips: the 4 a side starts with, plus one more for every rune banked past that (no cap). */
+function Pips({ count }: { count: number }) {
   return (
-    <span className="energy" title={`${count} of ${max} runes`}>
-      {Array.from({ length: max }, (_, index) => (
+    <span className="energy" title={`${count} rune${count === 1 ? '' : 's'}`}>
+      {Array.from({ length: Math.min(Math.max(ENERGY.start, count), 8) }, (_, index) => (
         <i key={index} className={index < count ? 'on' : ''} />
       ))}
     </span>
@@ -316,15 +384,14 @@ function Tokens({
   active?: boolean;
 }) {
   const n = controller.game.energy[team];
-  const { max } = controller.game.rules.energy;
   return (
     <span className={`tokens ${team}${active ? ' active' : ''}`}>
       <span className={`team-dot ${team}`} />
       <span className="who">{who}</span>
-      <Pips count={n} max={max} />
+      <Pips count={n} />
       <span className="tn">
         <Rune />
-        {n}/{max}
+        {n}
       </span>
       <Clock controller={controller} team={team} />
     </span>
@@ -382,7 +449,7 @@ function TeamHead({ controller, team }: { controller: GameController; team: Team
     <span className="team-head">
       <span className={`team-dot ${team}`} />
       {TEAM_NAMES[team]}
-      <Pips count={g.energy[team]} max={g.rules.energy.max} />
+      <Pips count={g.energy[team]} />
       <span className="count">
         {heroes.filter((unit) => unit.alive).length}/{heroes.length}
       </span>
@@ -390,10 +457,19 @@ function TeamHead({ controller, team }: { controller: GameController; team: Team
   );
 }
 
+const STRIDE_TEXT: Record<string, string> = {
+  any: '1 square any way',
+  plus: 'up to 2 squares straight',
+  cross: 'up to 2 squares diagonally',
+};
+
 /** One line that says what a unit is about: shown as the accordion trigger. */
 function shortLine(unit: Unit) {
   if (unit.kind === 'creep') return 'Pawn: 1 forward, captures diagonally forward.';
-  if (unit.kind === 'beast') return "Moves free right after Ge'nga. Captures like any unit.";
+  if (unit.kind === 'beast')
+    return unit.stride
+      ? `Moves free right after Ge'nga: ${STRIDE_TEXT[unit.stride] ?? '1 square any way'}, all match.`
+      : 'First move: pick 1 any way, 2 straight or 2 diagonal; it keeps that move all match. May be its own turn.';
   return SHORT[unit.hero]?.skill || '';
 }
 
@@ -405,8 +481,10 @@ function effectsOf(controller: GameController, unit: Unit, threats: Set<string>)
     out.push({
       k: 'wd',
       label: 'Shielded',
-      text: `Empty Grave: can't be captured, rooted or pushed until ${TEAM_NAMES[unit.team]}'s next turn.`,
+      text: `Empty Grave: the next attack on it breaks the shield instead (the attacker is thrown back). Skills and pushes can't touch it. Lasts ${(unit.wardTurns ?? 0) + 1} more of ${TEAM_NAMES[unit.team]}'s turns if unbroken.`,
     });
+  if (isCommander(unit))
+    out.push({ k: 'cmd', label: 'Commander', text: 'If this hero falls, its side loses the match.' });
   if (unit.rooted > 0)
     out.push({
       k: 'rt',
@@ -438,7 +516,8 @@ function SelTrigger({ controller, unit, threats }: { controller: GameController;
           <span className={`team-dot ${unit.team}`} />
           {d.name}
           <span className="sub">
-            {hero && d.role ? ROLES[d.role] : d.title} · {squareName(unit.pos)}
+            {hero && d.role ? `${ROLES[d.role]}${unit.commander ? ` · ${ROLES.commander}` : ''}` : d.title} ·{' '}
+            {squareName(unit.pos)}
           </span>
           {sk && <CostChip sk={sk} />}
           {fx.map((effect) => (

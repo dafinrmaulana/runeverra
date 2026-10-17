@@ -16,6 +16,41 @@ export const TAG_LABEL: Record<Tag, string> = { new: 'New', balance: 'Balance', 
 
 export const CHANGELOG: Patch[] = [
   {
+    version: '0.8.0',
+    date: '2026-10-17',
+    title: 'Commanders',
+    entries: [
+      {
+        tag: 'new',
+        text: 'Commanders: every team is led by Plantae or Magumba (with both, you choose which), marked with a banner on the board. If yours falls, you lose at once. Taking down all four heroes still wins too.',
+      },
+      { tag: 'new', text: "In each side's first turn you may move two creeps." },
+      {
+        tag: 'new',
+        text: 'A creep that breaks through now comes back as a new creep on its starting square (or the nearest open one), in a pillar of light.',
+      },
+      { tag: 'balance', text: 'No limit on runes any more: bank as many as you earn.' },
+      {
+        tag: 'balance',
+        text: "Ge'nga is now a Fighter. On his beast's first move you pick how it moves for the whole match, summons included: 1 square any way, up to 2 straight, or up to 2 diagonally. That first move can be its own turn. A summoned beast eliminates an enemy on its square.",
+      },
+      {
+        tag: 'balance',
+        text: 'Aqna moves up to 3 squares. Her ice on an enemy freezes it, then shatters: eliminated, and no block is left. Icy Step no longer ends her turn: she may still move.',
+      },
+      { tag: 'ui', text: "Tapping an enemy no longer shows its skill's reach." },
+      {
+        tag: 'balance',
+        text: 'Magumba now steps 1 square straight instead of diagonally. Empty Grave: the shielded unit still acts; the first attack on it breaks the shield instead, the attacker is thrown back and loses the turn. Unbroken, it lasts 3 of your turns.',
+      },
+      {
+        tag: 'balance',
+        text: "Plantae's interrupt also fires when an enemy tries to move or act into the block in front of her. It stays outside.",
+      },
+      { tag: 'ui', text: 'Every takedown now sounds like a sword. Ice that freezes an enemy shatters.' },
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-10-17',
     title: 'Music, new sounds and back button',

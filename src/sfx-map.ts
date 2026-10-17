@@ -10,5 +10,6 @@ export function sfxFor(lastAction: LastAction | null | undefined, units: Record<
   if (!lastAction || !lastAction.kind) return null;
   if (DIRECT.has(lastAction.kind)) return lastAction.kind;
   if (lastAction.kind === 'move') return units[lastAction.unitId!]?.kind === 'beast' ? 'beast' : 'move';
-  return null; // skip-beast, skip-ice, skip-storm and the like make no sound
+  if (lastAction.kind === 'shieldbreak') return 'shield'; // an attack thrown back by Empty Grave
+  return null; // skip-beast, skip-ice, skip-storm, skip-pawn and the like make no sound
 }

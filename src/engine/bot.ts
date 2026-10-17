@@ -12,6 +12,7 @@ import {
   PHASES,
   TEAM_SIZE,
   heroDef,
+  isCommander,
   own,
   unitAt,
 } from './index.ts';
@@ -35,6 +36,8 @@ const applyTrusted = (state: State, action: Action) => applyAction(state, action
 const WIN = 1e6;
 const other = (team: Team): Team => (team === 'p1' ? 'p2' : 'p1');
 const valueOf = (unit: Unit) => heroDef(unit).value;
+/** Extra worth of a commander on top of its value, so the search guards it and hunts the enemy's. */
+const COMMANDER_WEIGHT = 900;
 const squareKey = (pos: Pos) => `${pos.r},${pos.c}`;
 
 /** Material, position and banked runes of one team. */
@@ -42,6 +45,7 @@ function teamScore(state: State, team: Team) {
   let score = 0;
   for (const unit of livingUnits(state, team)) {
     score += valueOf(unit);
+    if (isCommander(unit)) score += COMMANDER_WEIGHT; // its fall ends the match
     if (unit.warded) score += 70;
     if (unit.rooted) score -= 50;
     if (unit.kind === 'creep') {
@@ -60,10 +64,11 @@ function teamScore(state: State, team: Team) {
 function captureValues(state: State, team: Team) {
   const byMove = new Map<string, number>();
   for (const unit of livingUnits(state, team)) {
-    if (unit.rooted || heroDef(unit).follower) continue; // the beast only acts after Ge'nga
+    if (unit.rooted || (heroDef(unit).follower && unit.moved)) continue; // the beast only acts after Ge'nga
     for (const option of moveOptions(state, unit)) {
       let captured = 0;
-      for (const id of option.kills) captured += valueOf(state.units[id]);
+      for (const id of option.kills)
+        captured += valueOf(state.units[id]) + (isCommander(state.units[id]) ? COMMANDER_WEIGHT : 0);
       if (captured) byMove.set(unit.id + squareKey(option.to), captured);
     }
   }
@@ -217,14 +222,19 @@ export function chooseAction(state: State, levelName: string = 'normal'): BotCho
   return best;
 }
 
-/** A varied but reproducible team for the bot. */
+/** A varied but reproducible team for the bot: one commander, the rest from the other heroes. */
 export function pickTeam(seed = 0) {
-  const pool = Object.keys(HEROES);
-  const team: string[] = [];
+  const commanders = Object.keys(HEROES).filter((heroId) => HEROES[heroId].commander);
+  const others = Object.keys(HEROES).filter((heroId) => !HEROES[heroId].commander);
   let hash = (seed * 2654435761 + 12345) >>> 0;
-  while (team.length < TEAM_SIZE) {
+  const draw = (pool: string[]) => {
     hash = (Math.imul(hash ^ (hash >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
-    team.push(pool.splice(hash % pool.length, 1)[0]);
-  }
+    return pool.splice(hash % pool.length, 1)[0];
+  };
+  const team = [draw(commanders)];
+  while (team.length < TEAM_SIZE && others.length) team.push(draw(others));
+  // shuffle the commander into a random slot
+  const slot = (hash >>> 3) % team.length;
+  [team[0], team[slot]] = [team[slot], team[0]];
   return team;
 }

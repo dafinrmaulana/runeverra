@@ -39,7 +39,8 @@ A hero is one `defineHero(id, { … })` call:
 ```ts
 const myHero = defineHero('myhero', {
   // identity
-  name: 'My Hero', title: 'Short Epithet', cls: 'claw', role: 'roam',
+  name: 'My Hero', title: 'Short Epithet', cls: 'claw', role: 'roam', // roam | fighter | assassin | support
+  // commander: true, // a team fields exactly one commander and loses when it falls (Plantae, Magumba)
   value: 320, // material value for the bot (others are 270–350)
   // movement: rules from MOVE_RULES (src/engine/movement.ts)
   move: [{ kind: 'slide', dirs: ORTHO, range: 1 }],
@@ -186,7 +187,7 @@ applyAction(state, action)
  │     let it go ───▶ the waiting action continues below
  ├─ a hero phase ───▶ PHASES[phase].resolve(state, action, context)
  │                    (returns null for a unit phase: the beast's step continues below)
- ├─ can an opponent hero react? ─▶ reaction.can(state, reactor, actor)
+ ├─ can an opponent hero react? ─▶ reaction.can(state, reactor, actor, action)
  │     yes → phase becomes 'react' and the opponent decides (stop here)
  └─ resolve the action:
      ├─ move ───────▶ captures → eliminate(victim) ──▶ hooks.onEliminated(state, victim, logLines)

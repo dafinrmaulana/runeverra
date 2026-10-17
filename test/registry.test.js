@@ -68,7 +68,7 @@ test('ids that are not own keys never resolve to heroes or units', () => {
 
 test('a match carries its mode: rune limits come from state.rules', () => {
   const s = createMatch();
-  assert.deepEqual(s.rules, { mode: 'classic', teamSize: 4, energy: { start: 4, perTurn: 0, max: 4 } });
+  assert.deepEqual(s.rules, { mode: 'classic', teamSize: 4, energy: { start: 4, perTurn: 0, max: 99 } });
   assert.equal(s.setup.mode, 'classic');
   assert.deepEqual(createMatch(s.setup).rules, s.rules); // replays rebuild the same rules
 });
