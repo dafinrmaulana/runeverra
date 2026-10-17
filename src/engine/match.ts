@@ -6,6 +6,7 @@ import { makeUnit } from './state.ts';
 import { CREEPS } from './turn.ts';
 import { MAPS } from './maps.ts';
 import { MODES } from './modes.ts';
+import { type Quest, buildQuest, questById, questEnergy, questRules } from './adventure.ts';
 
 export const CREEP = defineUnit('creep', {
   name: 'Creep',
@@ -28,6 +29,7 @@ export type MatchOptions = {
   creeps?: boolean; // defaults to the mode's
   clockMs?: number; // per side; 0 = untimed (the clock itself lives outside the engine)
   mode?: string; // a key of MODES
+  quest?: string; // an Adventure level id (src/engine/adventure.ts): replaces the teams, map and creeps
 };
 
 export function createMatch({
@@ -38,7 +40,10 @@ export function createMatch({
   creeps,
   clockMs = 0,
   mode = 'classic',
+  quest: questId,
 }: MatchOptions = {}): State {
+  const quest = questById(questId);
+  if (quest) return questMatch(quest, seed, clockMs);
   const gameMode = own(MODES, mode) || MODES.classic;
   const withCreeps = creeps ?? gameMode.creeps;
   const teams = { p1: p1 || ['hasim', 'hexor', 'magumba', 'plantae'], p2: p2 || ['genga', 'aqna', 'plantae', 'hasim'] };
@@ -94,6 +99,31 @@ export function createMatch({
     blocks,
     iceBy: {},
     log: [{ turn: 0, team: null, text: `Match begins on ${battlefield.name}. Ivory moves first.` }],
+    lastAction: null,
+  };
+}
+
+/** An Adventure level: its own heroes, monsters, caravan and terrain; the player is Ivory and moves first. */
+function questMatch(quest: Quest, seed: number, clockMs: number): State {
+  const { units, blocks, teams } = buildQuest(quest);
+  return {
+    size: BOARD_SIZE,
+    turn: 1,
+    current: 'p1',
+    status: 'playing',
+    phase: 'main',
+    pending: null,
+    map: quest.map,
+    teams,
+    seed,
+    setup: { p1: teams.p1, p2: [], map: quest.map, seed, creeps: false, clockMs, mode: 'adventure', quest: quest.id },
+    trail: [],
+    rules: questRules(quest),
+    energy: questEnergy(quest),
+    units,
+    blocks,
+    iceBy: {},
+    log: [{ turn: 0, team: null, text: `${quest.name}: ${quest.goalText}` }],
     lastAction: null,
   };
 }

@@ -31,6 +31,8 @@ export { MOVE_RULES, moveOptions, moveActions } from './movement.ts';
 export { skillCooldown, skillReach, inSkillReach, inInnerReach, skillTargets, skillActions } from './skills.ts';
 export { CREEPS, HERO_BOUNTY, bountyFor } from './turn.ts';
 export { CREEP, SLOTS, createMatch } from './match.ts';
+export { QUESTS, questById, questOf, roundOf, questResult } from './adventure.ts';
+export type { Quest, QuestGoal } from './adventure.ts';
 export type { MatchOptions } from './match.ts';
 export { listActions, validateAction, applyAction, getThreats } from './rules.ts';
 export { BEAST, fallenBeastOf, summonSpots, ICE_LIMIT } from './heroes/index.ts';

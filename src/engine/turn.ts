@@ -3,6 +3,7 @@ import type { Action, Result, State, Team, Unit } from './types.ts';
 import { TEAMS, TEAM_NAMES, other, squareName } from './geometry.ts';
 import { definePhase, heroDef, hooksOf, isCommander } from './registry.ts';
 import { energyRules, gainRunes, label, livingHeroes, livingUnits } from './state.ts';
+import { questOf, questResult } from './adventure.ts';
 import { moveOptions } from './movement.ts';
 import { skillActions } from './skills.ts';
 
@@ -16,7 +17,8 @@ export const HERO_BOUNTY = 1;
 /** Runes `byTeam` earns for eliminating `victim` (an enemy hero or creep; companions earn nothing). */
 export function bountyFor(victim: Unit, byTeam: Team | null) {
   if (!byTeam || byTeam === victim.team) return 0;
-  return victim.kind === 'hero' ? HERO_BOUNTY : victim.kind === 'creep' ? CREEPS.lastHit : 0;
+  if (victim.kind === 'hero') return HERO_BOUNTY;
+  return victim.kind === 'creep' || victim.kind === 'monster' ? CREEPS.lastHit : 0;
 }
 
 /** The successful Result for a state that has been fully updated. */
@@ -47,8 +49,18 @@ export function eliminate(state: State, victim: Unit, logLines: string[], byTeam
 const fallenCommander = (state: State, team: Team) =>
   Object.values(state.units).find((unit) => unit.team === team && isCommander(unit) && !unit.alive) || null;
 
-/** Ends the match when a team's commander falls, or it has no hero left. */
-export function checkWinner(state: State) {
+/** Ends the match when a team's commander falls, or it has no hero left (an Adventure level: its own goal). */
+export function checkWinner(state: State, clock = false) {
+  if (questOf(state)) {
+    const result = questResult(state, clock);
+    if (result) {
+      state.status = result.winner;
+      state.phase = 'main';
+      state.pending = null;
+      state.log.push({ turn: state.turn, team: result.winner, text: result.text });
+    }
+    return;
+  }
   for (const team of TEAMS) {
     const commander = fallenCommander(state, team);
     if (commander || livingHeroes(state, team).length === 0) {
@@ -77,6 +89,8 @@ export function endTurn(state: State) {
     state.phase = 'main';
     state.pending = null;
     state.energy[state.current] = Math.min(energy.max, state.energy[state.current] + energy.perTurn);
+    checkWinner(state, true); // an Adventure level may end on the round count
+    if (state.status !== 'playing') return;
     for (const unit of livingUnits(state, state.current)) {
       // Empty Grave holds through a few of its owner's turns unless an attack breaks it first
       if (unit.warded) {

@@ -11,11 +11,11 @@ export type Pos = { r: number; c: number };
 /** A step as [rows, columns], e.g. [1, 0] is one row down the screen. */
 export type Dir = [number, number];
 
-export type UnitKind = 'hero' | 'beast' | 'creep';
+export type UnitKind = 'hero' | 'beast' | 'creep' | 'monster' | 'caravan';
 export type Unit = {
-  id: string; // "<team>-<hero>", "<team>-beast" or "<team>-creep-<file>"
+  id: string; // "<team>-<hero>", "<team>-beast", "<team>-creep-<file>", "<team>-<monster>-<n>" or "<team>-caravan"
   team: Team;
-  hero: string; // hero id for heroes; 'beast' or 'creep' for the others
+  hero: string; // hero id for heroes; for the others the unit type: 'beast', 'creep', a monster ('goblin'…), 'caravan'
   kind: UnitKind;
   pos: Pos;
   alive: boolean;
@@ -82,7 +82,7 @@ export type LogEntry = { turn: number; team: Team | null; text: string };
 
 /** Skill runes ("energy" in code): how many a team starts with, gains each turn, and can hold. */
 export type Energy = { start: number; perTurn: number; max: number };
-export type Rules = { mode: string; teamSize: number; energy: Energy };
+export type Rules = { mode: string; teamSize: number; energy: Energy; quest?: string };
 /** Everything createMatch needs to rebuild a match; a replay is a Setup plus its trail of actions. */
 export type Setup = {
   p1: string[];
@@ -92,6 +92,7 @@ export type Setup = {
   creeps: boolean;
   clockMs: number;
   mode: string;
+  quest?: string; // an Adventure level (src/engine/adventure.ts): its own board, units and goal
 };
 
 export type State = {
@@ -175,6 +176,8 @@ export type UnitDef = {
    */
   strides?: Record<string, MoveRule>;
   idleText?: string; // why a follower can't act in the main phase
+  /** Adventure units only: Empty Grave it starts with (a brute's hide takes one blow before it can fall). */
+  hide?: boolean;
 };
 
 /**

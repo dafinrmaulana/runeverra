@@ -2,6 +2,7 @@
 // (beast move, ice placement) and reactions. Pure; no DOM. Knows no hero by name: material
 // values come from each unit's `value`, and a phase may narrow what is worth searching.
 import type { Action, Pos, State, Team, Unit } from './index.ts';
+import { questScore } from './adventure.ts';
 import {
   applyAction,
   listActions,
@@ -57,7 +58,7 @@ function teamScore(state: State, team: Team) {
   // Every hero spends runes now; banked runes are worth a little (diminishing past 2).
   const runes = state.energy[team];
   score += 16 * Math.min(runes, 2) + 8 * Math.max(0, runes - 2);
-  return score;
+  return score + questScore(state, team); // an Adventure level's goal (the caravan's progress, the hunt)
 }
 
 /** Value of everything each of `team`'s moves would capture right now. */

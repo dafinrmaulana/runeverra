@@ -52,7 +52,7 @@ export const isHero = (heroId: unknown): heroId is string => hasOwnKey(HEROES, h
 
 /** The definition behind any unit: its hero, or the beast / creep definition. */
 export const heroDef = (unit: Unit): UnitDef & Partial<HeroDef> =>
-  unit.kind === 'hero' ? HEROES[unit.hero] : UNITS[unit.kind];
+  unit.kind === 'hero' ? HEROES[unit.hero] : (own(UNITS, unit.hero) ?? UNITS[unit.kind]);
 /** Is this unit its team's commander (the hero whose fall ends the match)? */
 export const isCommander = (unit: Unit) => unit.kind === 'hero' && !!unit.commander;
 /** Can this hero lead a team as its commander? */

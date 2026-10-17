@@ -25,6 +25,16 @@ export const MOVE_RULES: Record<string, MoveRuleFn> = {
       }
     }
   },
+  // Like slide, but it never attacks: it stops before any unit (the Adventure caravan).
+  walk(state, unit, rule, addOption) {
+    for (const [dRow, dCol] of rule.dirs!) {
+      for (let step = 1; step <= rule.range!; step++) {
+        const to = { r: unit.pos.r + dRow * step, c: unit.pos.c + dCol * step };
+        if (!inBounds(to) || blockAt(state, to) || unitAt(state, to)) break;
+        addOption({ to, kills: [] });
+      }
+    }
+  },
   // Fixed jumps over anything.
   leap(state, unit, rule, addOption) {
     for (const [dRow, dCol] of rule.deltas!) {
