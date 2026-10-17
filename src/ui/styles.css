@@ -2833,12 +2833,12 @@ a.btn {
   flex: 1 1 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
 .toast .row.choice-row > .btn {
   min-width: 0;
   justify-content: center;
-  padding: 8px 6px;
+  padding: 8px 14px;
   font-size: 0.82rem;
   white-space: nowrap;
 }
@@ -2849,7 +2849,10 @@ a.btn {
   .toast .row.choice-row > .btn {
     flex-direction: column;
     gap: 2px;
+    padding: 8px 10px;
     font-size: 0.74rem;
+    white-space: normal;
+    text-align: center;
   }
 }
 
