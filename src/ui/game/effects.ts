@@ -683,6 +683,25 @@ export function createEffects(canvas: HTMLCanvasElement, wrap: HTMLElement, view
         frostKill(lastAction);
         return;
       }
+      if (lastAction.broke?.length) {
+        // the ice hits Empty Grave: the shield shatters, the unit lives
+        line(lastAction.from!, to, COLORS.frost, { life: 340, width: 2.5 });
+        after(260, () => {
+          flash(to, COLORS.spirit, { size: 1.1, life: 360 });
+          ring(to, COLORS.spirit, { from: 0.7, to: 1.3, life: 520, width: 4, dots: COLORS.frost });
+          burst(to, [COLORS.spirit, COLORS.spirit2, COLORS.frost], 26, {
+            shape: 'shard',
+            minSpeed: 1.4,
+            maxSpeed: 3.6,
+            gravity: 0.7,
+            life: [450, 800],
+            size: [2, 4],
+          });
+          text(to, 'SHIELD BROKEN', COLORS.spirit);
+          shake(0.7);
+        });
+        return;
+      }
       burst(to, [COLORS.frost, COLORS.white], 20, {
         shape: 'crystal',
         minSpeed: 2,

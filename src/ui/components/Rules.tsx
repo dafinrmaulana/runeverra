@@ -31,7 +31,7 @@ export function Rules({ onTour }: { onTour?: () => void }) {
       <h3>Roles</h3>
       <ul>
         <li>
-          <b>Roam</b> (Aqna, Hexor): Aqna slides up to 3 squares straight; Hexor jumps in an L.
+          <b>Roam</b> (Aqna, Hexor): Aqna slides up to 2 squares straight; Hexor jumps in an L.
         </li>
         <li>
           <b>Fighter</b> (Ge'nga): steps 1 square straight. His beast moves right after him. On its first move you pick
@@ -55,14 +55,15 @@ export function Rules({ onTour }: { onTour?: () => void }) {
           its starting square, or the nearest open square).
         </li>
         <li>
-          Costs: ice 1 · Empty Grave 2 · Storm Hammer 2 · summon beast 3 · Aggressive Root 3 (interrupt 3). Backstab and
-          beast moves are free.
+          Costs: ice 1 (on an enemy 2) · Empty Grave 2 · Storm Hammer 2 · summon beast 3 · Aggressive Root 3 (interrupt
+          3). Backstab and beast moves are free.
         </li>
         <li>
           Aqna's kills store an ice charge instead of using it right away — never more than one at a time. Spend it
-          whenever you like, on any later turn, for 1 rune. Aimed at an enemy, the ice freezes it and shatters: the
-          enemy is eliminated and no block is left. On an empty square it raises a block. Cast as her action, she may
-          still move afterwards.
+          whenever you like, on any later turn. An empty square within 3 of her gets an ice block (1 rune). An enemy
+          within 2 (2 runes) freezes and shatters: eliminated, no block left; a shielded enemy only loses its shield.
+          Terrain and her own units hide the squares behind them; enemies don't. Cast as her action, she may still move
+          afterwards.
         </li>
         <li>Ge'nga's summoned beast eliminates an enemy on the square it lands on.</li>
       </ul>

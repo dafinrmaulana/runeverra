@@ -41,10 +41,37 @@ export function skillReach(state: State, caster: Unit, skill: Skill | undefined 
   for (let r = caster.pos.r - skill.range; r <= caster.pos.r + skill.range; r++) {
     for (let c = caster.pos.c - skill.range; c <= caster.pos.c + skill.range; c++) {
       const pos = { r, c };
-      if (inBounds(pos) && !samePos(pos, caster.pos)) squares.push(pos);
+      if (!inBounds(pos) || samePos(pos, caster.pos)) continue;
+      if (skill.reach?.sight && hidden(state, caster, pos)) continue;
+      squares.push(pos);
     }
   }
   return squares;
+}
+
+/**
+ * Is `target` hidden from `caster` by terrain or the caster's own units on the way? The way is the straight
+ * line between them, one step at a time; where it runs between two squares, it only stops if both are shut.
+ * Enemies never hide what is behind them.
+ */
+function hidden(state: State, caster: Unit, target: Pos) {
+  const rows = target.r - caster.pos.r,
+    cols = target.c - caster.pos.c;
+  const steps = Math.max(Math.abs(rows), Math.abs(cols));
+  const shut = (pos: Pos) => {
+    if (blockAt(state, pos)) return true;
+    const unit = unitAt(state, pos);
+    return !!unit && unit.team === caster.team;
+  };
+  for (let step = 1; step < steps; step++) {
+    const r = caster.pos.r + (rows * step) / steps,
+      c = caster.pos.c + (cols * step) / steps;
+    const options = [];
+    for (const row of new Set([Math.floor(r), Math.ceil(r)]))
+      for (const col of new Set([Math.floor(c), Math.ceil(c)])) options.push({ r: row, c: col });
+    if (options.every(shut)) return true;
+  }
+  return false;
 }
 export const inSkillReach = (state: State, caster: Unit, pos: Pos) =>
   skillReach(state, caster).some((square) => samePos(square, pos));

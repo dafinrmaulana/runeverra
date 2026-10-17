@@ -481,7 +481,7 @@ function effectsOf(controller: GameController, unit: Unit, threats: Set<string>)
     out.push({
       k: 'wd',
       label: 'Shielded',
-      text: `Empty Grave: the next attack on it breaks the shield instead (the attacker is thrown back). Skills and pushes can't touch it. Lasts ${(unit.wardTurns ?? 0) + 1} more of ${TEAM_NAMES[unit.team]}'s turns if unbroken.`,
+      text: `Empty Grave: the next attack on it breaks the shield instead (the attacker is thrown back). Aqna's ice breaks it too; other skills and pushes can't touch it. Lasts ${(unit.wardTurns ?? 0) + 1} more of ${TEAM_NAMES[unit.team]}'s turns if unbroken.`,
     });
   if (isCommander(unit))
     out.push({ k: 'cmd', label: 'Commander', text: 'If this hero falls, its side loses the match.' });

@@ -36,7 +36,7 @@ export const CHANGELOG: Patch[] = [
       },
       {
         tag: 'balance',
-        text: 'Aqna moves up to 3 squares. Her ice on an enemy freezes it, then shatters: eliminated, and no block is left. Icy Step no longer ends her turn: she may still move.',
+        text: "Icy Step: an ice block on an empty square within 3 (1 rune), or within 2 an enemy frozen until it shatters, eliminated with no block left, or a shield broken (2 runes). Terrain and her own units in the way hide what's behind them. It no longer ends her turn: she may still move.",
       },
       { tag: 'ui', text: "Tapping an enemy no longer shows its skill's reach." },
       {

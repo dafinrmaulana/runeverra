@@ -307,6 +307,8 @@ export class GameController {
     if (fresh?.kind === 'backstab' && killed) window.setTimeout(() => sfx('slash'), 220); // his blade lands
     // the frost holds the enemy for as long as it sounds, then the ice (and the enemy) shatters
     if (fresh?.kind === 'ice' && fresh.frozen) window.setTimeout(() => sfx('shatter'), FREEZE_MS);
+    else if (fresh?.kind === 'ice' && fresh.broke?.length)
+      window.setTimeout(() => sfx('shield'), 260); // the shield takes it
     else if (fresh?.movedIce) window.setTimeout(() => sfx('shatter'), 120); // her oldest block breaks to make room
     if (fresh?.breach) {
       window.setTimeout(() => sfx('rune'), 320); // +1 rune

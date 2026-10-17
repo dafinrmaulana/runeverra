@@ -74,7 +74,7 @@ test("setup: 4 heroes each, beast beside Ge'nga, symmetric map blocks, no first-
   assert.throws(() => createMatch({ p1: ['hasim', 'hexor', 'aqna'] }));
 });
 
-test('roles: Aqna slides 3, Assassin 1 in any direction plus Backstab, Support 1 and commands, Hexor an L, Fighter 2 any way', () => {
+test('roles: Aqna slides 2, Assassin 1 in any direction plus Backstab, Support 1 and commands, Hexor an L, Fighter 2 any way', () => {
   assert.equal(HEROES.aqna.role, 'roam');
   assert.equal(HEROES.hexor.role, 'roam');
   assert.equal(HEROES.hasim.role, 'assassin');
@@ -93,7 +93,7 @@ test('roles: Aqna slides 3, Assassin 1 in any direction plus Backstab, Support 1
       .map((option) => 'abcdefgh'[option.to.c] + (8 - option.to.r))
       .sort();
   assert.deepEqual(names('p1-hasim'), ['c3', 'c4', 'c5', 'd3', 'd5', 'e3', 'e4', 'e5']);
-  assert.deepEqual(names('p2-aqna'), ['e4', 'f4', 'g4', 'h1', 'h2', 'h3', 'h5', 'h6', 'h7']);
+  assert.deepEqual(names('p2-aqna'), ['f4', 'g4', 'h2', 'h3', 'h5', 'h6']);
   assert.deepEqual(names('p2-plantae'), ['g8', 'h7']);
 });
 
@@ -203,7 +203,7 @@ test("Ge'nga: the beast follow-up is free; Wild Company (3 runes) summons a fall
 
 test('Magumba Empty Grave: 2 runes, a plus next to him; the first attack breaks it and the attacker stays put', () => {
   let s = setup(
-    { 'p1-magumba': 'c3', 'p1-hasim': 'c4', 'p1-hexor': 'a1', 'p2-aqna': 'c7', 'p2-hasim': 'h5', 'p2-plantae': 'h8' },
+    { 'p1-magumba': 'c3', 'p1-hasim': 'c4', 'p1-hexor': 'a1', 'p2-aqna': 'c6', 'p2-hasim': 'h5', 'p2-plantae': 'h8' },
     { p1: ['magumba', 'hasim', 'hexor', 'aqna'], energy: { p1: 1, p2: 0 } },
   );
   assert.match(
@@ -218,18 +218,18 @@ test('Magumba Empty Grave: 2 runes, a plus next to him; the first attack breaks 
   const hit = act(s, mv('p2-aqna', 'c4'));
   assert.equal(hit.units['p1-hasim'].alive, true);
   assert.equal(hit.units['p1-hasim'].warded, false, 'broken');
-  assert.deepEqual(hit.units['p2-aqna'].pos, sq('c7'), 'thrown back');
+  assert.deepEqual(hit.units['p2-aqna'].pos, sq('c6'), 'thrown back');
   assert.equal(hit.lastAction.kind, 'shieldbreak');
   assert.equal(hit.current, 'p1', "their turn is over: it's Ivory's again");
   // left alone, the shielded unit still acts, kills, and keeps the shield
   s = act(s, mv('p2-hasim', 'h6'));
   assert.equal(s.units['p1-hasim'].warded, true, 'lasts past the next turn');
-  s = act(s, mv('p1-hasim', 'c5'));
+  s = act(s, mv('p1-hasim', 'd4'));
   s = act(s, mv('p2-hasim', 'h5'));
-  s = act(s, mv('p1-hasim', 'c6'));
+  s = act(s, mv('p1-hasim', 'd5'));
   s = act(s, mv('p2-hasim', 'h6'));
   assert.equal(s.units['p1-hasim'].warded, true, "two of Ivory's turns in");
-  s = act(s, mv('p1-hasim', 'c7'));
+  s = act(s, mv('p1-hasim', 'c6'));
   assert.equal(s.units['p2-aqna'].alive, false);
   assert.equal(s.units['p1-hasim'].warded, true, 'still shielded after a kill');
   s = act(s, mv('p2-hasim', 'h5'));
@@ -429,7 +429,8 @@ test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest m
   let s = setup(pos, { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } });
   s = act(s, mv('p1-aqna', 'a5'));
   assert.equal(s.phase, 'ice');
-  assert.match(reject(s, { type: 'ice', to: sq('a1') }), /within 3/);
+  assert.match(reject(s, { type: 'ice', to: sq('a1') }), /within 3/, '4 away: out of reach');
+  assert.match(reject(s, { type: 'ice', to: sq('e5') }), /within 3/, '4 to the side: out of reach');
   s = act(s, { type: 'ice', to: sq('c5') });
   assert.equal(blockAt(s, sq('c5')).kind, 'ice');
   assert.equal(s.current, 'p2');
@@ -445,7 +446,7 @@ test('Aqna Icy Step: 1 token for ice after a kill; ice blocks everyone; oldest m
     t.iceBy['p1-aqna'].push(key(sq(n)));
   }
   t = act(t, mv('p1-aqna', 'a5'));
-  t = act(t, { type: 'ice', to: sq('b6') });
+  t = act(t, { type: 'ice', to: sq('b5') });
   assert.equal(blockAt(t, sq('h3')), null, 'oldest block moved');
   assert.equal(t.iceBy['p1-aqna'].length, 10);
   // skip is allowed and free
@@ -469,8 +470,8 @@ test('Aqna Icy Step: the charge is storable (not immediate) and never stacks', (
   s = act(s, mv('p2-hasim', 'b4'));
   const acts = listActions(s).filter((action) => action.type === 'skill' && action.unitId === 'p1-aqna');
   assert.ok(acts.length > 0, 'Icy Step is listed as a skill action while the charge is held');
-  s = act(s, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('c5') });
-  assert.equal(blockAt(s, sq('c5')).kind, 'ice');
+  s = act(s, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('b6') });
+  assert.equal(blockAt(s, sq('b6')).kind, 'ice');
   assert.equal(s.units['p1-aqna'].iceCharge, 0, 'charge is spent');
   assert.equal(s.energy.p1, 1, "1 token spent on her own turn, not the kill's turn");
 
@@ -825,27 +826,51 @@ test('commander: Plantae or Magumba leads (the first picked, if both); when it f
   assert.equal(t2.status, 'playing');
 });
 
-test('Aqna: ice raised on an enemy eliminates it; a shielded enemy is out of reach', () => {
-  let s = setup(
-    { 'p1-aqna': 'd4', 'p1-hasim': 'a1', 'p2-genga': 'f5', 'p2-hasim': 'e3', 'p2-plantae': 'h8' },
-    { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 1, p2: 0 } },
+test('Aqna: a block within 3, an enemy within 2 (2 runes); allies and terrain hide what is behind them', () => {
+  const base = setup(
+    {
+      'p1-aqna': 'd4',
+      'p1-hasim': 'd3', // her ally below: hides what is behind it
+      'p2-aqna': 'd2', // behind that ally: hidden
+      'p2-genga': 'd6',
+      'p2-hasim': 'e4', // shielded, right beside her
+      'p2-plantae': 'g7', // in sight, but 3 away: too far to strike
+    },
+    { p1: ['aqna', 'hasim', 'hexor', 'magumba'], energy: { p1: 2, p2: 0 }, blocks: { b4: 'rock' } },
   );
-  s.units['p1-aqna'].iceCharge = 1;
-  s.units['p2-hasim'].warded = true;
-  const spots = listActions(s).filter((action) => action.type === 'skill');
-  assert.ok(spots.some((action) => action.to.r === sq('f5').r && action.to.c === sq('f5').c));
-  assert.ok(!spots.some((action) => action.to.r === sq('e3').r && action.to.c === sq('e3').c), 'not through a shield');
-  s = act(s, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('f5') });
+  base.units['p1-aqna'].iceCharge = 1;
+  base.units['p2-hasim'].warded = true;
+  base.units['p2-hasim'].wardTurns = 3;
+  const names = (state) =>
+    listActions(state)
+      .filter((action) => action.type === 'skill')
+      .map((action) => 'abcdefgh'[action.to.c] + (8 - action.to.r));
+  const reach = names(base);
+  for (const name of ['d6', 'e4', 'd7', 'g4', 'a7', 'g1']) assert.ok(reach.includes(name), `${name} in reach`);
+  for (const name of ['d2', 'd1', 'a4', 'b4', 'g7', 'd3', 'h4'])
+    assert.ok(!reach.includes(name), `${name} out of reach`);
+  // with 1 rune only the empty squares (a block costs 1, an enemy 2)
+  const poor = structuredClone(base);
+  poor.energy.p1 = 1;
+  assert.ok(!names(poor).some((name) => ['d6', 'e4'].includes(name)), 'enemies cost 2');
+  // on an enemy: frozen, then shattered
+  let s = act(base, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('d6') });
   assert.equal(s.units['p2-genga'].alive, false, 'frozen, then shattered');
-  assert.equal(blockAt(s, sq('f5')), null, 'the ice breaks: no block is left');
+  assert.equal(blockAt(s, sq('d6')), null, 'the ice breaks: no block is left');
   assert.equal(s.lastAction.frozen, 'p2-genga');
-  assert.equal(s.energy.p1, 1, '1 spent, +1 for the hero');
+  assert.equal(s.energy.p1, 1, '2 spent, +1 for the hero');
   // the ice doesn't use her turn: she may still move, or skip
   assert.equal(s.phase, 'icewalk');
   assert.ok(listActions(s).every((action) => action.type === 'skip' || action.unitId === 'p1-aqna'));
-  const walked = act(s, mv('p1-aqna', 'd7'));
-  assert.equal(walked.current, 'p2');
+  assert.equal(act(s, mv('p1-aqna', 'c4')).current, 'p2');
   assert.equal(act(s, { type: 'skip' }).current, 'p2');
+  // on a shielded enemy: the shield shatters, the enemy lives, and it still costs 2
+  const shield = act(base, { type: 'skill', unitId: 'p1-aqna', skill: 'icy', to: sq('e4') });
+  assert.equal(shield.units['p2-hasim'].alive, true);
+  assert.equal(shield.units['p2-hasim'].warded, false);
+  assert.deepEqual(shield.lastAction.broke, ['p2-hasim']);
+  assert.equal(shield.energy.p1, 0);
+  assert.equal(blockAt(shield, sq('e4')), null);
 });
 
 test('Empty Grave: a Backstab into a shield breaks it and Hasim stays put', () => {

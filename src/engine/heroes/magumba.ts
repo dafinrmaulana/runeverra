@@ -36,7 +36,7 @@ const magumba = defineHero('magumba', {
     cost: 2,
     range: 2,
     reach: { cells: SHIELD_FAN, label: 'shield' },
-    text: `Targets himself or one ally in a fan ahead of him, up to 2 squares deep, widening as it goes — nothing in between blocks it. The shielded unit still acts as usual. Enemy skills can't touch it, and the first enemy attack on it breaks the shield instead: nobody falls, the attacker stays where it was, and their turn is over. Unbroken, the shield lasts ${WARD_TURNS} of your turns. Also removes Root from it.`,
+    text: `Targets himself or one ally in a fan ahead of him, up to 2 squares deep, widening as it goes — nothing in between blocks it. The shielded unit still acts as usual. Enemy skills like Aggressive Root can't touch it, and the first enemy attack on it (or Aqna's ice) breaks the shield instead: nobody falls, the attacker stays where it was, and their turn is over. Unbroken, the shield lasts ${WARD_TURNS} of your turns. Also removes Root from it.`,
   },
   short: {
     move: 'Steps 1 straight.',

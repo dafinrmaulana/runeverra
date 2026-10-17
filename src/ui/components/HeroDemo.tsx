@@ -215,21 +215,22 @@ const DEMOS: Record<string, Demo> = {
     ],
   },
   aqna: {
-    setup: () => scene('keep', [unit('p1', 'aqna', 'd3'), unit('p2', 'hasim', 'd5'), unit('p2', 'genga', 'f4'), KEEP]),
+    setup: () => scene('keep', [unit('p1', 'aqna', 'd3'), unit('p2', 'hasim', 'd5'), unit('p2', 'genga', 'e7'), KEEP]),
     steps: [
-      { text: 'Aqna moves up to 3 squares in a straight line.', show: { live: 'p1-aqna' }, ms: 2200 },
+      { text: 'Aqna moves up to 2 squares in a straight line.', show: { live: 'p1-aqna' }, ms: 2200 },
       {
         text: 'She eliminates Hasim and stores an ice charge — never more than one at a time.',
         act: move('p1-aqna', 'd5'),
         ms: 2000,
       },
       {
-        text: 'Spend it whenever you like, even turns later: Icy Step (1 rune) then reaches every square within 3 of her.',
+        text: 'Spend it whenever you like: a block within 3, an enemy within 2. Her allies and terrain hide what is behind them.',
+        show: { live: 'p1-aqna', armed: true },
         ms: 2400,
       },
       {
-        text: "Aimed at Ge'nga, the ice freezes him… then shatters, and he is gone. On an empty square it would raise a block nobody can pass.",
-        act: { type: 'ice', to: sq('f4') },
+        text: "On Ge'nga (2 runes), the ice freezes him… then shatters, and he is gone. On an empty square (1 rune) it raises a block.",
+        act: { type: 'ice', to: sq('e7') },
         ms: 3600,
       },
     ],

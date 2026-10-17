@@ -133,9 +133,10 @@ export type MoveRule = { kind: string; dirs?: Dir[]; range?: number; deltas?: Di
 /**
  * Where a skill reaches. `cells`: a fixed shape as [depth, side] around the caster (depth toward
  * the enemy, flipped per team), never blocked; `label` names it in error messages ("root pattern").
- * `ray`: lines along `dirs`, stopped by terrain and the first unit. Neither: a square of `range`.
+ * `ray`: lines along `dirs`, stopped by terrain and the first unit. `sight`: the square of `range`, minus
+ * squares hidden behind terrain or the caster's own units. Neither: the whole square of `range`.
  */
-export type Reach = { cells?: Dir[]; label?: string; ray?: boolean; dirs?: Dir[] };
+export type Reach = { cells?: Dir[]; label?: string; ray?: boolean; dirs?: Dir[]; sight?: boolean };
 export type Skill = {
   key: string; // short id used in actions, effects and sounds: 'grave', 'root'…
   name: string;
